@@ -3,7 +3,7 @@
     "concurrently": "^10.0.5"
   },
   "scripts": {
-    "dev": "concurrently -n frontend,backend -c blue,green \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "dev": "concurrently -n frontend,backend,ml -c blue,green,yellow \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\" \"python -m uvicorn main:app --reload --port 8000 --app-dir ml-service\"",
     "dev:terminals": "node scripts/open-terminals.js"
   }
 }
