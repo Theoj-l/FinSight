@@ -1,0 +1,30 @@
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.env.local
+
+# Packaging/build artifacts
+*.egg-info/
+dist/
+build/
+
+# Testing/caching
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter (if you use notebooks for experimentation)
+.ipynb_checkpoints/
+
+# OS junk
+.DS_Store
+Thumbs.db
