@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette — from the TSH Group logo */
+  --color-brand-navy: #1f2a79;
+  --color-brand-navy-dark: #161f5c;
+  --color-brand-blue: #4c6fbb;
+  --color-brand-blue-light: #eef2fb;
+  --color-brand-red: #e02718;
+  --color-brand-red-dark: #b81f12;
+
+  --color-background: #ffffff;
+  --color-foreground: #14183a;
+  --color-muted: #5b6079;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}

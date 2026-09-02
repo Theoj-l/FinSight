@@ -5,12 +5,11 @@ const os = require('os');
 const root = path.resolve(__dirname, '..');
 const platform = os.platform();
 const mlCommand = platform === 'win32'
-  ? 'venv\\Scripts\\python.exe -m uvicorn main:app --reload --port 8000'
-  : 'source venv/bin/activate && python -m uvicorn main:app --reload --port 8000';
+  ? 'venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8000'
+  : 'source venv/bin/activate && python -m uvicorn app.main:app --reload --port 8000';
 
 const services = [
-  { name: 'frontend', dir: path.join(root, 'frontend'), cmd: 'npm run dev' },
-  { name: 'backend', dir: path.join(root, 'backend'), cmd: 'npm run dev' },
+  { name: 'web', dir: path.join(root, 'web'), cmd: 'npm run dev' },
   { name: 'ml-service', dir: path.join(root, 'ml-service'), cmd: mlCommand },
 ];
 

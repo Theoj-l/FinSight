@@ -2,139 +2,165 @@
 
 OC Blueberry FYP
 
-## Prerequisites
+## Architecture
 
-Install the following before setting up the project:
+Two deployable services:
+
+| Path         | Stack                                             | Port | Role                                              |
+| ------------ | ------------------------------------------------- | ---- | ------------------------------------------------- |
+| `web/`       | Next.js 16 (App Router), React 19, Tailwind, Prisma | 3000 | UI **and** API — route handlers + server actions  |
+| `ml-service/`| Python, FastAPI, Uvicorn                          | 8000 | Model training (offline) and inference (HTTP API) |
+
+The browser only talks to `web/`. `web/` talks to `ml-service/` server-side over
+HTTP, authenticating with a shared secret (`ML_SERVICE_TOKEN`) in the
+`x-ml-service-token` header. Persistent data lives in Supabase Postgres, accessed
+from `web/` through Prisma. Auth is Supabase Auth (email + password). The ML
+service is stateless.
+
+```
+web/
+  proxy.ts          refreshes the Supabase session, guards protected routes
+  app/
+    api/            route handlers (the "backend")
+    auth/           server actions (login/signup/signout) + email confirm route
+    (auth)/         login + signup pages (shared card layout)
+    dashboard/      example protected page
+    page.tsx        landing page
+  lib/
+    db.ts           Prisma client singleton
+    ml-client.ts    typed client for ml-service
+    supabase/       browser + server Supabase clients, proxy session helper
+  prisma/
+    schema.prisma
+ml-service/
+  app/              FastAPI serving layer
+    main.py
+    config.py
+    security.py
+    routers/
+  training/         offline scripts/notebooks that produce model artifacts
+  models/           trained artifacts (gitignored)
+  tests/
+```
+
+## Prerequisites
 
 - Node.js and npm
 - Python 3.10 or newer
 - Git
-
-Check that they are available:
+- A Postgres database (local, or a free hosted one — Neon / Supabase / Railway)
 
 ```bash
 node --version
 npm --version
-python --version
+python --version   # use python3 on macOS if python is not found
 ```
-
-On macOS, use `python3 --version` if `python` is not available.
 
 ## First-Time Setup
 
-Run these commands from the repository root, the folder containing this README.
-
-### Windows PowerShell
-
-Create the Python virtual environment:
-
-```powershell
-python -m venv ml-service/venv
-```
-
-Activate it:
-
-```powershell
-.\ml-service\venv\Scripts\Activate.ps1
-```
-
-If PowerShell blocks activation, allow it for the current terminal only:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\ml-service\venv\Scripts\Activate.ps1
-```
-
-Install Python and JavaScript dependencies:
-
-```powershell
-python -m pip install --upgrade pip
-pip install -r ml-service/requirements.txt
-npm install
-npm install --prefix frontend
-npm install --prefix backend
-```
-
-### macOS or Linux
-
-Create the Python virtual environment:
+From the repository root:
 
 ```bash
-python3 -m venv ml-service/venv
+npm run setup
 ```
 
-Activate it:
+This one command:
 
-```bash
-source ml-service/venv/bin/activate
+- installs Node dependencies (root + `web/`, and generates the Prisma client)
+- creates `ml-service/venv` and installs the Python dependencies
+- creates `web/.env.local` and `ml-service/.env` from the templates (only if
+  they don't already exist)
+
+It does **not** touch the database and does **not** overwrite existing env files.
+
+### Fill in the env files
+
+In `web/.env.local`:
+
+- `DATABASE_URL` — Supabase transaction pooler (port 6543)
+- `DIRECT_URL` — Supabase direct connection (port 5432)
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase → Project Settings → API
+
+Both DB strings are under Supabase → Project Settings → Database. URL-encode any
+special characters in the password (`@` → `%40`, etc.). Use the **same**
+`ML_SERVICE_TOKEN` in `web/.env.local` and `ml-service/.env`.
+
+### Activate the venv for Python work
+
+`npm run dev` and `npm run setup` call the venv directly, but for running
+`pytest`, `ruff`, etc. by hand, activate it first:
+
+```powershell
+.\ml-service\venv\Scripts\Activate.ps1   # Windows
 ```
 
-Install Python and JavaScript dependencies:
+```bash
+source ml-service/venv/bin/activate       # macOS / Linux
+```
+
+### Supabase Auth settings
+
+In the Supabase dashboard:
+
+- **Authentication → URL Configuration** — set Site URL to `http://localhost:3000`
+  (add the deployed URL later).
+- **Authentication → Sign In / Providers → Email** — for local dev, turn
+  **"Confirm email" off** so sign-up logs you straight in. When you turn it back
+  on, point the confirmation email template at
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
+  (handled by `web/app/auth/confirm/route.ts`).
+
+Protected routes are listed in `web/lib/supabase/proxy.ts` (`/dashboard` for now).
+
+### Database (later)
+
+Once `web/prisma/schema.prisma` reflects the real domain (it currently holds
+placeholder models — the auth user lives in Supabase's `auth.users`, so the app
+tables will likely hang off a `profiles` row keyed by that UUID):
 
 ```bash
-python -m pip install --upgrade pip
-pip install -r ml-service/requirements.txt
-npm install
-npm install --prefix frontend
-npm install --prefix backend
+npm run db:migrate --prefix web    # creates/updates tables in Supabase
 ```
 
 ## Run the Application
-
-Make sure the Python virtual environment is activated, then run:
 
 ```bash
 npm run dev
 ```
 
-This starts all three services:
+Starts both services:
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001
-- ML service: http://localhost:8000
+- Web: http://localhost:3000
+- ML service: http://localhost:8000 (docs at http://localhost:8000/docs)
 
-The FastAPI documentation is available at http://localhost:8000/docs.
+Check the wiring: http://localhost:3000/api/health and
+http://localhost:3000/api/ml/health (the second proxies to the ML service).
 
-To stop the services, press `Ctrl+C` in the terminal running `npm run dev`.
+`npm run dev:terminals` opens each service in its own terminal window instead.
 
-## Activate the Environment Again
+To stop, press `Ctrl+C`.
 
-The virtual environment is created only once and is ignored by Git. Activate it again whenever you open a new terminal.
+## Common Commands
 
-Windows PowerShell:
-
-```powershell
-.\ml-service\venv\Scripts\Activate.ps1
-```
-
-macOS or Linux:
-
-```bash
-source ml-service/venv/bin/activate
-```
+| Command                              | What it does                          |
+| ------------------------------------ | ------------------------------------- |
+| `npm run dev`                        | Run both services with hot reload     |
+| `npm run db:migrate --prefix web`    | Create/apply a Prisma migration       |
+| `npm run db:studio --prefix web`     | Open Prisma Studio                    |
+| `npm run lint --prefix web`          | Lint the web app                      |
+| `pytest` (in `ml-service/`)          | Run ML service tests                  |
+| `ruff check .` (in `ml-service/`)    | Lint the ML service                   |
 
 ## Git Conventions
 
 ### Commit Messages
 
-Use this format:
-
 ```text
 type: short description
 ```
 
-Keep the subject clear, use the imperative mood, and do not end it with a period. Keep it short enough to scan easily.
-
-Common commit types:
-
-- `feat`: add a new feature
-- `fix`: correct a bug
-- `refactor`: change code without changing behavior
-- `docs`: update documentation
-- `test`: add or update tests
-- `chore`: maintenance, configuration, or dependency changes
-
-Examples:
+Imperative mood, no trailing period, short enough to scan. Types: `feat`, `fix`,
+`refactor`, `docs`, `test`, `chore`.
 
 ```text
 feat: add FastAPI ML service
@@ -145,46 +171,17 @@ chore: update Python dependencies
 
 ### Branch Names
 
-Use this format:
-
 ```text
 type/short-description
 ```
 
-Use lowercase words separated by hyphens. Choose the branch type based on the work:
-
-- `feature/`: new functionality
-- `fix/`: bug fixes
-- `refactor/`: code restructuring
-- `docs/`: documentation-only changes
-- `test/`: test changes
-- `chore/`: maintenance and configuration
-
-Examples:
-
-```text
-feature/ml-health-endpoint
-fix/backend-route-error
-docs/setup-guide
-chore/update-dependencies
-```
-
-Create a branch before making changes:
+Lowercase, hyphen-separated. Types: `feature/`, `fix/`, `refactor/`, `docs/`,
+`test/`, `chore/`.
 
 ```bash
 git switch -c feature/short-description
-```
-
-Review your changes before committing:
-
-```bash
 git status
 git diff
-```
-
-Then commit them:
-
-```bash
 git add .
 git commit -m "type: short description"
 ```
