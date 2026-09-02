@@ -12,6 +12,9 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const isWin = process.platform === 'win32';
+// Minimum Python. The dependency set (numpy 2.5, pandas 3.0, fastapi 0.141)
+// needs >= 3.11; the team standardises on 3.14. This is the single source of truth.
+const minPython = { major: 3, minor: 14 };
 
 function run(cmd, cwd = root) {
   console.log(`\n$ ${cmd}${cwd === root ? '' : `   (in ${path.relative(root, cwd)}/)`}`);
@@ -21,6 +24,27 @@ function run(cmd, cwd = root) {
 function step(msg) {
   console.log(`\n=== ${msg} ===`);
 }
+
+function pythonVersion(command) {
+  try {
+    const output = execSync(`${command} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const [major, minor] = output.split('.').map(Number);
+    return { major, minor };
+  } catch {
+    return null;
+  }
+}
+
+function meetsMin(version) {
+  if (!version) return false;
+  if (version.major !== minPython.major) return version.major > minPython.major;
+  return version.minor >= minPython.minor;
+}
+
+const want = `${minPython.major}.${minPython.minor}`;
 
 // 1. Node dependencies -------------------------------------------------------
 step('Installing Node dependencies (root + web/)');
@@ -34,24 +58,36 @@ const venvPython = isWin
   ? path.join(venvDir, 'Scripts', 'python.exe')
   : path.join(venvDir, 'bin', 'python');
 
-if (!fs.existsSync(venvPython)) {
+const existingVersion = fs.existsSync(venvPython) ? pythonVersion(`"${venvPython}"`) : null;
+
+if (meetsMin(existingVersion)) {
+  console.log(`venv already on Python ${existingVersion.major}.${existingVersion.minor}, keeping it.`);
+} else {
+  // Find a usable interpreter FIRST — never delete a working venv unless we can
+  // replace it.
+  const candidates = isWin
+    ? [`py -${want}`, `python${want}`, 'py -3', 'python3', 'python']
+    : [`python${want}`, 'python3', 'python'];
   let systemPython = null;
-  for (const candidate of isWin ? ['python', 'py -3'] : ['python3', 'python']) {
-    try {
-      execSync(`${candidate} --version`, { stdio: 'ignore' });
+  for (const candidate of candidates) {
+    if (meetsMin(pythonVersion(candidate))) {
       systemPython = candidate;
       break;
-    } catch {
-      /* try next */
     }
   }
   if (!systemPython) {
-    console.error('\nNo Python found on PATH. Install Python 3.10+ and re-run.');
+    console.error(`\nNo Python >= ${want} on PATH. Install Python ${want} and re-run.`);
+    console.error(existingVersion
+      ? `The existing venv (Python ${existingVersion.major}.${existingVersion.minor}) was left in place.`
+      : '');
     process.exit(1);
   }
+  if (fs.existsSync(venvDir)) {
+    const found = existingVersion ? `Python ${existingVersion.major}.${existingVersion.minor}` : 'an unreadable interpreter';
+    console.log(`Existing venv uses ${found}; rebuilding with ${systemPython}.`);
+    fs.rmSync(venvDir, { recursive: true, force: true });
+  }
   run(`${systemPython} -m venv ml-service/venv`);
-} else {
-  console.log('venv already exists, skipping creation.');
 }
 
 run(`"${venvPython}" -m pip install --upgrade pip`);
@@ -79,6 +115,6 @@ console.log(`
 
 Next:
   1. Fill in web/.env and ml-service/.env with real values.
-  2. Start everything:            npm run dev
-  3. When the DB schema is ready: npm run db:migrate --prefix web
+  2. Start everything:        npm run dev
+  3. Apply the DB schema:     npm run db:apply --prefix web   (then db:pull, db:generate)
 `);

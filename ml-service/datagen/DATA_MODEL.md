@@ -21,8 +21,7 @@ Prisma does not touch.
 
 ```bash
 cd ml-service
-source venv/bin/activate
-pip install -r requirements-datagen.txt          # once
+source venv/bin/activate      # deps are installed by `npm run setup`
 
 python -m datagen                                # generate + validate + write CSVs
 python -m datagen --load                         # ... then load into Postgres

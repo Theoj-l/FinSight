@@ -223,7 +223,7 @@ def _generate_sales(rng, y, m, L, masters, plan, cust_by_bu, cust_codes,
         inv_vals = _split_amount(target, n_inv, rng, b.invoice_cv)
         dates = _weekday_dates(y, m, rng, n_inv)
         margin = plan.margin_override.get((b.code, ym), b.gross_margin)
-        for seq, (v, doc_d) in enumerate(zip(inv_vals, dates), start=1):
+        for seq, (v, doc_d) in enumerate(zip(inv_vals, dates, strict=True), start=1):
             if v < 100:
                 continue
             pool = cust_by_bu[b.code] if (cust_by_bu[b.code] and rng.random() < 0.7) else cust_codes

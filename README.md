@@ -47,14 +47,14 @@ ml-service/
 ## Prerequisites
 
 - Node.js and npm
-- Python 3.10 or newer
+- Python 3.14 (`npm run setup` checks for it)
 - Git
 - A Postgres database (local, or a free hosted one — Neon / Supabase / Railway)
 
 ```bash
 node --version
 npm --version
-python --version   # use python3 on macOS if python is not found
+python3.14 --version
 ```
 
 ## First-Time Setup
@@ -68,7 +68,7 @@ npm run setup
 This one command:
 
 - installs Node dependencies (root + `web/`, and generates the Prisma client)
-- creates `ml-service/venv` and installs the Python dependencies
+- creates `ml-service/venv` with Python 3.14 and installs the Python dependencies
 - creates `web/.env` and `ml-service/.env` from the templates (only if they
   don't already exist)
 
@@ -138,14 +138,13 @@ npm run db:generate   # regenerate the typed client
 ### Synthetic dataset
 
 The tables are populated with a generated TSH Group dataset (2021–2026, ~105k GL
-lines) produced by `ml-service/datagen`. Anomaly labels and run metadata live in
-a separate `datagen` schema that Prisma does not introspect. To regenerate or
-reset:
+lines) produced by `ml-service/datagen` (its deps come with `npm run setup`).
+Anomaly labels and run metadata live in a separate `datagen` schema that Prisma
+does not introspect. To regenerate or reset:
 
 ```bash
 cd ml-service && source venv/bin/activate
-pip install -r requirements-datagen.txt   # once
-python -m datagen --load                  # generate, validate, load
+python -m datagen --load    # generate, validate, load
 ```
 
 See [ml-service/datagen/DATA_MODEL.md](ml-service/datagen/DATA_MODEL.md) for the

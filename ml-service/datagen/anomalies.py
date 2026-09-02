@@ -44,7 +44,7 @@ def _span(y0, m0, y1, m1):
 def build_plan(rng, masters) -> AnomalyPlan:
     p = AnomalyPlan()
     debtor_meta = masters["debtor_meta"]
-    by_bu = {}
+    by_bu: dict[str, list[str]] = {}
     for acc, meta in debtor_meta.items():
         by_bu.setdefault(meta["primary_bu"], []).append(acc)
 

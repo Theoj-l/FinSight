@@ -9,10 +9,11 @@ ML. This file is just the quickstart.
 
 ## Quickstart
 
+Dependencies come with `npm run setup` (they're in `requirements.txt`).
+
 ```bash
 cd ml-service
 source venv/bin/activate
-pip install -r requirements-datagen.txt        # once
 
 python -m datagen                              # generate + validate + write output/
 python -m datagen --load                       # then load into Postgres (prompts first)

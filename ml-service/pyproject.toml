@@ -1,9 +1,8 @@
 # Tool configuration only. Dependencies are managed in requirements*.txt.
-# target-version is py39 because the project venv is currently Python 3.9;
-# bump to py310+ once the venv moves (README asks for 3.10+).
+# The project targets the Python 3.14 release line (supported through 2030-10).
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py314"
 line-length = 110
 
 [tool.ruff.lint.per-file-ignores]
@@ -16,6 +15,6 @@ select = ["E", "F", "I", "UP", "B"]
 testpaths = ["tests"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.14"
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
