@@ -60,7 +60,7 @@ run(`"${venvPython}" -m pip install -r ml-service/requirements-dev.txt`);
 // 3. Environment files -----------------------------------------------------
 step('Creating .env files from templates (if missing)');
 const envPairs = [
-  ['web/.env.example', 'web/.env.local'],
+  ['web/.env.example', 'web/.env'],
   ['ml-service/.env.example', 'ml-service/.env'],
 ];
 for (const [src, dest] of envPairs) {
@@ -78,7 +78,7 @@ console.log(`
 === Setup complete ===
 
 Next:
-  1. Fill in web/.env.local and ml-service/.env with real values.
+  1. Fill in web/.env and ml-service/.env with real values.
   2. Start everything:            npm run dev
   3. When the DB schema is ready: npm run db:migrate --prefix web
 `);

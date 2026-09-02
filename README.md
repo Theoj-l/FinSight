@@ -31,7 +31,8 @@ web/
     ml-client.ts    typed client for ml-service
     supabase/       browser + server Supabase clients, proxy session helper
   prisma/
-    schema.prisma
+    finsight_schema.sql   hand-authored DDL — source of truth for the 17 tables
+    schema.prisma         introspected from the DB (do not hand-edit models)
 ml-service/
   app/              FastAPI serving layer
     main.py
@@ -68,22 +69,24 @@ This one command:
 
 - installs Node dependencies (root + `web/`, and generates the Prisma client)
 - creates `ml-service/venv` and installs the Python dependencies
-- creates `web/.env.local` and `ml-service/.env` from the templates (only if
-  they don't already exist)
+- creates `web/.env` and `ml-service/.env` from the templates (only if they
+  don't already exist)
 
 It does **not** touch the database and does **not** overwrite existing env files.
 
 ### Fill in the env files
 
-In `web/.env.local`:
+In `web/.env` (read by both Next.js and the Prisma CLI):
 
-- `DATABASE_URL` — Supabase transaction pooler (port 6543)
-- `DIRECT_URL` — Supabase direct connection (port 5432)
+- `DATABASE_URL` — Supabase **transaction pooler**, port 6543 (app queries)
+- `DIRECT_URL` — Supabase **session pooler**, port 5432 (Prisma migrations / `db pull`).
+  The `db.<ref>.supabase.co` "direct" host is IPv6-only without the paid IPv4
+  add-on, so use the session pooler URL here instead.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase → Project Settings → API
 
 Both DB strings are under Supabase → Project Settings → Database. URL-encode any
 special characters in the password (`@` → `%40`, etc.). Use the **same**
-`ML_SERVICE_TOKEN` in `web/.env.local` and `ml-service/.env`.
+`ML_SERVICE_TOKEN` in `web/.env` and `ml-service/.env`.
 
 ### Activate the venv for Python work
 
@@ -112,15 +115,26 @@ In the Supabase dashboard:
 
 Protected routes are listed in `web/lib/supabase/proxy.ts` (`/dashboard` for now).
 
-### Database (later)
+### Database
 
-Once `web/prisma/schema.prisma` reflects the real domain (it currently holds
-placeholder models — the auth user lives in Supabase's `auth.users`, so the app
-tables will likely hang off a `profiles` row keyed by that UUID):
+The 17 AutoCount ledger tables are defined in `web/prisma/finsight_schema.sql`
+(hand-authored — it carries `COMMENT ON COLUMN` and row-level security that Prisma
+migrations can't express). `schema.prisma` is **introspected** from the database,
+not the other way round. This ledger data is company-wide, not per-user — there
+is no link to `auth.users`; being signed in is the only authorization.
+
+Workflow when the schema changes:
 
 ```bash
-npm run db:migrate --prefix web    # creates/updates tables in Supabase
+cd web
+# 1. edit prisma/finsight_schema.sql
+npm run db:apply      # runs the SQL against Supabase (via DIRECT_URL)
+npm run db:pull       # regenerate schema.prisma from the DB
+npm run db:generate   # regenerate the typed client
 ```
+
+`npm run db:studio` opens a browser DB viewer. There is no seed data yet — the
+synthetic dataset is a separate deliverable.
 
 ## Run the Application
 
@@ -145,8 +159,9 @@ To stop, press `Ctrl+C`.
 | Command                              | What it does                          |
 | ------------------------------------ | ------------------------------------- |
 | `npm run dev`                        | Run both services with hot reload     |
-| `npm run db:migrate --prefix web`    | Create/apply a Prisma migration       |
-| `npm run db:studio --prefix web`     | Open Prisma Studio                    |
+| `npm run db:apply --prefix web`      | Apply `finsight_schema.sql` to Supabase |
+| `npm run db:pull --prefix web`       | Re-introspect `schema.prisma` from the DB |
+| `npm run db:studio --prefix web`     | Open the Prisma DB viewer             |
 | `npm run lint --prefix web`          | Lint the web app                      |
 | `pytest` (in `ml-service/`)          | Run ML service tests                  |
 | `ruff check .` (in `ml-service/`)    | Lint the ML service                   |

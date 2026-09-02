@@ -1,5 +1,7 @@
-// Prisma schema for the FinSight web app.
-// Docs: https://pris.ly/d/prisma-schema
+// The 17 AutoCount tables below are INTROSPECTED from the database, not managed
+// by Prisma migrations. Source of truth: prisma/finsight_schema.sql.
+// Workflow: edit finsight_schema.sql -> `npm run db:apply` -> `npm run db:pull`
+// -> `npm run db:generate`. Do not hand-edit the models.
 
 generator client {
   provider = "prisma-client-js"
@@ -7,35 +9,236 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  // Supabase: pooled connection (port 6543) for the app at runtime.
   url       = env("DATABASE_URL")
-  // Supabase: direct connection (port 5432) for migrations / introspection.
   directUrl = env("DIRECT_URL")
 }
 
-// ---------------------------------------------------------------------------
-// Starter models — replace with the real FinSight domain as it firms up.
-// ---------------------------------------------------------------------------
-
-model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model acc_type {
+  acc_type                               String      @id(map: "pk_acc_type") @db.VarChar(2)
+  description                            String?     @db.VarChar(40)
+  is_bs_type                             Boolean
+  gl_mast_gl_mast_acc_typeToacc_type     gl_mast[]   @relation("gl_mast_acc_typeToacc_type")
+  pl_format_pl_format_acc_typeToacc_type pl_format[] @relation("pl_format_acc_typeToacc_type")
 }
 
-model Transaction {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount      Decimal
-  currency    String   @default("USD")
-  description String
-  category    String?
-  occurredAt  DateTime
-  createdAt   DateTime @default(now())
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ar_invoice {
+  doc_key                                         BigInt       @id(map: "pk_ar_invoice")
+  doc_no                                          String       @db.VarChar(30)
+  debtor_code                                     String       @db.VarChar(12)
+  doc_date                                        DateTime     @db.Date
+  due_date                                        DateTime     @db.Date
+  description                                     String?      @db.VarChar(80)
+  sales_agent                                     String?      @db.VarChar(12)
+  branch_code                                     String?      @db.VarChar(20)
+  local_net_total                                 Decimal      @default(0) @db.Decimal(19, 4)
+  local_payment_amt                               Decimal      @default(0) @db.Decimal(19, 4)
+  outstanding                                     Decimal      @default(0) @db.Decimal(19, 4)
+  cancelled                                       Boolean
+  branch                                          branch?      @relation(fields: [branch_code], references: [branch_code], onDelete: NoAction, onUpdate: NoAction, map: "fk_ar_invoice_branch_code")
+  debtor                                          debtor       @relation(fields: [debtor_code], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_ar_invoice_debtor_code")
+  sales_agent_ar_invoice_sales_agentTosales_agent sales_agent? @relation("ar_invoice_sales_agentTosales_agent", fields: [sales_agent], references: [sales_agent], onDelete: NoAction, onUpdate: NoAction, map: "fk_ar_invoice_sales_agent")
 
-  @@index([userId, occurredAt])
+  @@index([debtor_code, due_date], map: "ix_ar_invoice_debtor_due")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model branch {
+  branch_code String       @id(map: "pk_branch") @db.VarChar(20)
+  branch_name String?      @db.VarChar(100)
+  is_active   Boolean
+  ar_invoice  ar_invoice[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model budget {
+  budget_key      BigInt            @id(map: "pk_budget")
+  budget_name     String            @db.VarChar(20)
+  budget_pbalance budget_pbalance[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model budget_pbalance {
+  budget_key BigInt
+  period_no  Int
+  acc_no     String  @db.VarChar(12)
+  dept_no    String  @db.VarChar(10)
+  amount     Decimal @default(0) @db.Decimal(19, 4)
+  gl_mast    gl_mast @relation(fields: [acc_no], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_budget_pbalance_acc_no")
+  budget     budget  @relation(fields: [budget_key], references: [budget_key], onDelete: NoAction, onUpdate: NoAction, map: "fk_budget_pbalance_budget_key")
+
+  @@id([budget_key, period_no, acc_no, dept_no], map: "pk_budget_pbalance")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model debtor {
+  acc_no                                      String       @id(map: "pk_debtor") @db.VarChar(12)
+  company_name                                String?      @db.VarChar(100)
+  sales_agent                                 String?      @db.VarChar(12)
+  credit_limit                                Decimal?     @db.Decimal(19, 4)
+  display_term                                String       @db.VarChar(30)
+  ar_invoice                                  ar_invoice[]
+  sales_agent_debtor_sales_agentTosales_agent sales_agent? @relation("debtor_sales_agentTosales_agent", fields: [sales_agent], references: [sales_agent], onDelete: NoAction, onUpdate: NoAction, map: "fk_debtor_sales_agent")
+  iv                                          iv[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model dept {
+  dept_no     String     @id(map: "pk_dept") @db.VarChar(10)
+  description String?    @db.VarChar(40)
+  gl_dtl      gl_dtl[]
+  iv_dtl      iv_dtl[]
+  pbalance    pbalance[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model fiscal_year {
+  fiscal_year_name String   @id(map: "pk_fiscal_year") @db.VarChar(20)
+  from_date        DateTime @db.Date
+  to_date          DateTime @db.Date
+  is_active        Boolean
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model gl_dtl {
+  gl_dtl_key   BigInt   @id(map: "pk_gl_dtl")
+  gl_trx_id    BigInt
+  acc_no       String   @db.VarChar(12)
+  dept_no      String   @db.VarChar(10)
+  trans_date   DateTime @db.Date
+  description  String?  @db.VarChar(100)
+  journal_type String   @db.VarChar(10)
+  source_type  String?  @db.VarChar(1)
+  ref_no1      String?  @db.VarChar(30)
+  home_dr      Decimal  @default(0) @db.Decimal(19, 4)
+  home_cr      Decimal  @default(0) @db.Decimal(19, 4)
+  gl_mast      gl_mast  @relation(fields: [acc_no], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_gl_dtl_acc_no")
+  dept         dept     @relation(fields: [dept_no], references: [dept_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_gl_dtl_dept_no")
+
+  @@index([acc_no, trans_date], map: "ix_gl_dtl_acc_date")
+  @@index([dept_no, trans_date], map: "ix_gl_dtl_dept_date")
+  @@index([gl_trx_id], map: "ix_gl_dtl_trx")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model gl_mast {
+  acc_no                              String            @id(map: "pk_gl_mast") @db.VarChar(12)
+  parent_acc_no                       String?           @db.VarChar(12)
+  description                         String?           @db.VarChar(100)
+  acc_type                            String            @db.VarChar(2)
+  budget_pbalance                     budget_pbalance[]
+  gl_dtl                              gl_dtl[]
+  acc_type_gl_mast_acc_typeToacc_type acc_type          @relation("gl_mast_acc_typeToacc_type", fields: [acc_type], references: [acc_type], onDelete: NoAction, onUpdate: NoAction, map: "fk_gl_mast_acc_type")
+  gl_mast                             gl_mast?          @relation("gl_mastTogl_mast", fields: [parent_acc_no], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_gl_mast_parent_acc_no")
+  other_gl_mast                       gl_mast[]         @relation("gl_mastTogl_mast")
+  item_group                          item_group[]
+  pbalance                            pbalance[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model item {
+  item_code                              String      @id(map: "pk_item") @db.VarChar(30)
+  description                            String?     @db.VarChar(100)
+  item_group                             String?     @db.VarChar(8)
+  is_active                              Boolean
+  item_group_item_item_groupToitem_group item_group? @relation("item_item_groupToitem_group", fields: [item_group], references: [item_group], onDelete: NoAction, onUpdate: NoAction, map: "fk_item_item_group")
+  iv_dtl                                 iv_dtl[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model item_group {
+  item_group                       String   @id(map: "pk_item_group") @db.VarChar(8)
+  description                      String?  @db.VarChar(40)
+  sales_code                       String?  @db.VarChar(12)
+  purchase_code                    String?  @db.VarChar(12)
+  item_item_item_groupToitem_group item[]   @relation("item_item_groupToitem_group")
+  gl_mast                          gl_mast? @relation(fields: [sales_code], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_item_group_sales_code")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model iv {
+  doc_key          BigInt   @id(map: "pk_iv")
+  doc_no           String   @db.VarChar(30)
+  debtor_code      String   @db.VarChar(12)
+  doc_date         DateTime @db.Date
+  sales_agent      String?  @db.VarChar(12)
+  branch_code      String?  @db.VarChar(20)
+  description      String?  @db.VarChar(80)
+  local_ex_tax     Decimal  @default(0) @db.Decimal(19, 4)
+  local_net_total  Decimal  @default(0) @db.Decimal(19, 4)
+  local_total_cost Decimal  @default(0) @db.Decimal(20, 6)
+  cancelled        Boolean
+  debtor           debtor   @relation(fields: [debtor_code], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_iv_debtor_code")
+  iv_dtl           iv_dtl[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model iv_dtl {
+  dtl_key          BigInt  @id(map: "pk_iv_dtl")
+  doc_key          BigInt
+  seq              Int
+  item_code        String? @db.VarChar(30)
+  description      String? @db.VarChar(100)
+  dept_no          String  @db.VarChar(10)
+  qty              Decimal @default(0) @db.Decimal(20, 6)
+  unit_price       Decimal @default(0) @db.Decimal(20, 6)
+  local_sub_total  Decimal @default(0) @db.Decimal(19, 4)
+  local_total_cost Decimal @default(0) @db.Decimal(20, 6)
+  dept             dept    @relation(fields: [dept_no], references: [dept_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_iv_dtl_dept_no")
+  iv               iv      @relation(fields: [doc_key], references: [doc_key], onDelete: NoAction, onUpdate: NoAction, map: "fk_iv_dtl_doc_key")
+  item             item?   @relation(fields: [item_code], references: [item_code], onDelete: NoAction, onUpdate: NoAction, map: "fk_iv_dtl_item_code")
+
+  @@index([doc_key], map: "ix_iv_dtl_doc")
+  @@index([item_code], map: "ix_iv_dtl_item")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pbalance {
+  period_no Int
+  acc_no    String  @db.VarChar(12)
+  dept_no   String  @db.VarChar(10)
+  home_dr   Decimal @default(0) @db.Decimal(19, 4)
+  home_cr   Decimal @default(0) @db.Decimal(19, 4)
+  gl_mast   gl_mast @relation(fields: [acc_no], references: [acc_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_pbalance_acc_no")
+  dept      dept    @relation(fields: [dept_no], references: [dept_no], onDelete: NoAction, onUpdate: NoAction, map: "fk_pbalance_dept_no")
+
+  @@id([period_no, acc_no, dept_no], map: "pk_pbalance")
+  @@index([period_no, acc_no], map: "ix_pbalance_period_acc")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pl_format {
+  seq                                   Int       @id(map: "pk_pl_format")
+  row_type                              String    @db.VarChar(1)
+  acc_type                              String?   @db.VarChar(2)
+  description                           String?   @db.VarChar(100)
+  credit_as_positive                    Boolean
+  acc_type_pl_format_acc_typeToacc_type acc_type? @relation("pl_format_acc_typeToacc_type", fields: [acc_type], references: [acc_type], onDelete: NoAction, onUpdate: NoAction, map: "fk_pl_format_acc_type")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sales_agent {
+  sales_agent                                    String       @id(map: "pk_sales_agent") @db.VarChar(12)
+  description                                    String?      @db.VarChar(40)
+  is_active                                      Boolean
+  ar_invoice_ar_invoice_sales_agentTosales_agent ar_invoice[] @relation("ar_invoice_sales_agentTosales_agent")
+  debtor_debtor_sales_agentTosales_agent         debtor[]     @relation("debtor_sales_agentTosales_agent")
 }
