@@ -133,8 +133,23 @@ npm run db:pull       # regenerate schema.prisma from the DB
 npm run db:generate   # regenerate the typed client
 ```
 
-`npm run db:studio` opens a browser DB viewer. There is no seed data yet — the
-synthetic dataset is a separate deliverable.
+`npm run db:studio` opens a browser DB viewer.
+
+### Synthetic dataset
+
+The tables are populated with a generated TSH Group dataset (2021–2026, ~105k GL
+lines) produced by `ml-service/datagen`. Anomaly labels and run metadata live in
+a separate `datagen` schema that Prisma does not introspect. To regenerate or
+reset:
+
+```bash
+cd ml-service && source venv/bin/activate
+pip install -r requirements-datagen.txt   # once
+python -m datagen --load                  # generate, validate, load
+```
+
+See [ml-service/datagen/DATA_MODEL.md](ml-service/datagen/DATA_MODEL.md) for the
+business model, every table's meaning, the embedded patterns, and the anomalies.
 
 ## Run the Application
 

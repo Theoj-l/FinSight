@@ -17,6 +17,9 @@ __pycache__/
 models/*
 !models/.gitkeep
 
+# Generated dataset (CSV + reports); regenerate with `python -m datagen`
+datagen/output/
+
 # Packaging/build artifacts
 *.egg-info/
 dist/
