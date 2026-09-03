@@ -12,9 +12,15 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const isWin = process.platform === 'win32';
-// Minimum Python. The dependency set (numpy 2.5, pandas 3.0, fastapi 0.141)
-// needs >= 3.11; the team standardises on 3.14. This is the single source of truth.
-const minPython = { major: 3, minor: 14 };
+// Two Python thresholds:
+//   minPython         - hard floor. numpy 2.5 / pandas 3.0 need >= 3.11; below
+//                       this the install genuinely will not work.
+//   recommendedPython - the version the team standardises on. Between the two we
+//                       set things up anyway but warn, so version drift stays
+//                       visible. Bump `recommendedPython` when the team moves;
+//                       touch `minPython` only when a dependency raises its floor.
+const minPython = { major: 3, minor: 11 };
+const recommendedPython = { major: 3, minor: 14 };
 
 function run(cmd, cwd = root) {
   console.log(`\n$ ${cmd}${cwd === root ? '' : `   (in ${path.relative(root, cwd)}/)`}`);
@@ -38,13 +44,27 @@ function pythonVersion(command) {
   }
 }
 
-function meetsMin(version) {
+function atLeast(version, target) {
   if (!version) return false;
-  if (version.major !== minPython.major) return version.major > minPython.major;
-  return version.minor >= minPython.minor;
+  if (version.major !== target.major) return version.major > target.major;
+  return version.minor >= target.minor;
 }
 
-const want = `${minPython.major}.${minPython.minor}`;
+const meetsMin = (version) => atLeast(version, minPython);
+const meetsRecommended = (version) => atLeast(version, recommendedPython);
+
+const minWant = `${minPython.major}.${minPython.minor}`;
+const want = `${recommendedPython.major}.${recommendedPython.minor}`;
+const fmtVersion = (v) => `${v.major}.${v.minor}`;
+
+function warnIfBelowRecommended(version, label) {
+  if (version && meetsMin(version) && !meetsRecommended(version)) {
+    console.warn(
+      `\n! ${label} is on Python ${fmtVersion(version)}; the team standard is ${want}.\n` +
+      `  This works, but installing Python ${want} and re-running keeps everyone aligned.`
+    );
+  }
+}
 
 // 1. Node dependencies -------------------------------------------------------
 step('Installing Node dependencies (root + web/)');
@@ -61,33 +81,41 @@ const venvPython = isWin
 const existingVersion = fs.existsSync(venvPython) ? pythonVersion(`"${venvPython}"`) : null;
 
 if (meetsMin(existingVersion)) {
-  console.log(`venv already on Python ${existingVersion.major}.${existingVersion.minor}, keeping it.`);
+  console.log(`venv already on Python ${fmtVersion(existingVersion)}, keeping it.`);
+  warnIfBelowRecommended(existingVersion, 'venv');
 } else {
   // Find a usable interpreter FIRST — never delete a working venv unless we can
-  // replace it.
+  // replace it. Prefer the recommended version, then fall back to anything >= min.
   const candidates = isWin
     ? [`py -${want}`, `python${want}`, 'py -3', 'python3', 'python']
     : [`python${want}`, 'python3', 'python'];
   let systemPython = null;
+  let systemVersion = null;
   for (const candidate of candidates) {
-    if (meetsMin(pythonVersion(candidate))) {
+    const version = pythonVersion(candidate);
+    if (meetsMin(version)) {
       systemPython = candidate;
+      systemVersion = version;
       break;
     }
   }
   if (!systemPython) {
-    console.error(`\nNo Python >= ${want} on PATH. Install Python ${want} and re-run.`);
-    console.error(existingVersion
-      ? `The existing venv (Python ${existingVersion.major}.${existingVersion.minor}) was left in place.`
-      : '');
+    console.error(
+      `\nNo Python >= ${minWant} found on PATH. The team standard is ${want} ` +
+      `(e.g. \`brew install python@${want}\`). Install it and re-run.`
+    );
+    if (existingVersion) {
+      console.error(`The existing venv (Python ${fmtVersion(existingVersion)}) was left in place.`);
+    }
     process.exit(1);
   }
   if (fs.existsSync(venvDir)) {
-    const found = existingVersion ? `Python ${existingVersion.major}.${existingVersion.minor}` : 'an unreadable interpreter';
+    const found = existingVersion ? `Python ${fmtVersion(existingVersion)}` : 'an unreadable interpreter';
     console.log(`Existing venv uses ${found}; rebuilding with ${systemPython}.`);
     fs.rmSync(venvDir, { recursive: true, force: true });
   }
   run(`${systemPython} -m venv ml-service/venv`);
+  warnIfBelowRecommended(systemVersion, 'new venv');
 }
 
 run(`"${venvPython}" -m pip install --upgrade pip`);
