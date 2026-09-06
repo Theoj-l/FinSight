@@ -12,6 +12,8 @@ import { getProfitMarginData } from "./data/profit-margin";
 import { getRevenueByGroupData } from "./data/revenue-by-group";
 import { getExpenseCategoryData } from "./data/expense-category";
 import { getProfitLossData } from "./data/profit-loss";
+import { getKpiData } from "./data/kpi";
+import { KpiCards } from "./components/kpi-cards";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -28,6 +30,7 @@ export default async function DashboardPage() {
     revenueByGroupResult,
     expenseCategoryResult,
     profitLossResult,
+    kpiResult,
   ] = await Promise.all([
     getRevenueExpenseData()
       .then((data) => ({ data, error: undefined }))
@@ -44,6 +47,9 @@ export default async function DashboardPage() {
     getProfitLossData()
       .then((data) => ({ data, error: undefined }))
       .catch(() => ({ data: undefined, error: "Profit and loss data could not be loaded right now." })),
+    getKpiData()
+      .then((data) => ({ data, error: undefined }))
+      .catch(() => ({ data: undefined, error: "KPI data could not be loaded right now. Please refresh to retry." })),
   ]);
 
   const chartData = revenueExpenseResult.data;
@@ -78,7 +84,9 @@ export default async function DashboardPage() {
         </p>
 
 
-        <div className="grid grid-cols-2 gap-8 mt-8">
+        <KpiCards data={kpiResult.data} error={kpiResult.error} userId={user.id} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           <div className="h-full">
             <RevenueExpenseChart data={chartData} error={chartError} />
           </div>
@@ -87,11 +95,11 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-3 items-stretch gap-8">
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 items-stretch gap-8">
           <div className="col-span-1 h-full">
             <RevenueByGroupChart data={revenueByGroupData} error={revenueByGroupError} />
           </div>
-          <div className="col-span-2 h-full">
+          <div className="lg:col-span-2 h-full">
             <ExpenseCategoryChart data={expenseCategoryData} error={expenseCategoryError} />
           </div>
         </div>
