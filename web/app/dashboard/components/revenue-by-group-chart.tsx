@@ -27,7 +27,7 @@ export function RevenueByGroupChart({ data = [], error, loading = false }: Reven
         <h2 id="revenue-by-group-title" className="text-lg font-semibold text-brand-navy">
           Revenue by Product Group
         </h2>
-        <p className="mt-1 text-sm text-muted">All non-cancelled invoices</p>
+        <p className="mt-1 text-sm text-muted">Non-cancelled invoices · Selected month, unit and branch</p>
       </div>
 
       {loading ? (

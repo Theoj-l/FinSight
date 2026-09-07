@@ -21,6 +21,7 @@ function totals(rows: KpiBalance[], period: number) {
   const grossProfit = revenue.plus(sums.CS);
   const netProfit = grossProfit.plus(sums.OI).plus(sums.EX);
   return { revenue, grossProfit, netProfit,
+    expenseRatio: revenue.isZero() ? null : sums.EX.negated().div(revenue).times(100),
     grossMargin: revenue.isZero() ? null : grossProfit.div(revenue).times(100),
     netMargin: revenue.isZero() ? null : netProfit.div(revenue).times(100) };
 }
@@ -51,11 +52,12 @@ export function aggregateKpis(actual: KpiBalance[], budgets: KpiBudget[], period
     ["netProfit", "Net profit", "Revenue − cost of sales + other income − expenses (RE − CS + OI − EX). Tax is included only if posted to EX."],
     ["grossMargin", "Gross margin", "Gross profit ÷ operating revenue × 100."],
     ["netMargin", "Net margin", "Net profit ÷ operating revenue × 100."],
+    ["expenseRatio", "Operating expense ratio", "Operating expenses (EX) ÷ operating revenue (RE) × 100. Excludes cost of sales. A decrease is favorable."],
   ];
   const metrics: KpiMetric[] = definitions.map(([id, label, description]) => {
     const value = current?.[id] ?? null;
     const previous = prior?.[id] ?? null;
-    return { id, label, description, unit: id.endsWith("Margin") ? "ratio" : "money", value: value === null ? null : fixed(value), prior: previous === null ? null : fixed(previous), change: compare(value, previous) };
+    return { id, label, description, higherIsBetter: id !== "expenseRatio", unit: id.endsWith("Margin") || id === "expenseRatio" ? "ratio" : "money", value: value === null ? null : fixed(value), prior: previous === null ? null : fixed(previous), change: compare(value, previous) };
   });
   const variance = current && budget ? current.netProfit.minus(budget.netProfit) : null;
   const priorVariance = prior && priorBudget ? prior.netProfit.minus(priorBudget.netProfit) : null;

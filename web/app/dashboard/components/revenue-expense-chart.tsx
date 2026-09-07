@@ -34,7 +34,7 @@ export function RevenueExpenseChart({
           <h2 id="revenue-expense-title" className="text-lg font-semibold text-brand-navy">
             Revenue vs Operating Expenses
           </h2>
-          <p className="mt-1 text-sm text-muted">Last 6 months</p>
+          <p className="mt-1 text-sm text-muted">Selected reporting month · Selected business unit</p>
         </div>
       </div>
 

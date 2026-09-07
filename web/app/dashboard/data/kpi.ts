@@ -2,11 +2,12 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { aggregateKpis, previousPeriod } from "./kpi-utils";
 import type { KpiData } from "./kpi-presentation";
+import { ledgerDepartment, type DashboardScope } from "./dashboard-scope";
 
 // A shared scope is ready for period, department and budget filters.
-export type KpiScope = { period?: number; departmentIds?: string[]; budgetKey?: bigint };
+export type KpiScope = DashboardScope;
 export async function getKpiData(scope: KpiScope = {}): Promise<KpiData | null> {
-  const department = scope.departmentIds ? { dept_no: { in: scope.departmentIds } } : {};
+  const department = ledgerDepartment(scope);
   const period = scope.period ?? (await prisma.pbalance.findFirst({ where: department, orderBy: { period_no: "desc" }, select: { period_no: true } }))?.period_no;
   if (period === undefined) return null;
   const periods = [period, previousPeriod(period)];

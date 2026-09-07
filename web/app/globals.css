@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* Resolve source files from web/ regardless of the dev command's working directory. */
+@import "tailwindcss" source("../");
+/* Explicitly watch the app, including newly added dashboard components. */
+@source "./";
 
 @theme {
   /* Brand palette — from the TSH Group logo */

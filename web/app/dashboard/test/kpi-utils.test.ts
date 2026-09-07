@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aggregateKpis, previousPeriod, type KpiBalance, type KpiBudget } from "../data/kpi-utils";
-import { defaultThresholds, formatAmount, formatPercentage, needsAttention, outcome, validThresholds } from "../data/kpi-presentation";
+import { defaultThresholds, formatAmount, formatPercentage, needsAttention, outcome, restoreThresholds, validThresholds } from "../data/kpi-presentation";
 
 const row = (period_no: number, acc_type: string, home_dr: string, home_cr: string): KpiBalance => ({ period_no, home_dr, home_cr, gl_mast: { acc_type } });
 const budget = (period_no: number, acc_type: string, amount: string): KpiBudget => ({ period_no, amount, gl_mast: { acc_type } });
@@ -11,7 +11,11 @@ describe("KPI aggregation", () => {
       row(202402, "RE", "20", "1220"), row(202402, "CS", "500", "0"), row(202402, "EX", "200", "0"), row(202402, "OI", "0", "100"),
       row(202402, "AS", "99999", "0"), row(202403, "RE", "0", "99999"),
     ], [budget(202401, "RE", "-300"), budget(202402, "RE", "-500")], 202402);
-    expect(data.metrics.map(m => m.value)).toEqual(["1200.00", "700.00", "600.00", "100.00", "58.33", "50.00"]);
+    expect(data.metrics.map(m => m.value)).toEqual(["1200.00", "700.00", "600.00", "100.00", "58.33", "50.00", "16.67"]);
+    const expenseRatio = data.metrics.find(m => m.id === "expenseRatio")!;
+    expect(expenseRatio.prior).toBe("25.00");
+    expect(expenseRatio.change?.percentage).toBeCloseTo(-33.333333);
+    expect(outcome(expenseRatio.change!.direction, expenseRatio.higherIsBetter)).toBe("favorable");
     expect(data.metrics[0].change).toEqual({ absolute: "200.00", percentage: 20, direction: 1 });
     expect(data.metrics[3].change).toEqual({ absolute: "0.00", percentage: 0, direction: 0 });
     expect(data.metrics[3].budgetComparison).toEqual({ absolute: "100.00", percentage: 20, direction: 1 });
@@ -45,6 +49,17 @@ describe("KPI aggregation", () => {
   });
 });
 describe("KPI indicators and settings", () => {
+  it("preserves old settings when the expense ratio is introduced", () => {
+    const legacy: Partial<ReturnType<typeof defaultThresholds>> = defaultThresholds();
+    legacy.netProfit = { enabled: true, min: -10, max: 25 };
+    delete legacy.expenseRatio;
+    const restored = restoreThresholds(JSON.stringify(legacy));
+    expect(restored.netProfit.min).toBe(-10);
+    expect(restored.expenseRatio).toEqual({ enabled: true, min: 0, max: 0 });
+    expect(needsAttention(-10, restored.netProfit)).toBe(false);
+    expect(needsAttention(-10.01, restored.netProfit)).toBe(true);
+    expect(restoreThresholds("broken JSON")).toEqual(defaultThresholds());
+  });
   it("keeps mathematical direction separate from business outcome", () => {
     expect(outcome(1)).toBe("favorable");
     expect(outcome(-1)).toBe("unfavorable");

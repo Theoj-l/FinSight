@@ -30,7 +30,7 @@ export function ProfitMarginChart({ data = [], error, loading = false }: ProfitM
         <h2 id="profit-margin-title" className="text-lg font-semibold text-brand-navy">
           Net Profit and Margin
         </h2>
-        <p className="mt-1 text-sm text-muted">Last 6 months</p>
+        <p className="mt-1 text-sm text-muted">Selected reporting month · Selected business unit</p>
       </div>
 
       {loading ? (

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, Rectangle, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   formatCurrencyCompact,
@@ -10,9 +9,9 @@ import {
   type ExpenseCategoryPeriod,
 } from "../data/expense-category-utils";
 
-const POSITIVE_CHANGE_COLOR = "#1f2a79";
-const NON_POSITIVE_CHANGE_COLOR = "#e02718";
-const POSITIVE_CHANGE_TEXT = "#16803c";
+function expenseColor(change: number | null) {
+  return change === null || change === 0 ? "#64748b" : change > 0 ? "#b91c1c" : "#047857";
+}
 
 function shortenCategory(category: string) {
   return category.length > 24 ? `${category.slice(0, 21)}...` : category;
@@ -25,8 +24,7 @@ type ExpenseCategoryChartProps = {
 };
 
 export function ExpenseCategoryChart({ data = [], error, loading = false }: ExpenseCategoryChartProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<number | undefined>(data.at(-1)?.periodNo);
-  const activePeriod = selectedPeriod ?? data.at(-1)?.periodNo;
+  const activePeriod = data.at(-1)?.periodNo;
   const categories = activePeriod === undefined ? [] : getCategoriesForPeriod(data, activePeriod);
 
   return (
@@ -36,23 +34,8 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
           <h2 id="expense-category-title" className="text-lg font-semibold text-brand-navy">
             Operating Expenses by Category
           </h2>
-          <p className="mt-1 text-sm text-muted">Select an accounting period</p>
+          <p className="mt-1 text-sm text-muted">Selected reporting month · Change vs previous calendar month</p>
         </div>
-        {data.length > 0 && (
-          <label className="flex items-center gap-2 text-sm font-medium text-brand-navy">
-            <span>Period</span>
-            <select
-              aria-label="Expense category period"
-              value={activePeriod ?? ""}
-              onChange={(event) => setSelectedPeriod(Number(event.target.value))}
-              className="rounded-md border border-black/15 bg-white px-2 py-1.5 text-sm text-foreground"
-            >
-              {data.slice().reverse().map(({ periodNo, period }) => (
-                <option key={periodNo} value={periodNo}>{period}</option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
 
       {loading ? (
@@ -85,7 +68,7 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
                   return (
                     <Rectangle
                       {...props}
-                      fill={change !== null && change > 0 ? POSITIVE_CHANGE_COLOR : NON_POSITIVE_CHANGE_COLOR}
+                      fill={expenseColor(change)}
                     />
                   );
                 }}
@@ -102,7 +85,7 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
                       <text
                         x={Number(x) + Number(width) + 8}
                         y={Number(y) + Number(height) / 2}
-                        fill={change !== null && change > 0 ? POSITIVE_CHANGE_TEXT : NON_POSITIVE_CHANGE_COLOR}
+                        fill={expenseColor(change)}
                         textAnchor="start"
                         dominantBaseline="middle"
                         fontSize={12}
@@ -121,20 +104,16 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
       {!loading && !error && data.length > 0 && categories.length > 0 && (
         <div className="mt-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-4 text-xs text-muted" aria-label="Expense chart color legend">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: POSITIVE_CHANGE_COLOR }} aria-hidden="true" />
-            Increase vs prior period
+            <span className="h-2.5 w-2.5 rounded-sm bg-red-700" aria-hidden="true" />
+            Increased expense · Unfavorable
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: NON_POSITIVE_CHANGE_COLOR }} aria-hidden="true" />
-            Decrease or no prior period
+            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-700" aria-hidden="true" />
+            Decreased expense · Favorable
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#16803c]">+%</span>
-            Increase percentage
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="font-semibold text-brand-red">—%</span>
-            Decrease or unavailable percentage
+            <span className="h-2.5 w-2.5 rounded-sm bg-slate-500" aria-hidden="true" />
+            Unchanged or comparison unavailable
           </span>
         </div>
       )}

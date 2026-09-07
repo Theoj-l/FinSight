@@ -1,4 +1,5 @@
 import { formatCurrencyExact, type ProfitLossStatement } from "../data/profit-loss-utils";
+import { formatPercentage } from "../data/kpi-presentation";
 
 type ProfitLossTableProps = {
   data?: ProfitLossStatement;
@@ -11,9 +12,9 @@ function rowStyle(rowType: string) {
   return "text-foreground";
 }
 
-function valueStyle(value: number | null | undefined) {
-  if (value === null || value === undefined) return "text-muted";
-  return value < 0 ? "text-brand-red" : "text-[#16803c]";
+function valueStyle(value: number | null | undefined, higherIsBetter = true) {
+  if (value === null || value === undefined || value === 0) return "text-muted";
+  return (value > 0) === higherIsBetter ? "text-emerald-700" : "text-red-700";
 }
 
 export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
@@ -22,10 +23,11 @@ export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="profit-loss-title" className="text-lg font-semibold text-brand-navy">Profit and Loss Statement</h2>
-          <p className="mt-1 text-sm text-muted">Ordered by PLFormat sequence. Variance: MTD actual versus MTD budget.</p>
+          <p className="mt-1 text-sm text-muted">Selected month actual versus budget. Year-to-date runs from January through the selected month, for the same business unit.</p>
         </div>
         {data?.period && <span className="text-sm font-medium text-muted">Period {data.period}</span>}
       </div>
+      {data?.notices?.map(notice => <p key={notice} className="mt-3 text-sm text-muted">{notice}</p>)}
 
       {error ? (
         <div className="mt-6 text-sm text-brand-red" role="alert">{error}</div>
@@ -40,6 +42,7 @@ export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
                 <th className="px-3 py-3">Description</th>
                 <th className="px-3 py-3 text-right">Month-to-Date</th>
                 <th className="px-3 py-3 text-right">Year-to-Date</th>
+                <th className="px-3 py-3 text-right">Month Budget</th>
                 <th className="px-3 py-3 text-right">Variance %</th>
               </tr>
             </thead>
@@ -47,10 +50,11 @@ export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
               {data.rows.map((row, index) => (
                 <tr key={`${row.rowType}-${row.description}-${index}`} className={`border-b border-black/5 ${rowStyle(row.rowType)}`}>
                   <td className={`px-3 py-3 ${row.rowType === "A" ? "pl-7" : ""}`}>{row.description}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{row.monthToDate === undefined ? "" : formatCurrencyExact(row.monthToDate)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.monthToDate === undefined ? row.rowType === "H" ? "" : "—" : formatCurrencyExact(row.monthToDate)}</td>
                   <td className="px-3 py-3 text-right tabular-nums">{row.yearToDate === undefined ? "" : formatCurrencyExact(row.yearToDate)}</td>
-                  <td className={`px-3 py-3 text-right tabular-nums ${valueStyle(row.variancePct)}`}>
-                    {row.variancePct === undefined ? "" : row.variancePct === null ? "—" : `${row.variancePct.toFixed(2)}%`}
+                  <td className="px-3 py-3 text-right tabular-nums">{row.budgetMonthToDate === undefined ? row.rowType === "H" ? "" : "—" : formatCurrencyExact(row.budgetMonthToDate)}</td>
+                  <td className={`px-3 py-3 text-right tabular-nums ${valueStyle(row.variancePct, row.higherIsBetter)}`}>
+                    {row.variancePct === undefined ? "" : row.variancePct === null ? "—" : <span>{row.variancePct !== 0 && <span aria-label={row.variancePct > 0 ? "Increase" : "Decrease"}>{row.variancePct > 0 ? "▲ " : "▼ "}</span>}{formatPercentage(row.variancePct)}</span>}
                   </td>
                 </tr>
               ))}

@@ -14,8 +14,11 @@ import { getExpenseCategoryData } from "./data/expense-category";
 import { getProfitLossData } from "./data/profit-loss";
 import { getKpiData } from "./data/kpi";
 import { KpiCards } from "./components/kpi-cards";
+import { DashboardFilters } from "./components/dashboard-filters";
+import { getFilterOptions } from "./data/filter-options";
+import { BRANCH_LEDGER_MESSAGE, parseDashboardFilters, type FilterOptions, type SearchParams } from "./data/dashboard-scope";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,6 +26,17 @@ export default async function DashboardPage() {
 
   // proxy.ts already guards this route; this is defence in depth.
   if (!user) redirect("/login?next=/dashboard");
+
+  const optionsResult = await getFilterOptions()
+    .then(options => ({ options, error: undefined as string | undefined }))
+    .catch(() => ({ options: { periods: [], units: [], branches: [] } as FilterOptions, error: "Reporting filters could not be loaded. Please refresh to retry." }));
+  const { selection, scope, error: selectionError } = parseDashboardFilters(await searchParams, optionsResult.options);
+  const filterError = optionsResult.error ?? selectionError;
+  async function load<T>(read: () => Promise<T>, message: string, ledger = true): Promise<{ data?: T; error?: string }> {
+    if (filterError) return { error: filterError };
+    if (ledger && scope.branchCode) return { error: BRANCH_LEDGER_MESSAGE };
+    try { return { data: await read() }; } catch { return { error: message }; }
+  }
 
   const [
     revenueExpenseResult,
@@ -32,24 +46,12 @@ export default async function DashboardPage() {
     profitLossResult,
     kpiResult,
   ] = await Promise.all([
-    getRevenueExpenseData()
-      .then((data) => ({ data, error: undefined }))
-      .catch(() => ({ data: undefined, error: "Financial data could not be loaded right now." })),
-    getProfitMarginData()
-      .then((data) => ({ data, error: undefined }))
-      .catch(() => ({ data: undefined, error: "Profit data could not be loaded right now." })),
-    getRevenueByGroupData()
-      .then((data) => ({ data, error: undefined }))
-      .catch(() => ({ data: undefined, error: "Product group revenue could not be loaded right now." })),
-    getExpenseCategoryData()
-      .then((data) => ({ data, error: undefined }))
-      .catch(() => ({ data: undefined, error: "Expense category data could not be loaded right now." })),
-    getProfitLossData()
-      .then((data) => ({ data, error: undefined }))
-      .catch(() => ({ data: undefined, error: "Profit and loss data could not be loaded right now." })),
-    getKpiData()
-      .then((data) => ({ data, error: undefined }))
-      .catch(() => ({ data: undefined, error: "KPI data could not be loaded right now. Please refresh to retry." })),
+    load(() => getRevenueExpenseData(scope), "Financial data could not be loaded right now."),
+    load(() => getProfitMarginData(scope), "Profit data could not be loaded right now."),
+    load(() => getRevenueByGroupData(scope), "Product group revenue could not be loaded right now.", false),
+    load(() => getExpenseCategoryData(scope), "Expense category data could not be loaded right now."),
+    load(() => getProfitLossData(scope), "Profit and loss data could not be loaded right now."),
+    load(() => getKpiData(scope), "KPI data could not be loaded right now. Please refresh to retry."),
   ]);
 
   const chartData = revenueExpenseResult.data;
@@ -84,6 +86,7 @@ export default async function DashboardPage() {
         </p>
 
 
+        <DashboardFilters key={JSON.stringify(selection)} options={optionsResult.options} selection={selection} error={filterError}>
         <KpiCards data={kpiResult.data} error={kpiResult.error} userId={user.id} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
@@ -107,6 +110,7 @@ export default async function DashboardPage() {
         <div className="mt-8">
           <ProfitLossTable data={profitLossData} error={profitLossError} />
         </div>
+        </DashboardFilters>
       </main>
     </div>
   );

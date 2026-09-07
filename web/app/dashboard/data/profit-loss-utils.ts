@@ -22,6 +22,7 @@ export type ProfitLossBudgetRow = {
 };
 
 export type ProfitLossValueRow = {
+  higherIsBetter?: boolean;
   rowType: string;
   description: string;
   monthToDate?: number;
@@ -31,6 +32,7 @@ export type ProfitLossValueRow = {
 };
 
 export type ProfitLossStatement = {
+  notices?: string[];
   baseline: "MTD actual versus MTD budget";
   period: string;
   rows: ProfitLossValueRow[];
@@ -146,6 +148,7 @@ function calculateRows(
           ? null
           : ((monthToDate - budgetMonthToDate) / Math.abs(budgetMonthToDate)) * 100;
     rows.push({
+      higherIsBetter: format.credit_as_positive,
       rowType: format.row_type,
       description: format.description ?? "",
       monthToDate,

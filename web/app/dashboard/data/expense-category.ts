@@ -2,12 +2,15 @@ import "server-only";
 
 import { prisma } from "@/lib/db";
 import { aggregateExpenseCategories, type ExpenseCategoryPeriod } from "./expense-category-utils";
+import { ledgerDepartment, type DashboardScope } from "./dashboard-scope";
+import { previousPeriod } from "./kpi-utils";
 
 export type { ExpenseCategoryPeriod } from "./expense-category-utils";
 
-export async function getExpenseCategoryData(): Promise<ExpenseCategoryPeriod[]> {
+export async function getExpenseCategoryData(scope: DashboardScope = {}): Promise<ExpenseCategoryPeriod[]> {
+  const department = ledgerDepartment(scope);
   const rows = await prisma.pbalance.findMany({
-    where: { gl_mast: { acc_type: "EX" } },
+    where: { ...department, ...(scope.period !== undefined ? { period_no: { in: [previousPeriod(scope.period), scope.period] } } : {}), gl_mast: { acc_type: "EX" } },
     orderBy: { period_no: "asc" },
     select: {
       period_no: true,
@@ -17,5 +20,6 @@ export async function getExpenseCategoryData(): Promise<ExpenseCategoryPeriod[]>
     },
   });
 
-  return aggregateExpenseCategories(rows);
+  const data = aggregateExpenseCategories(rows);
+  return scope.period === undefined ? data : data.filter(row => row.periodNo === scope.period);
 }

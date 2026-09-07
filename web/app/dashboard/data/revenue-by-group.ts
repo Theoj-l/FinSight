@@ -2,12 +2,13 @@ import "server-only";
 
 import { prisma } from "@/lib/db";
 import { aggregateRevenueByGroup, type RevenueByGroupPoint } from "./revenue-by-group-utils";
+import { invoiceWhere, type DashboardScope } from "./dashboard-scope";
 
 export type { RevenueByGroupPoint } from "./revenue-by-group-utils";
 
-export async function getRevenueByGroupData(): Promise<RevenueByGroupPoint[]> {
+export async function getRevenueByGroupData(scope: DashboardScope = {}): Promise<RevenueByGroupPoint[]> {
   const rows = await prisma.iv_dtl.findMany({
-    where: { iv: { cancelled: false } },
+    where: invoiceWhere(scope),
     select: {
       local_sub_total: true,
       iv: { select: { cancelled: true } },
