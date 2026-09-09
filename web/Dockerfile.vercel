@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1
+#
+# Container image for deploying web/ to Vercel Functions.
+#
+# Vercel auto-detects a file named exactly "Dockerfile.vercel" at the root of
+# the project (here: the project's Root Directory must be set to `web`), builds
+# it, pushes it to the Vercel Container Registry, and adds a rewrite routing all
+# traffic to the container. Docs: https://vercel.com/docs/functions/container-images
+#
+# This file is ignored by Vercel's native Next.js build and by local
+# `npm run dev` / `docker compose` (which use ./Dockerfile). Keep the two in
+# sync when the build changes.
+#
+# Local sanity check:
+#   docker build -f Dockerfile.vercel \
+#     --build-arg NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co \
+#     --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder \
+#     -t finsight-web-vercel .
+#   docker run --rm -e PORT=3000 -p 3000:3000 finsight-web-vercel
+
+ARG NODE_IMAGE=node:22-bookworm-slim
+
+# --- base ----------------------------------------------------------------
+FROM ${NODE_IMAGE} AS base
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+
+# --- deps: install node_modules from the lockfile --------------------
+FROM base AS deps
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+# Placeholder — `prisma generate` (postinstall) only reads the schema, it
+# never connects. The real DATABASE_URL is a runtime env var on Vercel.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ENV DIRECT_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+RUN npm ci
+
+# --- builder: produce the standalone build --------------------------
+FROM base AS builder
+ENV NODE_ENV=production
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ENV DIRECT_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# NEXT_PUBLIC_* are compiled into the browser bundle here and cannot change at
+# runtime. Set them in Vercel Project Settings -> Environment Variables; Vercel
+# forwards project env vars to the image build. They are non-secret (shipped to
+# the browser). If a build ever ships without them, pass --build-arg explicitly.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# --- runner: what Vercel runs -------------------------------------
+FROM base AS runner
+ENV NODE_ENV=production
+# Vercel routes traffic to $PORT (default 80) and sends SIGTERM (30s grace) on
+# scale-in. Next's standalone server honours PORT and HOSTNAME.
+ENV PORT=80
+ENV HOSTNAME=0.0.0.0
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 --ingroup nodejs nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Prisma query engine — a native binary that output tracing copies unreliably.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
+USER nextjs
+EXPOSE 80
+CMD ["node", "server.js"]

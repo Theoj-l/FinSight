@@ -1,5 +1,7 @@
 # FinSight
 
+[![CI](https://github.com/Theoj-l/FinSight/actions/workflows/ci.yml/badge.svg)](https://github.com/Theoj-l/FinSight/actions/workflows/ci.yml)
+
 OC Blueberry FYP
 
 ## Architecture
@@ -133,7 +135,9 @@ npm run db:pull       # regenerate schema.prisma from the DB
 npm run db:generate   # regenerate the typed client
 ```
 
-`npm run db:studio` opens a browser DB viewer.
+`npm run db:studio` opens a browser DB viewer. `db:pull` keeps the `generator`
+block, so the `binaryTargets` the Docker / Vercel images need survives
+re-introspection.
 
 ### Synthetic dataset
 
@@ -168,6 +172,22 @@ http://localhost:3000/api/ml/health (the second proxies to the ML service).
 
 To stop, press `Ctrl+C`.
 
+## Testing
+
+| Suite | Location | Command |
+| ----- | -------- | ------- |
+| Unit / integration — Vitest | `web/`, `*.test.ts` beside the source | `npm test --prefix web` |
+| End-to-end — Playwright | `web/e2e/` | `npm run test:e2e --prefix web` |
+| ML service — pytest | `ml-service/tests/` | `pytest` (with the venv active) |
+
+First Playwright run only: `npx playwright install chromium` in `web/`.
+
+**CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the `web/`
+lint, typecheck, Vitest and Playwright suites on every push to `main` and every
+pull request, against placeholder env values (the suites mock Supabase and the
+ML service, so no real project or database is involved). The ML-service pytest
+suite is local-only for now.
+
 ## Run with Docker
 
 An alternative to the local toolchain — you only need Docker Desktop (no Node,
@@ -181,6 +201,7 @@ external, so `web/.env` and `ml-service/.env` must already exist (run
 | `ml-service/Dockerfile` | multi-stage; `dev` + `runner` targets | Uvicorn on 8000 |
 | `docker-compose.yml` | — | both, on a private network (`web` → `ml-service` at `http://ml-service:8000`) |
 | `docker-compose.override.yml` | — | dev overlay: `next dev` / `uvicorn --reload`, source bind-mounted |
+| `web/Dockerfile.vercel` | deploy only (not in compose) | Next.js standalone server on `$PORT` — see [Deploying](#deploying) |
 
 ### Development (hot reload)
 
@@ -210,6 +231,18 @@ changing either value. All other config is read at container start from the
 > which uses more CPU than `npm run dev`. For day-to-day work the local
 > toolchain is lighter; Docker is here for deploy parity and clean-machine runs.
 
+### Deploying
+
+| Service | Target | How |
+| ------- | ------ | --- |
+| `web/` | Vercel | Native Next.js build (recommended) — set the project **Root Directory** to `web`, add the env vars in Project Settings. No Docker involved. |
+| `web/` | Vercel (container) | Optional. `web/Dockerfile.vercel` — Vercel auto-detects it and runs the image on a Function. Needs Root Directory `web` and `NEXT_PUBLIC_*` in Project Settings (forwarded to the build). Only worth it if you outgrow the native build. |
+| `ml-service/` | Railway | Point the service at `ml-service/`; Railway builds `ml-service/Dockerfile`. Override the start command / port to bind Railway's `$PORT` (the image defaults to 8000). Give it a public domain and set `ML_SERVICE_TOKEN` to match `web`. |
+
+`web/Dockerfile` (generic) and `web/Dockerfile.vercel` (Vercel Functions: listens
+on `$PORT`, default 80) are separate on purpose — keep them in sync when the
+build changes.
+
 ## Common Commands
 
 | Command                              | What it does                          |
@@ -221,6 +254,8 @@ changing either value. All other config is read at container start from the
 | `npm run db:pull --prefix web`       | Re-introspect `schema.prisma` from the DB |
 | `npm run db:studio --prefix web`     | Open the Prisma DB viewer             |
 | `npm run lint --prefix web`          | Lint the web app                      |
+| `npm test --prefix web`              | Web unit tests (Vitest)              |
+| `npm run test:e2e --prefix web`      | Web end-to-end tests (Playwright)    |
 | `pytest` (in `ml-service/`)          | Run ML service tests                  |
 | `ruff check .` (in `ml-service/`)    | Lint the ML service                   |
 

@@ -28,6 +28,7 @@ coverage
 
 # Docker
 Dockerfile
+Dockerfile.vercel
 .dockerignore
 docker-compose*.yml
 
