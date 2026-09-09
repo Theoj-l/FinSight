@@ -1,0 +1,63 @@
+name: finsight
+
+# Production-style stack: builds the minimal runner images and runs them.
+# `docker compose up` also loads docker-compose.override.yml (hot-reload dev).
+# For prod only:  docker compose -f docker-compose.yml up --build
+#
+# Supabase Postgres is external, so there is no db service here. Env comes from
+# the same files local dev uses (web/.env, ml-service/.env). The two public
+# Supabase vars are also needed at BUILD time for web, hence the --env-file:
+#
+#   docker compose --env-file web/.env up --build
+#
+# (the root package.json `docker:*` scripts wire that in for you)
+
+services:
+  ml-service:
+    build:
+      context: ./ml-service
+      target: runner
+    image: finsight-ml-service
+    env_file: ./ml-service/.env
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      target: runner
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: finsight-web
+    env_file: ./web/.env
+    environment:
+      # Reach the ML service over the compose network, not localhost.
+      ML_SERVICE_URL: http://ml-service:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      ml-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped

@@ -168,11 +168,55 @@ http://localhost:3000/api/ml/health (the second proxies to the ML service).
 
 To stop, press `Ctrl+C`.
 
+## Run with Docker
+
+An alternative to the local toolchain — you only need Docker Desktop (no Node,
+Python, or venv). Both services are containerised; Supabase Postgres is still
+external, so `web/.env` and `ml-service/.env` must already exist (run
+`npm run setup` once, or copy the `.env.example` files by hand).
+
+| Path | Image | Serves |
+| ---- | ----- | ------ |
+| `web/Dockerfile` | multi-stage; `dev` + `runner` targets | Next.js standalone server on 3000 |
+| `ml-service/Dockerfile` | multi-stage; `dev` + `runner` targets | Uvicorn on 8000 |
+| `docker-compose.yml` | — | both, on a private network (`web` → `ml-service` at `http://ml-service:8000`) |
+| `docker-compose.override.yml` | — | dev overlay: `next dev` / `uvicorn --reload`, source bind-mounted |
+
+### Development (hot reload)
+
+```bash
+npm run docker:dev        # docker compose --env-file web/.env up --build
+```
+
+Edits on the host reload inside the containers. `node_modules` and the venv live
+in the images, not on the host. Same URLs as `npm run dev`
+(http://localhost:3000, http://localhost:8000).
+
+### Production images
+
+```bash
+npm run docker:up         # build + start the minimal runner images, detached
+npm run docker:logs       # tail logs
+npm run docker:down       # stop and remove
+```
+
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are compiled into
+the browser bundle at image-build time — the `--env-file web/.env` in the
+`docker:*` scripts feeds them to the build. Rebuild the `web` image after
+changing either value. All other config is read at container start from the
+`env_file`s, with `ML_SERVICE_URL` overridden to the compose service name.
+
+> On Windows/macOS the dev overlay polls for file changes (`WATCHPACK_POLLING`),
+> which uses more CPU than `npm run dev`. For day-to-day work the local
+> toolchain is lighter; Docker is here for deploy parity and clean-machine runs.
+
 ## Common Commands
 
 | Command                              | What it does                          |
 | ------------------------------------ | ------------------------------------- |
 | `npm run dev`                        | Run both services with hot reload     |
+| `npm run docker:dev`                 | Same, in containers (hot reload)      |
+| `npm run docker:up` / `docker:down`  | Start / stop the production images    |
 | `npm run db:apply --prefix web`      | Apply `finsight_schema.sql` to Supabase |
 | `npm run db:pull --prefix web`       | Re-introspect `schema.prisma` from the DB |
 | `npm run db:studio --prefix web`     | Open the Prisma DB viewer             |

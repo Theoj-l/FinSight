@@ -1,0 +1,42 @@
+# Python environments (rebuilt inside the image)
+venv/
+env/
+ENV/
+.python-version
+
+# Bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Env (never bake secrets into an image layer)
+.env
+.env.*
+!.env.example
+
+# Generated data & trained artifacts
+datagen/output/
+models/*
+!models/.gitkeep
+
+# VCS / editor / docs
+.git
+.gitignore
+.vscode
+.idea
+README.md
+**/README.md
+**/*.md
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Packaging artifacts
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,40 @@
+# Build context excludes — keep this in sync with what the Dockerfile needs.
+node_modules
+.next
+out
+build
+
+# VCS / editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Tests & their output
+e2e
+playwright.config.ts
+vitest.config.ts
+test-results
+playwright-report
+blob-report
+playwright/.cache
+coverage
+**/*.test.ts
+
+# Env (never bake secrets into an image layer)
+.env
+.env.*
+!.env.example
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+README.md
+AGENTS.md
+CLAUDE.md

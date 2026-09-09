@@ -2,11 +2,17 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
+  // Minimal self-contained server bundle for the production Docker image
+  // (web/Dockerfile copies .next/standalone and runs `node server.js`).
+  output: "standalone",
+
   // This repo has a lockfile at the root (for dev tooling) and one here.
-  // Pin the workspace root to web/ so Turbopack doesn't guess.
+  // Pin the workspace root to web/ so Turbopack — and output-file tracing
+  // for the standalone bundle — don't walk up to the repo root.
   turbopack: {
     root: path.join(__dirname),
   },
+  outputFileTracingRoot: path.join(__dirname),
 };
 
 export default nextConfig;

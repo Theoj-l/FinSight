@@ -5,6 +5,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" covers local dev; "debian-openssl-3.0.x" is the query-engine
+  // target for the Docker images (node:22-bookworm-slim). `prisma db pull`
+  // preserves this block, so it survives re-introspection.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

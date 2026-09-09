@@ -5,6 +5,10 @@
   "scripts": {
     "setup": "node scripts/setup.js",
     "dev": "concurrently -n web,ml -c blue,yellow \"npm run dev --prefix web\" \"node scripts/dev-ml.js\"",
-    "dev:terminals": "node scripts/open-terminals.js"
+    "dev:terminals": "node scripts/open-terminals.js",
+    "docker:dev": "docker compose --env-file web/.env up --build",
+    "docker:up": "docker compose --env-file web/.env -f docker-compose.yml up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   }
 }

@@ -1,0 +1,39 @@
+# Auto-merged on top of docker-compose.yml by `docker compose up`.
+# Switches both services to their `dev` image target with hot reload and the
+# source bind-mounted. Remove/rename this file (or use `-f docker-compose.yml`)
+# to run the production images instead.
+
+services:
+  ml-service:
+    build:
+      target: dev
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./ml-service/app:/app/app
+      - ./ml-service/datagen:/app/datagen
+      - ./ml-service/tests:/app/tests
+    restart: "no"
+
+  web:
+    build:
+      target: dev
+    command: ["npm", "run", "dev"]
+    environment:
+      NODE_ENV: development
+      # Poll for file changes — bind-mount FS events are unreliable on
+      # Windows/macOS Docker.
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./web:/app
+      # Anonymous volumes keep the image's Linux-built dirs from being
+      # shadowed by the host mount.
+      - /app/node_modules
+      - /app/.next
+    restart: "no"
