@@ -3,20 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Lightbulb,
-  LogOut,
-  Menu,
-  Settings,
-  UserRound,
-  X,
-} from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { BarChart3, ChevronDown, FileText, Lightbulb, LogOut, Menu, Settings, UserRound, X } from "lucide-react";
+import { useEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import { signOut } from "@/app/auth/actions";
 
 const navigation = [
@@ -25,15 +13,6 @@ const navigation = [
   { label: "Reports", href: "/reports", icon: FileText },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
-
-function subscribeSidebar(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener("finsight-sidebar", callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("finsight-sidebar", callback);
-  };
-}
 
 function initials(email: string) {
   return email.slice(0, 2).toUpperCase();
@@ -47,15 +26,11 @@ function Brand({ compact = false, onNavigate }: { compact?: boolean; onNavigate?
       aria-label={compact ? "FinSight dashboard" : undefined}
       className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue"
     >
-      {compact ? (
-        <span className="block h-9 w-[45px] shrink-0 overflow-hidden" aria-hidden="true">
-          <Image src="/tsh.png" alt="" width={137} height={36} priority className="max-w-none" />
-        </span>
-      ) : (
+      <Image src="/FinSight_logo.png" alt={compact ? "FinSight" : ""} aria-hidden={compact ? undefined : true} width={88} height={29} priority className="shrink-0" />
+      {!compact && (
         <>
-          <Image src="/tsh.png" alt="TSH Group" width={112} height={29} priority className="shrink-0" />
           <span className="h-7 w-px shrink-0 bg-brand-navy/10" />
-          <span className="text-sm font-bold tracking-tight text-brand-navy">FinSight</span>
+          <Image src="/tsh.png" alt="TSH Group" width={112} height={29} priority className="shrink-0" />
         </>
       )}
     </Link>
@@ -97,7 +72,7 @@ function ProfileMenu({
         aria-haspopup="menu"
         aria-expanded={profileOpen}
         onClick={() => setProfileOpen((open) => !open)}
-        className="flex w-full items-center gap-3 rounded-2xl border border-brand-navy/[.08] bg-white/75 p-2.5 text-left shadow-[0_10px_30px_-24px_rgba(31,42,121,0.7)] transition hover:border-brand-navy/15 hover:bg-white focus-visible:outline-2 focus-visible:outline-brand-blue"
+        className="flex w-full items-center gap-3 rounded-2xl border border-brand-navy/[.08] bg-white/75 py-2.5 pl-[18px] pr-2.5 text-left shadow-[0_10px_30px_-24px_rgba(31,42,121,0.7)] transition hover:border-brand-navy/15 hover:bg-white focus-visible:outline-2 focus-visible:outline-brand-blue"
       >
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-navy text-xs font-bold tracking-wide text-white shadow-sm">
           {initials(email)}
@@ -157,12 +132,12 @@ function SidebarContent({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-visible">
-      <div className="flex h-20 shrink-0 items-center border-b border-brand-navy/[.07] px-4">
+      <div className="flex h-20 shrink-0 items-center border-b border-brand-navy/[.07] pl-3 pr-4">
         <Brand compact={compact} onNavigate={onNavigate} />
       </div>
 
       <nav aria-label="Primary navigation" className="mt-7 px-4">
-        <div className={compact ? "space-y-2" : "space-y-1"}>
+        <div className="space-y-2">
           {navigation.map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
@@ -173,7 +148,7 @@ function SidebarContent({
                 title={compact ? label : undefined}
                 aria-label={compact ? label : undefined}
                 aria-current={active ? "page" : undefined}
-                className={`group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 focus-visible:outline-2 focus-visible:outline-brand-blue ${
+                className={`group relative flex items-center gap-3 rounded-xl py-3 pl-[28px] pr-3 text-sm font-medium transition-all duration-200 focus-visible:outline-2 focus-visible:outline-brand-blue ${
                   active
                     ? "bg-brand-navy text-white shadow-[0_12px_26px_-18px_rgba(31,42,121,0.95)]"
                     : "text-slate-600 hover:bg-white/80 hover:text-brand-navy"
@@ -181,7 +156,6 @@ function SidebarContent({
               >
                 <Icon aria-hidden="true" className={`h-[19px] w-[19px] shrink-0 ${active ? "text-white" : "text-brand-blue transition group-hover:text-brand-red"}`} strokeWidth={1.9} />
                 {!compact && label}
-                {active && <span aria-hidden="true" className={`absolute rounded-full bg-brand-red ring-4 ring-white/10 ${compact ? "right-1.5 top-1.5 h-1.5 w-1.5" : "right-3 h-1.5 w-1.5"}`} />}
               </Link>
             );
           })}
@@ -196,14 +170,10 @@ function SidebarContent({
 }
 
 export function AppShell({ email, children }: { email: string; children: ReactNode }) {
-  const storedCollapsed = useSyncExternalStore(
-    subscribeSidebar,
-    () => localStorage.getItem("finsight:sidebar-collapsed"),
-    () => null,
-  );
-  const [sessionCollapsed, setSessionCollapsed] = useState<boolean | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const collapsed = sessionCollapsed ?? storedCollapsed === "true";
+  const expanded = hovered || focused;
 
   useEffect(() => {
     function closeWithEscape(event: KeyboardEvent) {
@@ -222,30 +192,22 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
     };
   }, [mobileOpen]);
 
-  function toggleCollapsed() {
-    const next = !collapsed;
-    try {
-      localStorage.setItem("finsight:sidebar-collapsed", String(next));
-      window.dispatchEvent(new Event("finsight-sidebar"));
-      setSessionCollapsed(null);
-    } catch {
-      setSessionCollapsed(next);
-    }
+  function handleBlur(event: FocusEvent<HTMLElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
   }
 
   return (
     <div className="min-h-screen bg-app-surface">
-      <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col overflow-visible border-r border-brand-navy/[.08] bg-[linear-gradient(165deg,#f8faff_0%,#edf2fb_55%,#e6eefb_100%)] transition-[width] duration-200 ease-out lg:flex ${collapsed ? "w-[88px]" : "w-[280px]"}`}>
-        <SidebarContent email={email} compact={collapsed} />
-        <button
-          type="button"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onClick={toggleCollapsed}
-          className="absolute -right-3 top-1/2 z-50 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-slate-200 bg-white text-brand-navy shadow-md transition hover:scale-105 hover:border-brand-blue/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
-        >
-          {collapsed ? <ChevronRight aria-hidden="true" className="h-4 w-4" /> : <ChevronLeft aria-hidden="true" className="h-4 w-4" />}
-        </button>
+      <aside
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
+        className={`fixed inset-y-0 left-0 z-40 hidden flex-col overflow-visible border-r border-brand-navy/[.08] bg-[linear-gradient(165deg,#f8faff_0%,#edf2fb_55%,#e6eefb_100%)] transition-[width] duration-200 ease-out lg:flex ${
+          expanded ? "w-[280px] shadow-2xl" : "w-[108px]"
+        }`}
+      >
+        <SidebarContent email={email} compact={!expanded} />
       </aside>
 
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
@@ -267,7 +229,7 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
         </div>
       )}
 
-      <div className={`transition-[padding] duration-200 ease-out ${collapsed ? "lg:pl-[88px]" : "lg:pl-[280px]"}`}>
+      <div className={`transition-[padding] duration-200 ease-out ${expanded ? "lg:pl-[280px]" : "lg:pl-[108px]"}`}>
         <main className="mx-auto min-h-screen w-full max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8 lg:py-9 xl:px-10">{children}</main>
       </div>
     </div>

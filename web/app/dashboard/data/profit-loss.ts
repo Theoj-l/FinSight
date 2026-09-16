@@ -8,29 +8,35 @@ export type { ProfitLossStatement } from "./profit-loss-utils";
 
 export async function getProfitLossData(scope: DashboardScope = {}): Promise<ProfitLossStatement> {
   const department = ledgerDepartment(scope);
-  const formatRows = await prisma.pl_format.findMany({ orderBy: { seq: "asc" } });
-  const latestPeriodRow = scope.period === undefined ? await prisma.pbalance.findFirst({ where: department, orderBy: { period_no: "desc" }, select: { period_no: true } }) : { period_no: scope.period };
+  const [formatRows, latestPeriodRow] = await Promise.all([
+    prisma.pl_format.findMany({ orderBy: { seq: "asc" } }),
+    scope.period === undefined
+      ? prisma.pbalance.findFirst({ where: department, orderBy: { period_no: "desc" }, select: { period_no: true } })
+      : Promise.resolve({ period_no: scope.period }),
+  ]);
 
   if (!latestPeriodRow) return { baseline: "MTD actual versus MTD budget", period: "", rows: [] };
 
-  const actualRows = await prisma.pbalance.findMany({
-    where: { ...department, period_no: { gte: Math.floor(latestPeriodRow.period_no / 100) * 100 + 1, lte: latestPeriodRow.period_no } },
-    select: {
-      period_no: true,
-      home_dr: true,
-      home_cr: true,
-      gl_mast: { select: { acc_type: true } },
-    },
-  });
-  const budgetRows = await prisma.budget_pbalance.findMany({
-    where: { ...department, period_no: latestPeriodRow.period_no, ...(scope.budgetKey !== undefined ? { budget_key: scope.budgetKey } : {}) },
-    select: {
-      budget_key: true,
-      period_no: true,
-      amount: true,
-      gl_mast: { select: { acc_type: true } },
-    },
-  });
+  const [actualRows, budgetRows] = await Promise.all([
+    prisma.pbalance.findMany({
+      where: { ...department, period_no: { gte: Math.floor(latestPeriodRow.period_no / 100) * 100 + 1, lte: latestPeriodRow.period_no } },
+      select: {
+        period_no: true,
+        home_dr: true,
+        home_cr: true,
+        gl_mast: { select: { acc_type: true } },
+      },
+    }),
+    prisma.budget_pbalance.findMany({
+      where: { ...department, period_no: latestPeriodRow.period_no, ...(scope.budgetKey !== undefined ? { budget_key: scope.budgetKey } : {}) },
+      select: {
+        budget_key: true,
+        period_no: true,
+        amount: true,
+        gl_mast: { select: { acc_type: true } },
+      },
+    }),
+  ]);
 
   const hasActual = actualRows.some(row => row.period_no === latestPeriodRow.period_no);
   const hasBudget = new Set(budgetRows.map(row => row.budget_key.toString())).size === 1;
