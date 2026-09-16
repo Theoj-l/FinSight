@@ -98,6 +98,7 @@ model debtor {
 model dept {
   dept_no     String     @id(map: "pk_dept") @db.VarChar(10)
   description String?    @db.VarChar(40)
+  segment     String     @db.VarChar(20)
   gl_dtl      gl_dtl[]
   iv_dtl      iv_dtl[]
   pbalance    pbalance[]

@@ -12,7 +12,7 @@ _META_SQL = os.path.join(_HERE, "sql", "datagen_meta.sql")
 
 COLUMNS = {
     "acc_type": ["acc_type", "description", "is_bs_type"],
-    "dept": ["dept_no", "description"],
+    "dept": ["dept_no", "description", "segment"],
     "branch": ["branch_code", "branch_name", "is_active"],
     "sales_agent": ["sales_agent", "description", "is_active"],
     "fiscal_year": ["fiscal_year_name", "from_date", "to_date", "is_active"],

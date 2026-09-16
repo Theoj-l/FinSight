@@ -63,16 +63,18 @@ SEASONALITY = {
 }
 REVENUE_MONTHLY_NOISE = 0.06   # lognormal sigma on each BU-month revenue
 
+# segment: "Machining" (bespoke fabrication/engineering/maintenance work) vs
+# "Bulk" (rental, haulage, logistics, trading, corporate/unallocated).
 DEPARTMENTS = [
-    ("CR", "Crane Rental"),
-    ("HL", "Heavy Lift & Haulage"),
-    ("EN", "Engineering Services"),
-    ("TP", "Transport & Logistics"),
-    ("FA", "Fabrication & Steel"),
-    ("TR", "Equipment Trading"),
-    ("MN", "Maintenance & Parts"),
-    ("CP", "Corporate & Shared Services"),
-    ("NA", "Unallocated"),
+    ("CR", "Crane Rental", "Bulk"),
+    ("HL", "Heavy Lift & Haulage", "Bulk"),
+    ("EN", "Engineering Services", "Machining"),
+    ("TP", "Transport & Logistics", "Bulk"),
+    ("FA", "Fabrication & Steel", "Machining"),
+    ("TR", "Equipment Trading", "Bulk"),
+    ("MN", "Maintenance & Parts", "Machining"),
+    ("CP", "Corporate & Shared Services", "Bulk"),
+    ("NA", "Unallocated", "Bulk"),
 ]
 
 BRANCHES = [

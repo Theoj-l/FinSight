@@ -45,7 +45,9 @@ create table debtor (
 create table dept (
   dept_no                varchar(10)      not null,
   description            varchar(40)     ,
-  constraint pk_dept primary key (dept_no)
+  segment                varchar(20)      not null,
+  constraint pk_dept primary key (dept_no),
+  constraint dept_segment_check check (segment in ('Machining', 'Bulk'))
 );
 
 -- Tier 1: FiscalYear  (GL & Reporting)
@@ -237,6 +239,7 @@ comment on column debtor.credit_limit is 'AutoCount Debtor.CreditLimit. Context 
 comment on column debtor.display_term is 'AutoCount Debtor.DisplayTerm. Payment terms as text, which is why the Terms table can be dropped.';
 comment on column dept.dept_no is 'AutoCount Dept.DeptNo. PK. Business unit code.';
 comment on column dept.description is 'AutoCount Dept.Description. Business unit name.';
+comment on column dept.segment is 'Not in AutoCount. Added for FinSight reporting: groups business units into Machining (bespoke fabrication/engineering/maintenance work) vs Bulk (rental, haulage, logistics, trading, corporate/unallocated).';
 comment on column fiscal_year.fiscal_year_name is 'AutoCount FiscalYear.FiscalYearName. Label, for example FY2025.';
 comment on column fiscal_year.from_date is 'AutoCount FiscalYear.FromDate. Year start. Anchors the PeriodNo to month mapping.';
 comment on column fiscal_year.to_date is 'AutoCount FiscalYear.ToDate. Year end.';

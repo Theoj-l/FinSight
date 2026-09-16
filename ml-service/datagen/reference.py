@@ -124,7 +124,7 @@ def pl_format_rows():
 
 
 def dept_rows():
-    return [dict(dept_no=c, description=d) for (c, d) in C.DEPARTMENTS]
+    return [dict(dept_no=c, description=d, segment=s) for (c, d, s) in C.DEPARTMENTS]
 
 
 def branch_rows():

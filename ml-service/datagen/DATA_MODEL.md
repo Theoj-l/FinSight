@@ -50,18 +50,25 @@ These are defensible assumptions, not sponsor-provided figures. All tunable in
 
 **Seven business units** (the `dept` dimension), FY2021 revenue baseline:
 
-| dept | Business unit | ~FY2021 rev | Trend | Gross margin | Revenue account |
-|------|---------------|------------:|-------|-------------:|-----------------|
-| `CR` | Crane Rental | S$15.0M | +8%/yr | ~34% | 4100 |
-| `HL` | Heavy Lift & Haulage | S$9.0M | +10%/yr | ~22% (lumpy) | 4200 |
-| `EN` | Engineering Services | S$6.5M | +6%/yr | ~40% | 4300 |
-| `TP` | Transport & Logistics | S$5.0M | +7%/yr | ~18% | 4400 |
-| `FA` | Fabrication & Steel | S$3.5M | +4%/yr | ~25% | 4500 |
-| `TR` | Equipment Trading | S$3.2M | **−6%/yr** | ~12% | 4600 |
-| `MN` | Maintenance & Parts | S$1.8M | +12%/yr | ~45% | 4700 |
+| dept | Business unit | Segment | ~FY2021 rev | Trend | Gross margin | Revenue account |
+|------|---------------|---------|------------:|-------|-------------:|-----------------|
+| `CR` | Crane Rental | Bulk | S$15.0M | +8%/yr | ~34% | 4100 |
+| `HL` | Heavy Lift & Haulage | Bulk | S$9.0M | +10%/yr | ~22% (lumpy) | 4200 |
+| `EN` | Engineering Services | Machining | S$6.5M | +6%/yr | ~40% | 4300 |
+| `TP` | Transport & Logistics | Bulk | S$5.0M | +7%/yr | ~18% | 4400 |
+| `FA` | Fabrication & Steel | Machining | S$3.5M | +4%/yr | ~25% | 4500 |
+| `TR` | Equipment Trading | Bulk | S$3.2M | **−6%/yr** | ~12% | 4600 |
+| `MN` | Maintenance & Parts | Machining | S$1.8M | +12%/yr | ~45% | 4700 |
 
 Plus `CP` (Corporate & Shared Services — carries all overhead and balance-sheet
-control accounts) and `NA` (Unallocated — sentinel, currently unused).
+control accounts) and `NA` (Unallocated — sentinel, currently unused), both
+segment `Bulk`.
+
+`dept.segment` (`Machining` vs `Bulk`) is not an AutoCount field — it's a
+FinSight-added grouping (2026-09-16) for business-segment reporting: bespoke,
+labour-intensive work (fabrication, engineering, maintenance) vs
+volume/logistics-driven work (rental, haulage, transport, trading) plus
+corporate overhead.
 
 **Group shape:** ~S$45M revenue in FY2021 rising to ~S$60M in FY2025; gross
 margin ~29%; operating expenses ~S$9–10M/yr; profit before tax ~S$4–7M/yr
