@@ -18,11 +18,11 @@ function initials(email: string) {
   return email.slice(0, 2).toUpperCase();
 }
 
-function Brand({ compact = false, onNavigate }: { compact?: boolean; onNavigate?: () => void }) {
+function Brand({ compact = false, onNavigate, onNavigation }: { compact?: boolean; onNavigate?: () => void; onNavigation?: (href: string) => void }) {
   return (
     <Link
       href="/dashboard"
-      onClick={onNavigate}
+      onClick={() => { onNavigate?.(); onNavigation?.("/dashboard"); }}
       aria-label={compact ? "FinSight dashboard" : undefined}
       className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue"
     >
@@ -41,10 +41,12 @@ function ProfileMenu({
   email,
   compact = false,
   onNavigate,
+  onNavigation,
 }: {
   email: string;
   compact?: boolean;
   onNavigate?: () => void;
+  onNavigation?: (href: string) => void;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -101,10 +103,10 @@ function ProfileMenu({
               <p className="truncate text-sm font-semibold text-brand-navy">{email}</p>
             </div>
           )}
-          <Link role="menuitem" href="/settings#account" onClick={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-blue-light hover:text-brand-navy">
+          <Link role="menuitem" href="/settings#account" onClick={() => { onNavigate?.(); onNavigation?.("/settings"); }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-blue-light hover:text-brand-navy">
             <UserRound aria-hidden="true" className="h-4 w-4" /> Account settings
           </Link>
-          <Link role="menuitem" href="/settings#preferences" onClick={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-blue-light hover:text-brand-navy">
+          <Link role="menuitem" href="/settings#preferences" onClick={() => { onNavigate?.(); onNavigation?.("/settings"); }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-blue-light hover:text-brand-navy">
             <Settings aria-hidden="true" className="h-4 w-4" /> Preferences
           </Link>
           <div className="my-1.5 h-px bg-slate-100" />
@@ -123,17 +125,19 @@ function SidebarContent({
   email,
   compact = false,
   onNavigate,
+  onNavigation,
 }: {
   email: string;
   compact?: boolean;
   onNavigate?: () => void;
+  onNavigation?: (href: string) => void;
 }) {
   const pathname = usePathname();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-visible">
       <div className="flex h-20 shrink-0 items-center border-b border-brand-navy/[.07] pl-3 pr-4">
-        <Brand compact={compact} onNavigate={onNavigate} />
+        <Brand compact={compact} onNavigate={onNavigate} onNavigation={onNavigation} />
       </div>
 
       <nav aria-label="Primary navigation" className="mt-7 px-4">
@@ -144,7 +148,7 @@ function SidebarContent({
               <Link
                 key={href}
                 href={href}
-                onClick={onNavigate}
+                onClick={() => { onNavigate?.(); onNavigation?.(href); }}
                 title={compact ? label : undefined}
                 aria-label={compact ? label : undefined}
                 aria-current={active ? "page" : undefined}
@@ -163,7 +167,7 @@ function SidebarContent({
       </nav>
 
       <div className="mt-auto px-4 pb-5 pt-8">
-        <ProfileMenu email={email} compact={compact} onNavigate={onNavigate} />
+        <ProfileMenu email={email} compact={compact} onNavigate={onNavigate} onNavigation={onNavigation} />
       </div>
     </div>
   );
@@ -173,7 +177,14 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [navigationPending, setNavigationPending] = useState(false);
+  const pathname = usePathname();
   const expanded = hovered || focused;
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setNavigationPending(false));
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
 
   useEffect(() => {
     function closeWithEscape(event: KeyboardEvent) {
@@ -196,8 +207,13 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
   }
 
+  function startNavigation(href: string) {
+    if (pathname !== href) setNavigationPending(true);
+  }
+
   return (
     <div className="min-h-screen bg-app-surface">
+      {navigationPending && <div className="fixed inset-x-0 top-0 z-[100] h-1 overflow-hidden bg-brand-blue-light" role="status" aria-label="Loading page"><div className="h-full w-1/3 animate-[navigation-progress_1.1s_ease-in-out_infinite] bg-brand-blue" /></div>}
       <aside
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -207,7 +223,7 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
           expanded ? "w-[280px] shadow-2xl" : "w-[108px]"
         }`}
       >
-        <SidebarContent email={email} compact={!expanded} />
+        <SidebarContent email={email} compact={!expanded} onNavigation={startNavigation} />
       </aside>
 
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
@@ -224,7 +240,7 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
             <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="absolute right-3 top-5 z-10 grid h-9 w-9 place-items-center rounded-xl text-brand-navy transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-brand-blue">
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
-            <SidebarContent email={email} onNavigate={() => setMobileOpen(false)} />
+            <SidebarContent email={email} onNavigate={() => setMobileOpen(false)} onNavigation={startNavigation} />
           </aside>
         </div>
       )}

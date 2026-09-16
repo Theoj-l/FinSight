@@ -51,7 +51,7 @@ export function KpiCards({ data, error, userId }: { data?: KpiData | null; error
 
   return <section aria-labelledby="kpi-heading" className="mt-8">
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><p className="text-xs font-semibold uppercase tracking-widest text-brand-blue">TSH Energy · Financial performance</p><h2 id="kpi-heading" className="mt-1 text-xl font-semibold text-brand-navy">Financial overview</h2><p className="mt-1 text-sm text-muted">{data.period} · Monthly total · Compared with {data.priorPeriod} · {fx.currency}{fx.currency !== "SGD" && fx.date ? ` · rates as of ${fx.date}` : ""}</p></div>
+      <div><h2 id="kpi-heading" className="mt-1 text-xl font-semibold text-brand-navy">Financial overview</h2><p className="mt-1 text-sm text-muted">{data.period} · Monthly total · Compared with {data.priorPeriod} · {fx.currency}{fx.currency !== "SGD" && fx.date ? ` · rates as of ${fx.date}` : ""}</p></div>
       <a href="#kpi-settings" className="flex items-center gap-2 rounded-lg border border-brand-navy/20 px-3 py-2 text-sm font-medium text-brand-navy" onClick={() => { const el = document.getElementById("kpi-settings"); if (el instanceof HTMLDetailsElement) el.open = true; }}>
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 3-1 2 2 3-1 1-3 3-1 2-3-2-2 1-3-3-2-3 1-2-2Z" /><circle cx="12" cy="11" r="3" /></svg>
         Threshold settings
