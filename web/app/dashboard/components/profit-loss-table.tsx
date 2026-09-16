@@ -1,5 +1,8 @@
+"use client";
+
 import { formatCurrencyExact, type ProfitLossStatement } from "../data/profit-loss-utils";
 import { formatPercentage } from "../data/kpi-presentation";
+import { useCurrency } from "@/lib/currency-context";
 
 type ProfitLossTableProps = {
   data?: ProfitLossStatement;
@@ -18,6 +21,7 @@ function valueStyle(value: number | null | undefined, higherIsBetter = true) {
 }
 
 export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
+  const fx = useCurrency();
   return (
     <section aria-labelledby="profit-loss-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -50,9 +54,9 @@ export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
               {data.rows.map((row, index) => (
                 <tr key={`${row.rowType}-${row.description}-${index}`} className={`border-b border-black/5 ${rowStyle(row.rowType)}`}>
                   <td className={`px-3 py-3 ${row.rowType === "A" ? "pl-7" : ""}`}>{row.description}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{row.monthToDate === undefined ? row.rowType === "H" ? "" : "—" : formatCurrencyExact(row.monthToDate)}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{row.yearToDate === undefined ? "" : formatCurrencyExact(row.yearToDate)}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{row.budgetMonthToDate === undefined ? row.rowType === "H" ? "" : "—" : formatCurrencyExact(row.budgetMonthToDate)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.monthToDate === undefined ? row.rowType === "H" ? "" : "—" : formatCurrencyExact(row.monthToDate, fx)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.yearToDate === undefined ? "" : formatCurrencyExact(row.yearToDate, fx)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.budgetMonthToDate === undefined ? row.rowType === "H" ? "" : "—" : formatCurrencyExact(row.budgetMonthToDate, fx)}</td>
                   <td className={`px-3 py-3 text-right tabular-nums ${valueStyle(row.variancePct, row.higherIsBetter)}`}>
                     {row.variancePct === undefined ? "" : row.variancePct === null ? "—" : <span>{row.variancePct !== 0 && <span aria-label={row.variancePct > 0 ? "Increase" : "Decrease"}>{row.variancePct > 0 ? "▲ " : "▼ "}</span>}{formatPercentage(row.variancePct)}</span>}
                   </td>

@@ -2,38 +2,14 @@
 
 import { Bell, Check, Globe2, LockKeyhole, Mail, Palette, UserRound } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
-
-type Preferences = {
-  weeklyBrief: boolean;
-  varianceAlerts: boolean;
-  reportReady: boolean;
-  compactNumbers: boolean;
-};
-
-const defaults: Preferences = {
-  weeklyBrief: true,
-  varianceAlerts: true,
-  reportReady: true,
-  compactNumbers: false,
-};
-
-function subscribe(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener("finsight-preferences", callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("finsight-preferences", callback);
-  };
-}
-
-function restorePreferences(raw: string | null): Preferences {
-  if (!raw) return defaults;
-  try {
-    return { ...defaults, ...JSON.parse(raw) };
-  } catch {
-    return defaults;
-  }
-}
+import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
+import {
+  PREFERENCES_STORAGE_KEY,
+  restorePreferences,
+  savePreferences,
+  subscribePreferences as subscribe,
+  type Preferences,
+} from "@/lib/preferences";
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
   return (
@@ -45,7 +21,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (che
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue ${checked ? "bg-brand-navy" : "bg-slate-300"}`}
     >
-      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+      <span className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
     </button>
   );
 }
@@ -53,22 +29,21 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (che
 export function SettingsPanel({ email }: { email: string }) {
   const raw = useSyncExternalStore(
     subscribe,
-    () => localStorage.getItem("finsight:preferences:v1"),
+    () => localStorage.getItem(PREFERENCES_STORAGE_KEY),
     () => null,
   );
   const [draft, setDraft] = useState<Preferences | null>(null);
   const [saved, setSaved] = useState(false);
   const preferences = draft ?? restorePreferences(raw);
 
-  function setPreference(key: keyof Preferences, value: boolean) {
+  function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setSaved(false);
     setDraft({ ...preferences, [key]: value });
   }
 
   function save() {
     try {
-      localStorage.setItem("finsight:preferences:v1", JSON.stringify(preferences));
-      window.dispatchEvent(new Event("finsight-preferences"));
+      savePreferences(preferences);
     } catch {
       // Preferences still apply to the active session.
     }
@@ -76,7 +51,7 @@ export function SettingsPanel({ email }: { email: string }) {
     setSaved(true);
   }
 
-  const rows: Array<{ key: keyof Preferences; title: string; description: string }> = [
+  const rows: Array<{ key: "weeklyBrief" | "varianceAlerts" | "reportReady" | "compactNumbers"; title: string; description: string }> = [
     { key: "weeklyBrief", title: "Weekly performance brief", description: "A concise Monday summary of financial movement and emerging risks." },
     { key: "varianceAlerts", title: "Variance alerts", description: "Get notified when a KPI moves outside your configured attention range." },
     { key: "reportReady", title: "Report status", description: "Receive an alert when a scheduled report is ready for review." },
@@ -104,7 +79,7 @@ export function SettingsPanel({ email }: { email: string }) {
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <label className="text-sm font-medium text-slate-700">Display name<input defaultValue="Finance team" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-normal text-foreground outline-none transition focus:border-brand-blue focus:ring-3 focus:ring-brand-blue/10" /></label>
             <label className="text-sm font-medium text-slate-700">Email address<span className="relative mt-1.5 block"><Mail aria-hidden="true" className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input value={email} readOnly className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3.5 font-normal text-muted" /></span></label>
-            <label className="text-sm font-medium text-slate-700">Currency<select defaultValue="SGD" className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 font-normal outline-none focus:border-brand-blue focus:ring-3 focus:ring-brand-blue/10"><option>SGD</option><option>USD</option><option>MYR</option></select></label>
+            <label className="text-sm font-medium text-slate-700">Currency<select value={preferences.currency} onChange={(event) => setPreference("currency", event.target.value as CurrencyCode)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 font-normal outline-none focus:border-brand-blue focus:ring-3 focus:ring-brand-blue/10">{CURRENCIES.map((code) => <option key={code} value={code}>{code}</option>)}</select></label>
             <label className="text-sm font-medium text-slate-700">Timezone<span className="relative mt-1.5 block"><Globe2 aria-hidden="true" className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><select defaultValue="Asia/Singapore" className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3.5 font-normal outline-none focus:border-brand-blue focus:ring-3 focus:ring-brand-blue/10"><option value="Asia/Singapore">Singapore (GMT+8)</option><option value="Asia/Kuala_Lumpur">Kuala Lumpur (GMT+8)</option></select></span></label>
           </div>
         </section>

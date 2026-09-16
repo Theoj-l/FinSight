@@ -8,6 +8,7 @@ import {
   getPercentChange,
   type ExpenseCategoryPeriod,
 } from "../data/expense-category-utils";
+import { useCurrency } from "@/lib/currency-context";
 
 function expenseColor(change: number | null) {
   return change === null || change === 0 ? "#64748b" : change > 0 ? "#b91c1c" : "#047857";
@@ -24,6 +25,7 @@ type ExpenseCategoryChartProps = {
 };
 
 export function ExpenseCategoryChart({ data = [], error, loading = false }: ExpenseCategoryChartProps) {
+  const fx = useCurrency();
   const activePeriod = data.at(-1)?.periodNo;
   const categories = activePeriod === undefined ? [] : getCategoriesForPeriod(data, activePeriod);
 
@@ -49,12 +51,12 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={categories} layout="vertical" margin={{ top: 8, right: 72, left: 12, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e6e8f0" />
-              <XAxis type="number" tickFormatter={formatCurrencyCompact} tick={{ fill: "#5b6079", fontSize: 12 }} />
+              <XAxis type="number" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} />
               <YAxis type="category" dataKey="category" tickFormatter={shortenCategory} width={180} tick={{ fill: "#5b6079", fontSize: 12 }} />
               <Tooltip
                 formatter={(value, name, item) => {
                   const change = getPercentChange(Number(value), item.payload?.priorAmount ?? null);
-                  return [`${formatCurrencyExact(Number(value))} (${change === null ? "—" : `${change.toFixed(2)}%`})`, name];
+                  return [`${formatCurrencyExact(Number(value), fx)} (${change === null ? "—" : `${change.toFixed(2)}%`})`, name];
                 }}
               />
               <Bar

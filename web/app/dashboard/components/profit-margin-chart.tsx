@@ -16,6 +16,7 @@ import {
   formatCurrencyExact,
   type ProfitMarginPoint,
 } from "../data/profit-margin-utils";
+import { useCurrency } from "@/lib/currency-context";
 
 type ProfitMarginChartProps = {
   data?: ProfitMarginPoint[];
@@ -24,6 +25,7 @@ type ProfitMarginChartProps = {
 };
 
 export function ProfitMarginChart({ data = [], error, loading = false }: ProfitMarginChartProps) {
+  const fx = useCurrency();
   return (
     <section aria-labelledby="profit-margin-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
       <div>
@@ -51,11 +53,11 @@ export function ProfitMarginChart({ data = [], error, loading = false }: ProfitM
             <ComposedChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
               <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
-              <YAxis yAxisId="currency" tickFormatter={formatCurrencyCompact} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
+              <YAxis yAxisId="currency" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <YAxis yAxisId="percentage" orientation="right" tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
               <Tooltip
                 formatter={(value, name) => [
-                  name === "Net Margin %" ? `${Number(value).toFixed(2)}%` : formatCurrencyExact(Number(value)),
+                  name === "Net Margin %" ? `${Number(value).toFixed(2)}%` : formatCurrencyExact(Number(value), fx),
                   name,
                 ]}
               />

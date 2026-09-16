@@ -24,12 +24,7 @@ function decimalToNumber(value: InvoiceDetailRow["local_sub_total"]) {
   return typeof value === "object" ? value.toNumber() : Number(value);
 }
 
-export function formatCurrencyExact(value: number) {
-  return `${value < 0 ? "-" : ""}$${Math.abs(value).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+export { formatCurrencyExact } from "@/lib/currency";
 
 export function aggregateRevenueByGroup(rows: InvoiceDetailRow[]): RevenueByGroupPoint[] {
   const totals = new Map<string, { groupLabel: string; revenue: number }>();

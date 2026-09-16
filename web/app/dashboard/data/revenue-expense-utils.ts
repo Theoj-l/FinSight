@@ -24,21 +24,7 @@ export function formatPeriod(periodNo: number) {
   return `${value.slice(0, 4)}-${value.slice(4)}`;
 }
 
-export function formatCurrencyCompact(value: number) {
-  const absoluteValue = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-
-  if (absoluteValue >= 1_000_000) return `${sign}$${(absoluteValue / 1_000_000).toFixed(1)}m`;
-  if (absoluteValue >= 1_000) return `${sign}$${(absoluteValue / 1_000).toFixed(0)}k`;
-  return `${sign}$${absoluteValue.toFixed(0)}`;
-}
-
-export function formatCurrencyExact(value: number) {
-  return `${value < 0 ? "-" : ""}$${Math.abs(value).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+export { formatCurrencyCompact, formatCurrencyExact } from "@/lib/currency";
 
 export function aggregateRevenueExpense(rows: BalanceRow[]): RevenueExpensePoint[] {
   const totals = new Map<number, { revenue: number; expenses: number }>();

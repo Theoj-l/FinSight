@@ -5,6 +5,7 @@ import {
   formatCurrencyExact,
   type RevenueByGroupPoint,
 } from "../data/revenue-by-group-utils";
+import { useCurrency } from "@/lib/currency-context";
 
 const GROUP_COLORS = ["#1f2a79", "#4c6fbb", "#e02718", "#b81f12", "#2f8f83", "#d18b2c", "#68708d", "#9b59b6"];
 
@@ -15,6 +16,7 @@ type RevenueByGroupChartProps = {
 };
 
 export function RevenueByGroupChart({ data = [], error, loading = false }: RevenueByGroupChartProps) {
+  const fx = useCurrency();
   const showSliceLabels = data.length <= 6;
   const chartData = data.map((entry, index) => ({
     ...entry,
@@ -68,7 +70,7 @@ export function RevenueByGroupChart({ data = [], error, loading = false }: Reven
                 </Pie>
                 <Tooltip
                   formatter={(value, name, item) => [
-                    `${formatCurrencyExact(Number(value))} (${Number(item.payload?.percentage ?? 0).toFixed(2)}%)`,
+                    `${formatCurrencyExact(Number(value), fx)} (${Number(item.payload?.percentage ?? 0).toFixed(2)}%)`,
                     name,
                   ]}
                 />
@@ -79,7 +81,7 @@ export function RevenueByGroupChart({ data = [], error, loading = false }: Reven
           <ul className="sr-only" aria-label="Revenue by product group details">
             {data.map((entry) => (
               <li key={entry.groupId}>
-                {entry.groupLabel}: {formatCurrencyExact(entry.revenue)}, {entry.percentage.toFixed(2)}%
+                {entry.groupLabel}: {formatCurrencyExact(entry.revenue, fx)}, {entry.percentage.toFixed(2)}%
               </li>
             ))}
           </ul>

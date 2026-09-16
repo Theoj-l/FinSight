@@ -1,3 +1,5 @@
+import { BASE_CURRENCY, convertAmount, fxSymbol, type FxContext } from "@/lib/currency";
+
 export const metricIds = ["revenue", "grossProfit", "netProfit", "budgetVariance", "grossMargin", "netMargin", "expenseRatio"] as const;
 export type MetricId = typeof metricIds[number];
 export type Change = { absolute: string; percentage: number | null; direction: -1 | 0 | 1 };
@@ -46,7 +48,15 @@ export function needsAttention(value: number | null | undefined, threshold?: Thr
 export function outcome(direction: -1 | 0 | 1, higherIsBetter = true) {
   return direction === 0 ? "neutral" : (direction > 0) === higherIsBetter ? "favorable" : "unfavorable";
 }
-export function formatAmount(value: string, unit: "money" | "ratio") {
+export function formatAmount(value: string, unit: "money" | "ratio", fx?: FxContext | null) {
+  if (unit === "money" && fx && fx.currency !== BASE_CURRENCY) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      const converted = convertAmount(numeric, fx);
+      const [whole, fraction = "00"] = Math.abs(converted).toFixed(2).split(".");
+      return `${converted < 0 ? "−" : ""}${fxSymbol(fx)}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${fraction}`;
+    }
+  }
   const negative = value.startsWith("-");
   const [whole, fraction = "00"] = value.replace(/^-/, "").split(".");
   return `${negative ? "−" : ""}${unit === "money" ? "S$" : ""}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${fraction}${unit === "ratio" ? "%" : ""}`;

@@ -2,6 +2,8 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { defaultThresholds, formatAmount, formatPercentage, needsAttention, normalizeThresholds, outcome, resolveThreshold, restoreThresholds, type Change, type KpiData, type Thresholds } from "../data/kpi-presentation";
+import { useCurrency } from "@/lib/currency-context";
+import type { FxContext } from "@/lib/currency";
 
 const colors = { favorable: "text-emerald-700", unfavorable: "text-red-700", neutral: "text-slate-500" };
 function subscribe(callback: () => void) {
@@ -9,10 +11,10 @@ function subscribe(callback: () => void) {
   window.addEventListener("kpi-settings", callback);
   return () => { window.removeEventListener("storage", callback); window.removeEventListener("kpi-settings", callback); };
 }
-function Indicator({ change, unit, higherIsBetter = true }: { change: Change | null; unit: "money" | "ratio"; higherIsBetter?: boolean }) {
+function Indicator({ change, unit, higherIsBetter = true, fx }: { change: Change | null; unit: "money" | "ratio"; higherIsBetter?: boolean; fx: FxContext }) {
   if (!change) return <span className="text-sm text-slate-500">Comparison unavailable</span>;
   const status = outcome(change.direction, higherIsBetter);
-  const absolute = unit === "money" ? formatAmount(change.absolute, unit) : `${change.absolute.replace("-", "−")} pp`;
+  const absolute = unit === "money" ? formatAmount(change.absolute, unit, fx) : `${change.absolute.replace("-", "−")} pp`;
   return <div className={`flex flex-wrap items-center gap-1.5 text-sm font-medium ${colors[status]}`}>
     {change.direction !== 0 && <svg aria-label={change.direction > 0 ? "Increase" : "Decrease"} role="img" viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="currentColor"><path d={change.direction > 0 ? "M6 1 12 11H0Z" : "M0 1h12L6 11Z"} /></svg>}
     <span>{change.direction > 0 ? "+" : ""}{absolute}</span>
@@ -22,6 +24,7 @@ function Indicator({ change, unit, higherIsBetter = true }: { change: Change | n
 }
 
 export function KpiCards({ data, error, userId }: { data?: KpiData | null; error?: string; userId: string }) {
+  const fx = useCurrency();
   const storageKey = `finsight:kpi-thresholds:v1:${userId}`;
   const raw = useSyncExternalStore(subscribe, () => {
     try { return localStorage.getItem(storageKey); } catch { return null; }
@@ -48,7 +51,7 @@ export function KpiCards({ data, error, userId }: { data?: KpiData | null; error
 
   return <section aria-labelledby="kpi-heading" className="mt-8">
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><p className="text-xs font-semibold uppercase tracking-widest text-brand-blue">TSH Energy · Financial performance</p><h2 id="kpi-heading" className="mt-1 text-xl font-semibold text-brand-navy">Financial overview</h2><p className="mt-1 text-sm text-muted">{data.period} · Monthly total · Compared with {data.priorPeriod} · SGD</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-widest text-brand-blue">TSH Energy · Financial performance</p><h2 id="kpi-heading" className="mt-1 text-xl font-semibold text-brand-navy">Financial overview</h2><p className="mt-1 text-sm text-muted">{data.period} · Monthly total · Compared with {data.priorPeriod} · {fx.currency}{fx.currency !== "SGD" && fx.date ? ` · rates as of ${fx.date}` : ""}</p></div>
       <a href="#kpi-settings" className="flex items-center gap-2 rounded-lg border border-brand-navy/20 px-3 py-2 text-sm font-medium text-brand-navy" onClick={() => { const el = document.getElementById("kpi-settings"); if (el instanceof HTMLDetailsElement) el.open = true; }}>
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 3-1 2 2 3-1 1-3 3-1 2-3-2-2 1-3-3-2-3 1-2-2Z" /><circle cx="12" cy="11" r="3" /></svg>
         Threshold settings
@@ -67,10 +70,10 @@ export function KpiCards({ data, error, userId }: { data?: KpiData | null; error
         const badgeColor = favorable ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800";
         return <article key={metric.id} className={`min-w-0 rounded-xl border border-t-4 bg-white p-5 shadow-sm ${attention ? "border-amber-300 border-t-amber-500" : "border-slate-200 border-t-brand-navy"} ${metric.unit === "ratio" ? "xl:col-span-4" : "xl:col-span-3"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-medium text-muted">{metric.label}</h3>{attention && <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badgeColor}`}>Attention needed · {favorable ? "Favorable" : "Unfavorable"}</span>}</div>
-          <p className="my-3 break-words text-2xl font-semibold tabular-nums tracking-tight text-brand-navy">{metric.value === null ? "Unavailable" : formatAmount(metric.value, metric.unit)}</p>
-          <Indicator change={metric.change} unit={metric.unit} higherIsBetter={metric.higherIsBetter} />
-          <p className="mt-1 text-xs text-muted">vs prior month{metric.prior !== null ? ` · ${formatAmount(metric.prior, metric.unit)}` : ""}</p>
-          {metric.id === "budgetVariance" && <div className="mt-3 border-t border-slate-100 pt-3"><p className="mb-1 text-xs text-muted">Actual net profit vs budget</p><Indicator change={metric.budgetComparison ?? null} unit="money" /></div>}
+          <p className="my-3 break-words text-2xl font-semibold tabular-nums tracking-tight text-brand-navy">{metric.value === null ? "Unavailable" : formatAmount(metric.value, metric.unit, fx)}</p>
+          <Indicator change={metric.change} unit={metric.unit} higherIsBetter={metric.higherIsBetter} fx={fx} />
+          <p className="mt-1 text-xs text-muted">vs prior month{metric.prior !== null ? ` · ${formatAmount(metric.prior, metric.unit, fx)}` : ""}</p>
+          {metric.id === "budgetVariance" && <div className="mt-3 border-t border-slate-100 pt-3"><p className="mb-1 text-xs text-muted">Actual net profit vs budget</p><Indicator change={metric.budgetComparison ?? null} unit="money" fx={fx} /></div>}
           <details className="mt-3 text-xs text-muted"><summary className="cursor-pointer">Calculation & alert basis</summary><p className="mt-2">{metric.description}</p><p className="mt-1">{metric.id !== "budgetVariance" && "Limits apply to percentage change versus the prior month. "}{threshold.enabled ? `Attention below ${threshold.min}% or above ${threshold.max}%.` : "Attention alerts disabled."}</p></details>
         </article>;
       })}
