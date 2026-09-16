@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/auth/actions";
+import { AppPage } from "@/app/components/app-page";
 import { RevenueExpenseChart } from "./components/revenue-expense-chart";
 import { ProfitMarginChart } from "./components/profit-margin-chart";
 import { RevenueByGroupChart } from "./components/revenue-by-group-chart";
@@ -66,24 +65,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const profitLossError = profitLossResult.error;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-black/10 px-6 py-4">
-        <Image src="/tsh.png" alt="TSH Group" width={116} height={30} />
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded-lg border border-black/10 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-black/[.04]"
-          >
-            Sign out
-          </button>
-        </form>
-      </header>
-
-      <main className="mx-auto w-full flex-1 px-6 py-8">
-        <h1 className="text-2xl font-semibold text-brand-navy">Dashboard</h1>
-        <p className="mt-2 text-muted">
-          Signed in as <span className="font-medium text-foreground">{user.email}</span>
-        </p>
+    <AppPage email={user.email ?? "Finance user"}>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-blue">Financial command centre</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-brand-navy sm:text-3xl">Dashboard</h1>
+            <p className="mt-1.5 text-sm text-muted">A live view of performance across TSH Group.</p>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
+            Data refreshed today
+          </div>
+        </div>
 
 
         <DashboardFilters key={JSON.stringify(selection)} options={optionsResult.options} selection={selection} error={filterError}>
@@ -111,7 +104,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <ProfitLossTable data={profitLossData} error={profitLossError} />
         </div>
         </DashboardFilters>
-      </main>
-    </div>
+    </AppPage>
   );
 }

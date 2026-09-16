@@ -15,6 +15,7 @@
   --color-background: #ffffff;
   --color-foreground: #14183a;
   --color-muted: #5b6079;
+  --color-app-surface: #f6f8fc;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -24,4 +25,46 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+}
+
+::selection {
+  background: #dce5fb;
+  color: #161f5c;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes sidebar-enter {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sidebar-enter {
+  animation: sidebar-enter 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .sidebar-enter {
+    animation: none;
+  }
 }
