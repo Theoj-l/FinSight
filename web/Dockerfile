@@ -41,6 +41,10 @@ FROM base AS builder
 ENV NODE_ENV=production
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV DIRECT_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# lib/gemini/client.ts throws at import time if this is unset, which crashes
+# `next build` while it collects route data for /api/chat/classify. Build-only
+# placeholder — a real (non-public) key is injected at runtime via env_file.
+ENV GEMINI_API_KEY="build-placeholder-gemini-key"
 # NEXT_PUBLIC_* are compiled into the browser bundle here and cannot be
 # changed at runtime — they must be supplied now.
 ARG NEXT_PUBLIC_SUPABASE_URL

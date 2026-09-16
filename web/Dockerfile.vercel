@@ -40,6 +40,11 @@ FROM base AS builder
 ENV NODE_ENV=production
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV DIRECT_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+# lib/gemini/client.ts throws at import time if this is unset, which crashes
+# `next build` while it collects route data for /api/chat/classify. Build-only
+# placeholder — set the real (non-public) key in Vercel Project Settings so
+# it's available at runtime.
+ENV GEMINI_API_KEY="build-placeholder-gemini-key"
 # NEXT_PUBLIC_* are compiled into the browser bundle here and cannot change at
 # runtime. Set them in Vercel Project Settings -> Environment Variables; Vercel
 # forwards project env vars to the image build. They are non-secret (shipped to

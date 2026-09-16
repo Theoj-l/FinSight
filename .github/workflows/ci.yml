@@ -34,6 +34,9 @@ jobs:
       ML_SERVICE_TOKEN: ci-placeholder
       DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
       DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+      # lib/gemini/client.ts throws at import time if this is unset, which
+      # would take down any route that (transitively) imports it.
+      GEMINI_API_KEY: ci-placeholder-key
 
     steps:
       - uses: actions/checkout@v4
