@@ -26,10 +26,8 @@ web/
     api/            route handlers (the "backend"), incl. chat/classify (Gemini)
     auth/           server actions (login/signup/signout) + email confirm route
     (auth)/         login + signup pages (shared card layout)
-    home/           signed-in overview, dated KPIs and threshold notifications
-    assistant/      conversational workspace (in development)
-    dashboard/      detailed financial dashboard
-    page.tsx        public landing page; signed-in users go to Home
+    dashboard/      protected page — KPI cards, revenue/expense/margin charts
+    page.tsx        landing page
   lib/
     db.ts           Prisma client singleton
     ml-client.ts    typed client for ml-service
