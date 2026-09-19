@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { authDestination } from "@/lib/auth/redirect";
 
 export type AuthState = { error: string } | undefined;
 
@@ -23,9 +24,9 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
 
-  const next = String(formData.get("next") ?? "/dashboard");
+  const next = String(formData.get("next") ?? "/home");
   revalidatePath("/", "layout");
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  redirect(authDestination(next));
 }
 
 export async function signup(
@@ -45,7 +46,7 @@ export async function signup(
   if (!data.session) redirect("/login?checkEmail=1");
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/home");
 }
 
 export async function signOut() {

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 const features = [
@@ -22,6 +23,7 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (user) redirect("/home");
 
   return (
     <div className="flex flex-1 flex-col">
@@ -29,29 +31,18 @@ export default async function Home() {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
         <Image src="/tsh.png" alt="TSH Group" width={128} height={34} priority />
         <nav className="flex items-center gap-3 text-sm font-medium">
-          {user ? (
-            <Link
-              href="/dashboard"
-              className="rounded-lg bg-brand-navy px-4 py-2 text-white transition-colors hover:bg-brand-navy-dark"
-            >
-              Go to dashboard
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-lg px-3 py-2 text-brand-navy transition-colors hover:bg-black/[.04]"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-brand-red px-4 py-2 text-white transition-colors hover:bg-brand-red-dark"
-              >
-                Get started
-              </Link>
-            </>
-          )}
+          <Link
+            href="/login"
+            className="rounded-lg px-3 py-2 text-brand-navy transition-colors hover:bg-black/[.04]"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-lg bg-brand-red px-4 py-2 text-white transition-colors hover:bg-brand-red-dark"
+          >
+            Get started
+          </Link>
         </nav>
       </header>
 
@@ -78,10 +69,10 @@ export default async function Home() {
             </p>
             <div className="mt-2 flex flex-wrap gap-3">
               <Link
-                href={user ? "/dashboard" : "/signup"}
+                href="/signup"
                 className="rounded-lg bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-red-dark"
               >
-                {user ? "Open dashboard" : "Get started"}
+                Get started
               </Link>
               <Link
                 href="/login"

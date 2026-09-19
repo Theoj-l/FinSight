@@ -8,7 +8,7 @@ export default async function SignupPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/home");
 
   return <AuthForm mode="signup" action={signup} />;
 }

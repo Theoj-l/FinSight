@@ -63,7 +63,7 @@ describe("login", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/reports");
   });
 
-  it("ignores an absolute/off-site `next` and falls back to /dashboard", async () => {
+  it("ignores an absolute/off-site `next` and falls back to /home", async () => {
     signInWithPassword.mockResolvedValueOnce({ error: null });
 
     await expect(
@@ -75,7 +75,12 @@ describe("login", () => {
           next: "https://evil.example.com",
         }),
       ),
-    ).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    ).rejects.toThrow("NEXT_REDIRECT:/home");
+  });
+
+  it.each([undefined, "", "//evil.example.com", "/\\evil.example.com"])("defaults to Home for missing or unsafe next %s", async next => {
+    signInWithPassword.mockResolvedValueOnce({ error: null });
+    await expect(login(undefined, form({ email: "a@b.com", password: "secret12", ...(next === undefined ? {} : { next }) }))).rejects.toThrow("NEXT_REDIRECT:/home");
   });
 });
 
@@ -98,7 +103,7 @@ describe("signup", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/login?checkEmail=1");
   });
 
-  it("redirects straight to the dashboard when a session exists", async () => {
+  it("redirects straight to Home when a session exists", async () => {
     signUp.mockResolvedValueOnce({
       data: { session: { access_token: "t" } },
       error: null,
@@ -106,6 +111,6 @@ describe("signup", () => {
 
     await expect(
       signup(undefined, form({ email: "a@b.com", password: "secret12" })),
-    ).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    ).rejects.toThrow("NEXT_REDIRECT:/home");
   });
 });

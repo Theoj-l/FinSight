@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { defaultThresholds, formatAmount, formatPercentage, needsAttention, normalizeThresholds, outcome, resolveThreshold, restoreThresholds, type Change, type KpiData, type Thresholds } from "../data/kpi-presentation";
 import { useCurrency } from "@/lib/currency-context";
 import type { FxContext } from "@/lib/currency";
@@ -24,6 +24,16 @@ function Indicator({ change, unit, higherIsBetter = true, fx }: { change: Change
 }
 
 export function KpiCards({ data, error, userId }: { data?: KpiData | null; error?: string; userId: string }) {
+  useEffect(() => {
+    function openLinkedSettings() {
+      if (window.location.hash !== "#kpi-settings") return;
+      const settings = document.getElementById("kpi-settings");
+      if (settings instanceof HTMLDetailsElement) settings.open = true;
+    }
+    openLinkedSettings();
+    window.addEventListener("hashchange", openLinkedSettings);
+    return () => window.removeEventListener("hashchange", openLinkedSettings);
+  }, [data]);
   const fx = useCurrency();
   const storageKey = `finsight:kpi-thresholds:v1:${userId}`;
   const raw = useSyncExternalStore(subscribe, () => {
