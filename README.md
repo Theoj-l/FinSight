@@ -125,9 +125,10 @@ item return to the overview.
 Home reads the latest company-wide ledger KPIs and uses the same per-account,
 browser-local thresholds as the dashboard. Each KPI shows its reporting month
 and comparison month. Only unfavorable threshold breaches create notifications.
-The notification panel defaults to collapsed, with three items per page and a
-bounded scroll area. Items are marked viewed when visible; users can clear one
-or all viewed items without clearing unread items on other pages. Notification,
+Notifications and monitoring sit side by side on desktop and stack on mobile.
+The notification panel previews two items, with View all / Show fewer controls
+and a bounded scroll area. Items are marked viewed when visible; users can clear
+one or all viewed items without clearing unread items outside the preview. Notification,
 viewed, and cleared dates persist per account in that browser (clearing browser
 storage resets history); dates use Singapore time. Cleared issues remain cleared
 for the same reporting period and threshold configuration.
