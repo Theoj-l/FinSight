@@ -26,8 +26,10 @@ web/
     api/            route handlers (the "backend")
     auth/           server actions (login/signup/signout) + email confirm route
     (auth)/         login + signup pages (shared card layout)
-    dashboard/      example protected page
-    page.tsx        landing page
+    home/           signed-in overview, dated KPIs and threshold notifications
+    assistant/      conversational workspace (in development)
+    dashboard/      detailed financial dashboard
+    page.tsx        public landing page; signed-in users go to Home
   lib/
     db.ts           Prisma client singleton
     ml-client.ts    typed client for ml-service
@@ -115,7 +117,36 @@ In the Supabase dashboard:
   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
   (handled by `web/app/auth/confirm/route.ts`).
 
-Protected routes are listed in `web/lib/supabase/proxy.ts` (`/dashboard` for now).
+Protected routes are listed in `web/lib/supabase/proxy.ts`: `/home`, `/dashboard`,
+`/assistant`, `/insights`, `/reports`, and `/settings`. Successful sign-in defaults to `/home`;
+an explicit local return path is preserved. The FinSight logo and Home navigation
+item return to the overview.
+
+Home reads the latest company-wide ledger KPIs and uses the same per-account,
+browser-local thresholds as the dashboard. Each KPI shows its reporting month
+and comparison month. Only unfavorable threshold breaches create notifications.
+Notifications and monitoring sit side by side on desktop and stack on mobile.
+The notification panel previews two items, with View all / Show fewer controls
+and a bounded scroll area. Items are marked viewed when visible; users can clear
+one or all viewed items without clearing unread items outside the preview. Notification,
+viewed, and cleared dates persist per account in that browser (clearing browser
+storage resets history); dates use Singapore time. Cleared issues remain cleared
+for the same reporting period and threshold configuration.
+
+Settings → Notifications controls in-app delivery: as new issues are found,
+once per 24 hours, or once per 7 days. The first batch is immediate; subsequent
+new issues wait for the selected interval. Home checks delivery every 30 seconds
+while open and on return, using its loaded KPI data; refresh Home for updated
+financial data. These preferences do not schedule email or push notifications.
+
+The overview's load time is separate from the reporting period
+and does not represent a ledger sync time. Anomaly monitoring is shown as not
+connected until an anomaly results feed is available.
+
+Assistant is accessible from the sidebar and Home shortcuts. Its page currently
+shows the planned conversational experience; the existing question classifier
+does not yet provide financial answers. Forecasting will run in the backend and
+can supply dated predictions to the assistant and financial views once connected.
 
 ### Database
 

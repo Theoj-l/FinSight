@@ -3,12 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ChevronDown, FileText, Lightbulb, LogOut, Menu, Settings, UserRound, X } from "lucide-react";
+import { BarChart3, ChevronDown, FileText, House, Lightbulb, LogOut, Menu, MessageSquare, Settings, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import { signOut } from "@/app/auth/actions";
 
 const navigation = [
+  { label: "Home", href: "/home", icon: House },
   { label: "Dashboard", href: "/dashboard", icon: BarChart3 },
+  { label: "Assistant", href: "/assistant", icon: MessageSquare },
   { label: "Insights", href: "/insights", icon: Lightbulb },
   { label: "Reports", href: "/reports", icon: FileText },
   { label: "Settings", href: "/settings", icon: Settings },
@@ -21,9 +23,9 @@ function initials(email: string) {
 function Brand({ compact = false, onNavigate, onNavigation }: { compact?: boolean; onNavigate?: () => void; onNavigation?: (href: string) => void }) {
   return (
     <Link
-      href="/dashboard"
-      onClick={() => { onNavigate?.(); onNavigation?.("/dashboard"); }}
-      aria-label={compact ? "FinSight dashboard" : undefined}
+      href="/home"
+      onClick={onNavigate}
+      aria-label="FinSight home"
       className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue"
     >
       <Image src="/FinSight_logo.png" alt={compact ? "FinSight" : ""} aria-hidden={compact ? undefined : true} width={88} height={29} priority className="shrink-0" />
