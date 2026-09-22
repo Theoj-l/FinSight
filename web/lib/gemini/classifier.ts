@@ -127,7 +127,7 @@ function cleanFilters(
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
-const GEMINI_MODEL = "gemini-3.6-flash";
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 /**
  * Send a user message to Gemini and receive a structured classification.

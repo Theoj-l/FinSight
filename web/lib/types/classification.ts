@@ -110,6 +110,14 @@ export const FILTER_KEYS = [
 
 export type FilterKey = (typeof FILTER_KEYS)[number];
 
+// ── Metric conditions ───────────────────────────────────────────────────────
+
+export interface MetricCondition {
+  metric: string;
+  operator: ">" | ">=" | "<" | "<=" | "=" | "!=";
+  value: number;
+}
+
 // ── Classification result ───────────────────────────────────────────────────
 
 export interface ClassificationResult {
@@ -121,6 +129,7 @@ export interface ClassificationResult {
   comparison_period: string | null;
   dimensions: Dimension[];
   filters: Partial<Record<FilterKey, string>>;
+  metric_conditions: MetricCondition[];
   top_n: number | null;
   is_supported: boolean;
   is_ambiguous: boolean;
