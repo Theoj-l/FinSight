@@ -59,6 +59,18 @@ select {
   animation: sidebar-enter 180ms ease-out;
 }
 
+@keyframes navigation-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(220%);
+  }
+  100% {
+    transform: translateX(420%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -67,4 +79,10 @@ select {
   .sidebar-enter {
     animation: none;
   }
+
+  .animate-\[navigation-progress_1\.1s_ease-in-out_infinite\] {
+    animation: none;
+    width: 100%;
+  }
+
 }

@@ -4,12 +4,10 @@ import { AppPage } from "@/app/components/app-page";
 import { RevenueExpenseChart } from "./components/revenue-expense-chart";
 import { ProfitMarginChart } from "./components/profit-margin-chart";
 import { RevenueByGroupChart } from "./components/revenue-by-group-chart";
-import { ExpenseCategoryChart } from "./components/expense-category-chart";
 import { ProfitLossTable } from "./components/profit-loss-table";
 import { getRevenueExpenseData } from "./data/revenue-expense";
 import { getProfitMarginData } from "./data/profit-margin";
 import { getRevenueByGroupData } from "./data/revenue-by-group";
-import { getExpenseCategoryData } from "./data/expense-category";
 import { getProfitLossData } from "./data/profit-loss";
 import { getKpiData } from "./data/kpi";
 import { KpiCards } from "./components/kpi-cards";
@@ -41,14 +39,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     revenueExpenseResult,
     profitMarginResult,
     revenueByGroupResult,
-    expenseCategoryResult,
     profitLossResult,
     kpiResult,
   ] = await Promise.all([
     load(() => getRevenueExpenseData(scope), "Financial data could not be loaded right now."),
     load(() => getProfitMarginData(scope), "Profit data could not be loaded right now."),
     load(() => getRevenueByGroupData(scope), "Product group revenue could not be loaded right now.", false),
-    load(() => getExpenseCategoryData(scope), "Expense category data could not be loaded right now."),
     load(() => getProfitLossData(scope), "Profit and loss data could not be loaded right now."),
     load(() => getKpiData(scope), "KPI data could not be loaded right now. Please refresh to retry."),
   ]);
@@ -59,8 +55,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const profitMarginError = profitMarginResult.error;
   const revenueByGroupData = revenueByGroupResult.data;
   const revenueByGroupError = revenueByGroupResult.error;
-  const expenseCategoryData = expenseCategoryResult.data;
-  const expenseCategoryError = expenseCategoryResult.error;
   const profitLossData = profitLossResult.data;
   const profitLossError = profitLossResult.error;
 
@@ -91,12 +85,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 items-stretch gap-8">
-          <div className="col-span-1 h-full">
+        <div className="mt-8">
+          <div className="h-full">
             <RevenueByGroupChart data={revenueByGroupData} error={revenueByGroupError} />
-          </div>
-          <div className="lg:col-span-2 h-full">
-            <ExpenseCategoryChart data={expenseCategoryData} error={expenseCategoryError} />
           </div>
         </div>
 

@@ -1,3 +1,26 @@
+
+## Loading Convention
+
+Use the shared `web/app/components/page-loading.tsx` component for loading
+caused by data refreshes or other transitions that happen within an already
+rendered page. It should appear at the center of the user's viewport as an
+unboxed loading treatment with a polished, visible light-blue spinner and the
+short `Loading Page` label beneath it. The spinner may use a fixed,
+transparent positioning layer so it stays centered while the user is viewing
+any part of the page. Any scrim or dimming must be applied only to the rendered
+page content area, not the app shell or navbar. Do not add a card, border,
+background panel, banner, progress line, or bottom toast around the spinner and
+label. It must not become a separate full-page blocking screen.
+While it is visible, disable or dim stale interactive content as appropriate so
+users cannot submit conflicting actions.
+Keep the component reusable for any in-page data refresh, not only dashboard
+filters.
+
+The app shell's thin top progress bar is a separate navigation convention for
+switching between navbar routes. Keep that navigation indicator unchanged;
+do not use `PageLoading` for route navigation.
+
+
 # FinSight Dashboard Instructions
 
 ## Project Context
