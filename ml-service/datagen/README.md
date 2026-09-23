@@ -17,7 +17,14 @@ source venv/bin/activate
 
 python -m datagen                              # generate + validate + write output/
 python -m datagen --load                       # then load into Postgres (prompts first)
+python -m datagen --anomalies random --seed 7  # a benchmark dataset (random anomalies)
 ```
+
+`--anomalies canonical` (the default) gives the showcase dataset with the ten
+fixed anomalies A01–A10. `--anomalies random` gives 23–40 randomly placed
+anomalies per seed and is used to train and test the anomaly model. See
+[DATA_MODEL.md](DATA_MODEL.md) §6 and
+[../training/anomaly/METHODOLOGY.md](../training/anomaly/METHODOLOGY.md).
 
 `--load` reads `DATABASE_URL` from `ml-service/.env` (session pooler, port 5432),
 **truncates** the 17 `public` tables and `datagen.anomaly_log`, and bulk-loads.
@@ -27,7 +34,7 @@ It refuses to load if any hard consistency check fails.
 
 - Postgres: the 17 tables in `public` + `datagen.anomaly_log` + `datagen.run`
 - `datagen/output/` (git-ignored): `*.csv`, `datagen_anomaly_log.csv`,
-  `VALIDATION.txt`, `SUMMARY.md`
+  `decoy_log.csv` (unlabelled look-alikes), `VALIDATION.txt`, `SUMMARY.md`
 
 ## Layout
 
@@ -36,7 +43,8 @@ It refuses to load if any hard consistency check fails.
 | `config.py` | every tunable number (business model, opex, opening balances, anomalies window) |
 | `reference.py` | chart of accounts, P&L layout, dimensions, customers, items |
 | `masters.py` | assembles reference + master data |
-| `anomalies.py` | the 10 injected anomalies and their labels |
+| `anomalies.py` | the ten anomaly templates; canonical A01–A10 plan, random plan, look-alikes |
+| `pipeline.py` | `generate(seed, anomalies)` — seed to complete table dict (used by the CLI and training) |
 | `engine.py` | the ledger + month-by-month simulation (double-entry) |
 | `derive.py` | `pbalance`, `budget`, `budget_pbalance` from `gl_dtl` |
 | `validate.py` | consistency checks (hard checks gate the load) |

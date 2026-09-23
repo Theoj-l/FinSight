@@ -44,6 +44,10 @@ ANOMALY_COLS = ["anomaly_id", "category", "subtype", "severity", "period_start",
                 "deviation_pct", "description", "detection_hint"]
 
 
+DECOY_COLS = ["decoy_id", "kind", "trans_date", "period_no", "acc_no", "dept_no",
+              "amount", "description"]
+
+
 def write_csvs(tables: dict, anomaly_log: list, seed: int, out: str) -> None:
     os.makedirs(out, exist_ok=True)
     for tbl, cols in COLUMNS.items():
@@ -51,6 +55,13 @@ def write_csvs(tables: dict, anomaly_log: list, seed: int, out: str) -> None:
             os.path.join(out, f"{tbl}.csv"), index=False)
     pd.DataFrame(anomaly_log, columns=ANOMALY_COLS).to_csv(
         os.path.join(out, "datagen_anomaly_log.csv"), index=False)
+    decoy_path = os.path.join(out, "decoy_log.csv")
+    if tables.get("_decoy_log"):
+        # benign look-alikes (random mode only) — for false-positive analysis;
+        # never loaded to Postgres
+        pd.DataFrame(tables["_decoy_log"], columns=DECOY_COLS).to_csv(decoy_path, index=False)
+    elif os.path.exists(decoy_path):
+        os.remove(decoy_path)   # stale file from an earlier random run
 
 
 def load_postgres(tables: dict, anomaly_log: list, run_meta: dict, db_url: str) -> None:

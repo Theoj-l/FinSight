@@ -1,5 +1,5 @@
 """Consistency checks. Hard checks must pass or the run aborts; soft checks are
-reported (some, like the injected cut-off error, are expected to flag)."""
+reported for information."""
 from __future__ import annotations
 
 import pandas as pd
@@ -61,15 +61,18 @@ def run_checks(t: dict) -> tuple[bool, list[str]]:
          f"max off {od.max():.4f}")
 
     # 6. AR control reconciliation to GL 1200 (excluding the injected unbilled
-    #    accrual A07, which legitimately sits in 1200 with no sub-ledger invoice)
+    #    revenue_cutoff accruals, which legitimately sit in 1200 with no
+    #    sub-ledger invoice). The amount comes from the anomaly plan — the
+    #    ledger itself carries no marker.
+    log = t.get("_anomaly_log", [])
+    cutoffs = [a for a in log if a["subtype"] == "revenue_cutoff"]
+    accrual = sum(a["actual_amount"] for a in cutoffs)
     ar_out = ar.loc[~ar["cancelled"], "outstanding"].sum()
     g1200 = gl[gl["acc_no"] == "1200"]
     gl_1200 = g1200["home_dr"].sum() - g1200["home_cr"].sum()
-    cut = gl[(gl["ref_no1"] == "ANOM-CUTOFF") & (gl["acc_no"] == "1200")]
-    accrual = cut["home_dr"].sum() - cut["home_cr"].sum()
-    hard("SUM(ar outstanding) == GL 1200 less unbilled accrual (A07)",
+    hard("SUM(ar outstanding) == GL 1200 less unbilled cut-off accruals",
          abs(ar_out - (gl_1200 - accrual)) < 1.0,
-         f"ar {ar_out:,.2f} vs gl {gl_1200:,.2f} (accrual {accrual:,.2f})")
+         f"ar {ar_out:,.2f} vs gl {gl_1200:,.2f} (accruals {accrual:,.2f}, n={len(cutoffs)})")
 
     # 7. pbalance == gl aggregation
     reagg = (gl.assign(period_no=gl["_p"])
@@ -111,7 +114,30 @@ def run_checks(t: dict) -> tuple[bool, list[str]]:
         nulls = {c: int(dfx[c].isna().sum()) for c in cols if dfx[c].isna().any()}
         hard(f"{tbl}: NOT NULL columns populated", not nulls, str(nulls))
 
-    # --- soft / informational ---
+    # 10. document numbers are unique (receipts link to invoices via ref_no1 = doc_no)
+    hard("iv.doc_no unique", not iv["doc_no"].duplicated().any(),
+         f"{int(iv['doc_no'].duplicated().sum())} duplicates")
+    hard("ar_invoice.doc_no unique", not ar["doc_no"].duplicated().any(),
+         f"{int(ar['doc_no'].duplicated().sum())} duplicates")
+
+    # 11. keys follow the calendar: gl_trx_id order never goes back in time
+    trx = gl.groupby("gl_trx_id")["trans_date"].agg(["min", "max"]).sort_index()
+    hard("each journal has one trans_date", (trx["min"] == trx["max"]).all())
+    hard("gl_trx_id is in trans_date order", trx["min"].is_monotonic_increasing)
+    hard("gl_dtl_key is in gl_trx_id order", gl["gl_trx_id"].is_monotonic_increasing)
+
+    # 12. leakage guards: injected journals use only normal bookkeeping conventions
+    combos = set(zip(gl["journal_type"], gl["source_type"], strict=True))
+    allowed = {("OPENING", "O"), ("SALES", "I"), ("RECEIPT", "R"),
+               ("PAYMENT", "P"), ("GENERAL", "J")}
+    hard("journal_type/source_type pairs are all conventional", combos <= allowed,
+         str(combos - allowed))
+    refs = gl["ref_no1"].dropna().astype(str)
+    leaky = refs[refs.str.match(r"^(ANOM|DUP)")]
+    hard("no anomaly markers in ref_no1", leaky.empty, str(sorted(set(leaky))))
+
+    # 13. GL revenue ties to the sales sub-ledger for every dept-month except
+    #     exactly the injected revenue cut-offs
     rev_types = {a[0]: a[2] for a in R.ACCOUNTS}
     glrev = gl[gl["acc_no"].map(lambda a: rev_types.get(a) == "RE")].copy()
     glrev_m = (glrev.groupby(["_p", "dept_no"])
@@ -123,9 +149,20 @@ def run_checks(t: dict) -> tuple[bool, list[str]]:
     cmp = pd.concat([glrev_m, ivrev_m], axis=1).fillna(0.0)
     cmp["diff"] = (cmp["gl_rev"] - cmp["iv_rev"]).round(2)
     breaks = cmp[cmp["diff"].abs() > 1.0]
-    soft("GL revenue vs sales sub-ledger by dept-month",
-         f"{len(breaks)} dept-month(s) differ (expected: 1, the injected cut-off "
-         f"error A07). " + "; ".join(f"{i}:{v:,.0f}" for i, v in breaks["diff"].items()))
+    expected = {(a["period_start"], a["affected_dept"]) for a in cutoffs}
+    hard("GL revenue vs sales sub-ledger differs only at injected cut-offs",
+         set(breaks.index) == expected,
+         f"{len(breaks)} dept-month(s) differ, {len(expected)} expected. "
+         + "; ".join(f"{i}:{v:,.0f}" for i, v in breaks["diff"].items()))
+
+    # --- soft / informational ---
+    by_sub: dict[str, int] = {}
+    for a in log:
+        by_sub[a["subtype"]] = by_sub.get(a["subtype"], 0) + 1
+    soft("labelled anomalies", f"{len(log)} — "
+         + ", ".join(f"{k}={v}" for k, v in sorted(by_sub.items())))
+    if t.get("_decoy_log"):
+        soft("unlabelled look-alikes (decoys)", str(len(t["_decoy_log"])))
 
     bank = gl.loc[gl["acc_no"] == "1010"].sort_values("trans_date")
     bank_bal = (bank["home_dr"] - bank["home_cr"]).cumsum() + 0
