@@ -206,9 +206,9 @@ export async function getManagementPriorities(
 
       priorities.push({
         area: row.area,
-        finding: \`Increased by SGD \${impact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (\${pct.toFixed(1)}%)\`,
+        finding: `Increased by SGD ${impact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${pct.toFixed(1)}%)`,
         impact,
-        suggestedAction: \`Investigate root cause of increase in \${row.area}\`,
+        suggestedAction: `Investigate root cause of increase in ${row.area}`,
         priority,
       });
     }
@@ -218,12 +218,12 @@ export async function getManagementPriorities(
   if (checkSales) {
     const filtersCond = [];
     if (filters.debtorCodes?.length) {
-      filtersCond.push(Prisma.sql\`iv.debtor_code IN (\${Prisma.join(filters.debtorCodes)})\`);
+      filtersCond.push(Prisma.sql`iv.debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
     }
     if (filters.salesAgents?.length) {
-      filtersCond.push(Prisma.sql\`iv.sales_agent IN (\${Prisma.join(filters.salesAgents)})\`);
+      filtersCond.push(Prisma.sql`iv.sales_agent IN (${Prisma.join(filters.salesAgents)})`);
     }
-    const extraWhere = filtersCond.length > 0 ? Prisma.sql\`AND \${Prisma.join(filtersCond, " AND ")}\` : Prisma.empty;
+    const extraWhere = filtersCond.length > 0 ? Prisma.sql`AND ${Prisma.join(filtersCond, " AND ")}` : Prisma.empty;
     
     const rows = await prisma.$queryRaw<
       {
@@ -232,21 +232,21 @@ export async function getManagementPriorities(
         previous_amt: number;
         decline_amt: number;
       }[]
-    >\`
+    >`
       WITH curr AS (
         SELECT iv.debtor_code, SUM(iv.local_ex_tax) AS amt
         FROM iv
         WHERE iv.cancelled = false 
-          AND iv.doc_date >= \${currentPeriod.dateFrom} AND iv.doc_date <= \${currentPeriod.dateTo}
-          \${extraWhere}
+          AND iv.doc_date >= ${currentPeriod.dateFrom} AND iv.doc_date <= ${currentPeriod.dateTo}
+          ${extraWhere}
         GROUP BY iv.debtor_code
       ),
       prev AS (
         SELECT iv.debtor_code, SUM(iv.local_ex_tax) AS amt
         FROM iv
         WHERE iv.cancelled = false 
-          AND iv.doc_date >= \${previousPeriod.dateFrom} AND iv.doc_date <= \${previousPeriod.dateTo}
-          \${extraWhere}
+          AND iv.doc_date >= ${previousPeriod.dateFrom} AND iv.doc_date <= ${previousPeriod.dateTo}
+          ${extraWhere}
         GROUP BY iv.debtor_code
       )
       SELECT 
@@ -260,10 +260,9 @@ export async function getManagementPriorities(
       WHERE (COALESCE(prev.amt, 0) - COALESCE(curr.amt, 0)) > 0
       ORDER BY decline_amt DESC
       LIMIT 3
-    \`;
+    `;
 
     for (const row of rows) {
-      const current_amt = row.current_amt ?? 0;
       const previous_amt = row.previous_amt ?? 0;
       const impact = row.decline_amt ?? 0;
       let pct = 0;
@@ -275,9 +274,9 @@ export async function getManagementPriorities(
 
       priorities.push({
         area: row.area,
-        finding: \`Sales declined by SGD \${impact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (\${pct.toFixed(1)}%)\`,
+        finding: `Sales declined by SGD ${impact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${pct.toFixed(1)}%)`,
         impact,
-        suggestedAction: \`Schedule review with account manager for \${row.area}\`,
+        suggestedAction: `Schedule review with account manager for ${row.area}`,
         priority,
       });
     }
@@ -296,17 +295,19 @@ export async function getManagementPriorities(
         previous_amt: number;
         change_amt: number;
       }[]
-    >\`
+    >`
       WITH curr AS (
         SELECT pb.dept_no, SUM(pb.home_dr - pb.home_cr) AS amt
         FROM pbalance pb
-        WHERE pb.period_no IN (\${curP}) AND pb.acc_no IN (\${targetAccounts})
+        WHERE pb.period_no IN (${curP}) AND pb.acc_no IN (${targetAccounts})
+          ${deptCond}
         GROUP BY pb.dept_no
       ),
       prev AS (
         SELECT pb.dept_no, SUM(pb.home_dr - pb.home_cr) AS amt
         FROM pbalance pb
-        WHERE pb.period_no IN (\${prevP}) AND pb.acc_no IN (\${targetAccounts})
+        WHERE pb.period_no IN (${prevP}) AND pb.acc_no IN (${targetAccounts})
+          ${deptCond}
         GROUP BY pb.dept_no
       )
       SELECT 
@@ -320,7 +321,7 @@ export async function getManagementPriorities(
       WHERE (COALESCE(curr.amt, 0) - COALESCE(prev.amt, 0)) > 0
       ORDER BY change_amt DESC
       LIMIT 3
-    \`;
+    `;
 
     for (const row of rows) {
       const current_amt = row.current_amt ?? 0;
@@ -339,9 +340,9 @@ export async function getManagementPriorities(
 
       priorities.push({
         area: row.area || "Unknown Department",
-        finding: \`Staff costs increased by SGD \${impact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (\${pct.toFixed(1)}%)\`,
+        finding: `Staff costs increased by SGD ${impact.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${pct.toFixed(1)}%)`,
         impact,
-        suggestedAction: \`Review headcount changes and overtime for \${row.area}\`,
+        suggestedAction: `Review headcount changes and overtime for ${row.area}`,
         priority,
       });
     }
@@ -352,11 +353,11 @@ export async function getManagementPriorities(
     // Also check AR: total overdue amount
     const overdueRow = await prisma.$queryRaw<
       { total_overdue: number }[]
-    >\`
+    >`
       SELECT SUM(outstanding)::float AS total_overdue
       FROM ar_invoice
       WHERE cancelled = false AND outstanding > 0 AND due_date < CURRENT_DATE
-    \`;
+    `;
     
     const totalOverdue = overdueRow[0]?.total_overdue ?? 0;
     if (totalOverdue > 0) {
@@ -366,7 +367,7 @@ export async function getManagementPriorities(
 
       priorities.push({
         area: "Accounts Receivable",
-        finding: \`Total overdue outstanding is SGD \${totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\`,
+        finding: `Total overdue outstanding is SGD ${totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         impact: totalOverdue,
         suggestedAction: "Follow up on high risk overdue invoices immediately",
         priority,

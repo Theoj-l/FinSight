@@ -39,8 +39,17 @@ export interface MetricValueResult {
 export interface MetricComparisonResult {
   questionType: "metric_comparison";
   metric: string;
-  current: { value: number; period: PeriodInfo };
-  previous: { value: number; period: PeriodInfo };
+  comparisonType: "period" | "actual_vs_budget";
+  current: {
+    value: number;
+    period: PeriodInfo;
+    source: "actual" | "budget";
+  };
+  previous: {
+    value: number;
+    period: PeriodInfo;
+    source: "actual" | "budget";
+  };
   change: number;
   /** null when previous value is zero (division by zero). */
   changePct: number | null;
