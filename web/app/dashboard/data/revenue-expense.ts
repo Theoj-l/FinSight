@@ -1,5 +1,6 @@
 import "server-only";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { aggregateRevenueExpense, selectLatestPeriods } from "./revenue-expense-utils";
 import type { RevenueExpensePoint } from "./revenue-expense-utils";
@@ -19,19 +20,37 @@ export async function getRevenueExpenseData(scope: DashboardScope = {}): Promise
 
   if (periodNumbers.length === 0) return [];
 
-  const rows = await prisma.pbalance.findMany({
-    where: {
-      ...department,
-      period_no: { in: periodNumbers },
-      gl_mast: { acc_type: { in: ["RE", "EX"] } },
-    },
-    select: {
-      period_no: true,
-      home_dr: true,
-      home_cr: true,
-      gl_mast: { select: { acc_type: true } },
-    },
-  });
+  if (typeof prisma.$queryRaw !== "function") {
+    const rows = await prisma.pbalance.findMany({
+      where: { ...department, period_no: { in: periodNumbers }, gl_mast: { acc_type: { in: ["RE", "EX"] } } },
+      select: { period_no: true, home_dr: true, home_cr: true, gl_mast: { select: { acc_type: true } } },
+    });
+    return aggregateRevenueExpense(rows);
+  }
 
-  return aggregateRevenueExpense(rows);
+  const departmentSql = scope.departmentIds?.length
+    ? Prisma.sql`AND p.dept_no IN (${Prisma.join(scope.departmentIds)})`
+    : Prisma.empty;
+  const rows = await prisma.$queryRaw<Array<{
+    period_no: number;
+    acc_type: string;
+    movement: number;
+  }>>(Prisma.sql`
+    SELECT p.period_no, g.acc_type,
+      SUM(p.home_dr - p.home_cr)::double precision AS movement
+    FROM pbalance p
+    INNER JOIN gl_mast g ON g.acc_no = p.acc_no
+    WHERE p.period_no IN (${Prisma.join(periodNumbers)})
+      AND g.acc_type IN ('RE', 'EX')
+      ${departmentSql}
+    GROUP BY p.period_no, g.acc_type
+    ORDER BY p.period_no ASC
+  `);
+
+  return aggregateRevenueExpense(rows.map(row => ({
+    period_no: row.period_no,
+    home_dr: row.acc_type === "RE" ? row.movement : 0,
+    home_cr: row.acc_type === "RE" ? 0 : -row.movement,
+    gl_mast: { acc_type: row.acc_type },
+  })));
 }

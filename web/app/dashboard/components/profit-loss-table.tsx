@@ -27,7 +27,7 @@ export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="profit-loss-title" className="text-lg font-semibold text-brand-navy">Profit and Loss Statement</h2>
-          <p className="mt-1 text-sm text-muted">Selected month actual versus budget. Year-to-date runs from January through the selected month, for the same business unit.</p>
+          <p className="mt-1 text-sm text-muted">Actual vs. budget for the selected month (latest month, if a range is selected). Year-to-date runs from January through that month, for the same business unit.</p>
         </div>
         {data?.period && <span className="text-sm font-medium text-muted">Period {data.period}</span>}
       </div>
