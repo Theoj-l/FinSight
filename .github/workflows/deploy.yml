@@ -30,11 +30,12 @@ jobs:
     if: ${{ inputs.target == 'both' || inputs.target == 'ml-service' }}
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
-    defaults:
-      run:
-        working-directory: ml-service
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      # Upload the whole repo, not just ml-service/ — the Railway service's
+      # own Root Directory setting ("/ml-service") expects to find that
+      # folder inside what it receives, the same way it would from a normal
+      # git-triggered deploy.
       - run: railway up --service=FinSight
