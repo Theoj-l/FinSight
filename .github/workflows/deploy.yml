@@ -16,25 +16,33 @@ jobs:
   web:
     if: ${{ inputs.target == 'both' || inputs.target == 'web' }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
+    # No working-directory: the Vercel project's Root Directory is "web", so the
+    # CLI must run from the repo root or it looks for web/web/package.json.
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
       - run: npm install --global vercel@latest
+      - name: Show target Vercel project
+        run: vercel project inspect --token=${{ secrets.VERCEL_TOKEN }}
       - run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-      - run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+      # No `vercel build` / `--prebuilt` here on purpose: that path forces the
+      # framework-native build and skips Dockerfile.vercel entirely. Plain
+      # `vercel deploy` lets Vercel detect Dockerfile.vercel at the project
+      # root (web/) and build+push the container instead.
+      - run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
 
   ml-service:
     if: ${{ inputs.target == 'both' || inputs.target == 'ml-service' }}
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
-    defaults:
-      run:
-        working-directory: ml-service
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - run: railway up --service=ml-service
+      # Upload the whole repo, not just ml-service/ — the Railway service's
+      # own Root Directory setting ("/ml-service") expects to find that
+      # folder inside what it receives, the same way it would from a normal
+      # git-triggered deploy.
+      - run: railway up --service=FinSight
