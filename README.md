@@ -8,10 +8,10 @@ OC Blueberry FYP
 
 Two deployable services:
 
-| Path         | Stack                                             | Port | Role                                              |
-| ------------ | ------------------------------------------------- | ---- | ------------------------------------------------- |
-| `web/`       | Next.js 16 (App Router), React 19, Tailwind, Prisma | 3000 | UI **and** API — route handlers + server actions  |
-| `ml-service/`| Python, FastAPI, Uvicorn                          | 8000 | Model training (offline) and inference (HTTP API) |
+| Path          | Stack                                               | Port | Role                                              |
+| ------------- | --------------------------------------------------- | ---- | ------------------------------------------------- |
+| `web/`        | Next.js 16 (App Router), React 19, Tailwind, Prisma | 3000 | UI **and** API — route handlers + server actions  |
+| `ml-service/` | Python, FastAPI, Uvicorn                            | 8000 | Model training (offline) and inference (HTTP API) |
 
 The browser only talks to `web/`. `web/` talks to `ml-service/` server-side over
 HTTP, authenticating with a shared secret (`ML_SERVICE_TOKEN`) in the
@@ -23,7 +23,7 @@ service is stateless.
 web/
   proxy.ts          refreshes the Supabase session, guards protected routes
   app/
-    api/            route handlers (the "backend")
+    api/            route handlers (the "backend"), incl. chat/classify (Gemini)
     auth/           server actions (login/signup/signout) + email confirm route
     (auth)/         login + signup pages (shared card layout)
     home/           signed-in overview, dated KPIs and threshold notifications
@@ -33,6 +33,7 @@ web/
   lib/
     db.ts           Prisma client singleton
     ml-client.ts    typed client for ml-service
+    gemini/         Gemini client + classifier for the dashboard chatbot
     supabase/       browser + server Supabase clients, proxy session helper
   prisma/
     finsight_schema.sql   hand-authored DDL — source of truth for the 17 tables
@@ -87,6 +88,10 @@ In `web/.env` (read by both Next.js and the Prisma CLI):
   The `db.<ref>.supabase.co` "direct" host is IPv6-only without the paid IPv4
   add-on, so use the session pooler URL here instead.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase → Project Settings → API
+- `GEMINI_API_KEY` — server-only, powers the dashboard chatbot's intent
+  classification (`lib/gemini/`). Get a key from
+  [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Required —
+  the app throws on startup without it.
 
 Both DB strings are under Supabase → Project Settings → Database. URL-encode any
 special characters in the password (`@` → `%40`, etc.). Use the **same**
@@ -205,11 +210,11 @@ To stop, press `Ctrl+C`.
 
 ## Testing
 
-| Suite | Location | Command |
-| ----- | -------- | ------- |
-| Unit / integration — Vitest | `web/`, `*.test.ts` beside the source | `npm test --prefix web` |
-| End-to-end — Playwright | `web/e2e/` | `npm run test:e2e --prefix web` |
-| ML service — pytest | `ml-service/tests/` | `pytest` (with the venv active) |
+| Suite                       | Location                              | Command                         |
+| --------------------------- | ------------------------------------- | ------------------------------- |
+| Unit / integration — Vitest | `web/`, `*.test.ts` beside the source | `npm test --prefix web`         |
+| End-to-end — Playwright     | `web/e2e/`                            | `npm run test:e2e --prefix web` |
+| ML service — pytest         | `ml-service/tests/`                   | `pytest` (with the venv active) |
 
 First Playwright run only: `npx playwright install chromium` in `web/`.
 
@@ -226,13 +231,13 @@ Python, or venv). Both services are containerised; Supabase Postgres is still
 external, so `web/.env` and `ml-service/.env` must already exist (run
 `npm run setup` once, or copy the `.env.example` files by hand).
 
-| Path | Image | Serves |
-| ---- | ----- | ------ |
-| `web/Dockerfile` | multi-stage; `dev` + `runner` targets | Next.js standalone server on 3000 |
-| `ml-service/Dockerfile` | multi-stage; `dev` + `runner` targets | Uvicorn on 8000 |
-| `docker-compose.yml` | — | both, on a private network (`web` → `ml-service` at `http://ml-service:8000`) |
-| `docker-compose.override.yml` | — | dev overlay: `next dev` / `uvicorn --reload`, source bind-mounted |
-| `web/Dockerfile.vercel` | deploy only (not in compose) | Next.js standalone server on `$PORT` — see [Deploying](#deploying) |
+| Path                          | Image                                 | Serves                                                                        |
+| ----------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| `web/Dockerfile`              | multi-stage; `dev` + `runner` targets | Next.js standalone server on 3000                                             |
+| `ml-service/Dockerfile`       | multi-stage; `dev` + `runner` targets | Uvicorn on 8000                                                               |
+| `docker-compose.yml`          | —                                     | both, on a private network (`web` → `ml-service` at `http://ml-service:8000`) |
+| `docker-compose.override.yml` | —                                     | dev overlay: `next dev` / `uvicorn --reload`, source bind-mounted             |
+| `web/Dockerfile.vercel`       | deploy only (not in compose)          | Next.js standalone server on `$PORT` — see [Deploying](#deploying)            |
 
 ### Development (hot reload)
 
@@ -264,11 +269,11 @@ changing either value. All other config is read at container start from the
 
 ### Deploying
 
-| Service | Target | How |
-| ------- | ------ | --- |
-| `web/` | Vercel | Native Next.js build (recommended) — set the project **Root Directory** to `web`, add the env vars in Project Settings. No Docker involved. |
-| `web/` | Vercel (container) | Optional. `web/Dockerfile.vercel` — Vercel auto-detects it and runs the image on a Function. Needs Root Directory `web` and `NEXT_PUBLIC_*` in Project Settings (forwarded to the build). Only worth it if you outgrow the native build. |
-| `ml-service/` | Railway | Point the service at `ml-service/`; Railway builds `ml-service/Dockerfile`. Override the start command / port to bind Railway's `$PORT` (the image defaults to 8000). Give it a public domain and set `ML_SERVICE_TOKEN` to match `web`. |
+| Service       | Target             | How                                                                                                                                                                                                                                      |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/`        | Vercel             | Native Next.js build (recommended) — set the project **Root Directory** to `web`, add the env vars in Project Settings. No Docker involved.                                                                                              |
+| `web/`        | Vercel (container) | Optional. `web/Dockerfile.vercel` — Vercel auto-detects it and runs the image on a Function. Needs Root Directory `web` and `NEXT_PUBLIC_*` in Project Settings (forwarded to the build). Only worth it if you outgrow the native build. |
+| `ml-service/` | Railway            | Point the service at `ml-service/`; Railway builds `ml-service/Dockerfile`. Override the start command / port to bind Railway's `$PORT` (the image defaults to 8000). Give it a public domain and set `ML_SERVICE_TOKEN` to match `web`. |
 
 `web/Dockerfile` (generic) and `web/Dockerfile.vercel` (Vercel Functions: listens
 on `$PORT`, default 80) are separate on purpose — keep them in sync when the
@@ -276,19 +281,19 @@ build changes.
 
 ## Common Commands
 
-| Command                              | What it does                          |
-| ------------------------------------ | ------------------------------------- |
-| `npm run dev`                        | Run both services with hot reload     |
-| `npm run docker:dev`                 | Same, in containers (hot reload)      |
-| `npm run docker:up` / `docker:down`  | Start / stop the production images    |
-| `npm run db:apply --prefix web`      | Apply `finsight_schema.sql` to Supabase |
-| `npm run db:pull --prefix web`       | Re-introspect `schema.prisma` from the DB |
-| `npm run db:studio --prefix web`     | Open the Prisma DB viewer             |
-| `npm run lint --prefix web`          | Lint the web app                      |
-| `npm test --prefix web`              | Web unit tests (Vitest)              |
-| `npm run test:e2e --prefix web`      | Web end-to-end tests (Playwright)    |
-| `pytest` (in `ml-service/`)          | Run ML service tests                  |
-| `ruff check .` (in `ml-service/`)    | Lint the ML service                   |
+| Command                             | What it does                              |
+| ----------------------------------- | ----------------------------------------- |
+| `npm run dev`                       | Run both services with hot reload         |
+| `npm run docker:dev`                | Same, in containers (hot reload)          |
+| `npm run docker:up` / `docker:down` | Start / stop the production images        |
+| `npm run db:apply --prefix web`     | Apply `finsight_schema.sql` to Supabase   |
+| `npm run db:pull --prefix web`      | Re-introspect `schema.prisma` from the DB |
+| `npm run db:studio --prefix web`    | Open the Prisma DB viewer                 |
+| `npm run lint --prefix web`         | Lint the web app                          |
+| `npm test --prefix web`             | Web unit tests (Vitest)                   |
+| `npm run test:e2e --prefix web`     | Web end-to-end tests (Playwright)         |
+| `pytest` (in `ml-service/`)         | Run ML service tests                      |
+| `ruff check .` (in `ml-service/`)   | Lint the ML service                       |
 
 ## Git Conventions
 

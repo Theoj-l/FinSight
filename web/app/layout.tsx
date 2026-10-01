@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ChatWidget } from "@/app/components/chat/chat-widget";
 import { CurrencyProvider } from "@/lib/currency-context";
 import "./globals.css";
 
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <CurrencyProvider>{children}</CurrencyProvider>
+        <ChatWidget />
       </body>
     </html>
   );
