@@ -222,7 +222,7 @@ To stop, press `Ctrl+C`.
 | End-to-end — Playwright     | `web/e2e/`                            | `npm run test:e2e --prefix web` |
 | ML service — pytest         | `ml-service/tests/`                   | `pytest` (with the venv active) |
 
-First Playwright run only: `npx playwright install chromium` in `web/`.
+First Playwright run only: `npx playwright install chromium webkit firefox` in `web/`.
 
 **CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the `web/`
 lint, typecheck, Vitest and Playwright suites on every push to `main` and every

@@ -29,7 +29,7 @@ test.describe("route protection", () => {
 });
 
 test.describe("sign-in form", () => {
-  test("supports labels, keyboard navigation, password visibility and native validation", async ({ page }) => {
+  test("supports labels, keyboard navigation, password visibility and native validation", async ({ page, browserName }) => {
     await page.goto("/login");
     const email = page.getByLabel("Email Address", { exact: true });
     const password = page.getByLabel("Password", { exact: true });
@@ -37,7 +37,8 @@ test.describe("sign-in form", () => {
     await page.keyboard.press("Tab");
     await expect(password).toBeFocused();
     await password.fill("example-password");
-    await page.keyboard.press("Tab");
+    // Safari on macOS uses Option-Tab to include buttons in keyboard navigation.
+    await page.keyboard.press(browserName === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab");
     await expect(page.getByRole("button", { name: "Show password" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(password).toHaveAttribute("type", "text");

@@ -67,8 +67,8 @@ jobs:
           restore-keys: |
             playwright-${{ runner.os }}-
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit firefox
 
       - name: E2E tests (Playwright)
         run: npm run test:e2e

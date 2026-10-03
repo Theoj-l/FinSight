@@ -1,0 +1,28 @@
+.page { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+.container { box-sizing: border-box; width: 100%; max-width: 1440px; margin: 0 auto; padding-left: clamp(24px, 4vw, 64px); padding-right: clamp(24px, 4vw, 64px); }
+.header { display: flex; align-items: center; justify-content: space-between; padding-top: 24px; padding-bottom: 24px; }
+.main { display: flex; flex: 1; flex-direction: column; }
+.hero { position: relative; overflow: hidden; }
+.heroContent { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 24px; padding-top: clamp(48px, 6vh, 100px); padding-bottom: clamp(48px, 6vh, 100px); }
+.title { max-width: 1000px; font-size: clamp(36px, 3.4vw, 64px); font-weight: 700; line-height: 1.15; letter-spacing: -.035em; color: var(--color-brand-navy); }
+.description { max-width: 800px; font-size: clamp(17px, 1.25vw, 20px); line-height: 1.7; color: var(--color-muted); }
+.signIn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 22px; border-radius: 8px; background: var(--color-brand-red); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background-color .18s, box-shadow .18s; }
+.signIn:hover { background: var(--color-brand-red-dark); box-shadow: 0 4px 12px rgba(184,31,18,.2); }
+.signIn:active { background: #96190f; }
+.signIn:focus-visible { outline: 2px solid var(--color-brand-blue); outline-offset: 4px; }
+.footer { padding-top: 24px; padding-bottom: 24px; color: var(--color-muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .signIn { transition: none; } }
+.navSignIn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 0 8px 12px; color: var(--color-brand-navy); font-size: 14px; font-weight: 600; text-decoration: none; background: transparent; }
+.navSignIn:hover { color: var(--color-brand-blue); text-decoration: underline; text-underline-offset: 5px; }
+.navSignIn:focus-visible { outline: 2px solid var(--color-brand-blue); outline-offset: 4px; border-radius: 4px; }
+
+.brand { display:flex; align-items:center; gap:20px; }
+.brand > span { width:1px; height:28px; background:#dfe4f0; }
+.heroContent { padding-top:clamp(40px,5vh,80px); padding-bottom:clamp(48px,6vh,88px); }
+.description { max-width:740px; }
+@media(max-width:480px) {
+  .brand { gap:10px; }
+  .brand img:first-child { width:84px; height:auto; }
+  .brand img:last-child { width:84px; height:auto; }
+  .brand > span { height:22px; }
+}

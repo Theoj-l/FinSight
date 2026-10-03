@@ -58,3 +58,21 @@
   .spinner { animation: none; }
   .input, .submit { transition: none; }
 }
+
+/* Give the form more presence on larger displays without letting it stretch. */
+@media (min-width: 1440px) {
+  .card { max-width: 480px; padding: 40px; }
+  .logo { width: 160px; margin-bottom: 28px; }
+  .title { font-size: 30px; }
+  .subtitle { font-size: 15px; }
+  .form { margin-top: 32px; gap: 24px; }
+  .label { font-size: 14px; }
+  .input { height: 50px; }
+  .eye { top: 5px; right: 5px; }
+  .submit { min-height: 50px; }
+}
+@media (min-width: 1920px) {
+  .card { max-width: 520px; padding: 44px; }
+  .logo { width: 176px; }
+  .title { font-size: 32px; }
+}
