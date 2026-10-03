@@ -4,11 +4,9 @@ import { Legend, Pie, PieChart, ResponsiveContainer, Sector, Tooltip } from "rec
 import { useCurrency } from "@/lib/currency-context";
 import { formatCurrencyExact, type RevenueByBusinessTypePoint } from "../data/revenue-by-business-type-utils";
 
-// Distinct from the "Revenue by Product Group" navy/blue/red palette.
-// Machining → cyan, Bulk → amber.
 const SEGMENT_COLORS: Record<string, string> = {
-  Machining: "#1f2a79",
-  Bulk: "#e02718",
+  Machining: "#e02718",
+  Bulk: "#1f2a79",
 };
 
 type RevenueByBusinessTypeChartProps = {
@@ -19,7 +17,7 @@ type RevenueByBusinessTypeChartProps = {
 
 export function RevenueByBusinessTypeChart({ data = [], error, loading = false }: RevenueByBusinessTypeChartProps) {
   const fx = useCurrency();
-  const chartData = data.map((entry, index) => ({
+  const chartData = data.map((entry) => ({
     ...entry,
     fill: SEGMENT_COLORS[entry.segment],
   }));

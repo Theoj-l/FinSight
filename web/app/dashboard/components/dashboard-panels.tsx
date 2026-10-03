@@ -1,4 +1,5 @@
 import { ExpenseCategoryChart } from "./expense-category-chart";
+import { ExpenseByBusinessTypeChart } from "./expense-by-business-type-chart";
 import { KpiCards } from "./kpi-cards";
 import { ProfitLossTable } from "./profit-loss-table";
 import { ProfitMarginChart } from "./profit-margin-chart";
@@ -6,6 +7,7 @@ import { RevenueByGroupChart } from "./revenue-by-group-chart";
 import { RevenueByBusinessTypeChart } from "./revenue-by-business-type-chart";
 import { RevenueExpenseChart } from "./revenue-expense-chart";
 import { getExpenseCategoryData } from "../data/expense-category";
+import { getExpenseByBusinessTypeData } from "../data/expense-by-business-type";
 import { getKpiData } from "../data/kpi";
 import { getProfitLossData } from "../data/profit-loss";
 import { getProfitMarginData } from "../data/profit-margin";
@@ -85,7 +87,19 @@ export async function ExpenseCategoryPanel({ scope }: { scope: DashboardScope })
   } catch {
     error = "Expense category data could not be loaded right now.";
   }
+
   return <ExpenseCategoryChart data={data} error={error} />;
+}
+
+export async function ExpenseByBusinessTypePanel({ scope }: { scope: DashboardScope }) {
+  let data;
+  let error;
+  try {
+    data = await getExpenseByBusinessTypeData(scope);
+  } catch {
+    error = "Expense business type data could not be loaded right now.";
+  }
+  return <ExpenseByBusinessTypeChart data={data} error={error} />;
 }
 
 export async function ProfitLossPanel({ scope }: { scope: DashboardScope }) {

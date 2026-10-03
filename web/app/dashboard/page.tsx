@@ -5,6 +5,7 @@ import { AppPage } from "@/app/components/app-page";
 import {
   DashboardPanelLoading,
   ExpenseCategoryPanel,
+  ExpenseByBusinessTypePanel,
   KpiPanel,
   ProfitLossPanel,
   ProfitMarginPanel,
@@ -77,10 +78,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="h-full">
             {!filterError && <Suspense fallback={<DashboardPanelLoading label="expense categories" />}>
               <ExpenseCategoryPanel scope={scope} />
+            </Suspense>}
+          </div>
+          <div className="h-full">
+            {!filterError && <Suspense fallback={<DashboardPanelLoading label="expense business types" />}>
+              <ExpenseByBusinessTypePanel scope={scope} />
             </Suspense>}
           </div>
         </div>
