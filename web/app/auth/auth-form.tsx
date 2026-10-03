@@ -1,105 +1,118 @@
 "use client";
 
+import styles from "./auth.module.css";
 import Link from "next/link";
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import type { AuthState } from "./actions";
 
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="mt-2 w-full rounded-lg bg-brand-red px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60"
-    >
-      {pending ? "Please wait…" : label}
-    </button>
-  );
-}
-
 type Props = {
-  mode: "login" | "signup";
+  mode?: "login" | "signup";
   action: (prev: AuthState, formData: FormData) => Promise<AuthState>;
   next?: string;
   notice?: string;
 };
 
-export function AuthForm({ mode, action, next, notice }: Props) {
-  const [state, formAction] = useActionState<AuthState, FormData>(
-    action,
-    undefined,
-  );
+
+export function AuthForm({ action, next, notice, mode = "login" }: Props) {
   const isLogin = mode === "login";
+  const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const errorRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (state?.error && !pending) {
+      errorRef.current?.focus();
+    }
+  }, [state, pending]);
 
   return (
     <div>
-      <div className="mb-6 text-center">
-        <h1 className="text-xl font-semibold text-brand-navy">
-          {isLogin ? "Sign in to FinSight" : "Create your FinSight account"}
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          {isLogin
-            ? "Enter your credentials to continue."
-            : "Use your work email to get started."}
-        </p>
-      </div>
+      <h1 className={styles.title}>{isLogin ? "Welcome back" : "Create an account"}</h1>
+      <p className={styles.subtitle}>
+        {isLogin ? "Sign in to your financial intelligence workspace." : "Get started with your FinSight workspace."}
+      </p>
 
       {notice && (
-        <p className="mb-4 rounded-lg bg-brand-blue-light px-3 py-2 text-sm text-brand-navy">
-          {notice}
-        </p>
+        <p role="status" className={styles.notice}>{notice}</p>
       )}
 
-      <form action={formAction} className="flex flex-col gap-3">
+      <form action={formAction} onSubmit={() => setShowPassword(false)} aria-busy={pending} className={styles.form}>
         {next && <input type="hidden" name="next" value={next} />}
-
-        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
-          Email
+        <div>
+          <label htmlFor="email" className={styles.label}>Email Address</label>
           <input
+            id="email"
             name="email"
             type="email"
             autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="you@company.com"
             required
-            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30"
+            disabled={pending}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            aria-invalid={Boolean(state?.fieldErrors?.email)}
+            aria-describedby={state?.fieldErrors?.email ? "email-error" : state?.error ? "auth-error" : undefined}
+            className={styles.input}
           />
-        </label>
+          {state?.fieldErrors?.email && <p id="email-error" className={styles.fieldError}>{state.fieldErrors.email}</p>}
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
-          Password
-          <input
-            name="password"
-            type="password"
-            autoComplete={isLogin ? "current-password" : "new-password"}
-            required
-            minLength={isLogin ? undefined : 8}
-            className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30"
-          />
-        </label>
+        <div>
+          <label htmlFor="password" className={styles.label}>Password</label>
+          <div className={styles.password}>
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={isLogin ? "current-password" : "new-password"}
+              minLength={isLogin ? undefined : 8}
+              required
+              disabled={pending}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              aria-invalid={Boolean(state?.fieldErrors?.password)}
+              aria-describedby={state?.fieldErrors?.password ? "password-error" : state?.error ? "auth-error" : !isLogin ? "password-hint" : undefined}
+              className={styles.input}
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-controls="password"
+              disabled={pending}
+              onClick={() => setShowPassword((visible) => !visible)}
+              className={styles.eye}
+            >
+              {showPassword ? <EyeOff aria-hidden="true" className="h-5 w-5" /> : <Eye aria-hidden="true" className="h-5 w-5" />}
+            </button>
+          </div>
+          {!isLogin && <p id="password-hint" className={styles.hint}>Use at least 8 characters.</p>}
+          {state?.fieldErrors?.password && <p id="password-error" className={styles.fieldError}>{state.fieldErrors.password}</p>}
+        </div>
 
         {state?.error && (
-          <p className="text-sm text-brand-red">{state.error}</p>
+          <p id="auth-error" ref={errorRef} tabIndex={-1} role="alert" className={styles.error}>
+            {state.error}
+          </p>
         )}
 
-        <SubmitButton label={isLogin ? "Sign in" : "Sign up"} />
+        <button type="submit" disabled={pending} className={styles.submit}>
+          {pending ? <LoaderCircle aria-hidden="true" className={styles.spinner} /> : null}
+          {pending ? (isLogin ? "Signing in…" : "Creating account…") : (isLogin ? "Sign In" : "Create Account")}
+          {!pending && <ArrowRight aria-hidden="true" className="h-4 w-4" />}
+        </button>
+        <span role="status" className={styles.srOnly}>{pending ? "Please wait while we process your request." : ""}</span>
       </form>
 
-      <p className="mt-5 text-center text-sm text-muted">
-        {isLogin ? (
-          <>
-            No account?{" "}
-            <Link href="/signup" className="font-medium text-brand-blue hover:underline">
-              Sign up
-            </Link>
-          </>
-        ) : (
-          <>
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-brand-blue hover:underline">
-              Sign in
-            </Link>
-          </>
-        )}
+      <p className={styles.switch}>
+        {isLogin ? "New user? " : "Already have an account? "}
+        <Link href={isLogin ? "/signup" : "/login"} className={styles.link}>
+          {isLogin ? "Sign up to create an account" : "Sign in"}
+        </Link>
       </p>
     </div>
   );

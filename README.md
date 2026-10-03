@@ -25,7 +25,7 @@ web/
   app/
     api/            route handlers (the "backend"), incl. chat/classify (Gemini)
     auth/           server actions (login/signup/signout) + email confirm route
-    (auth)/         login + signup pages (shared card layout)
+    (auth)/         card-based sign-in and account creation pages
     home/           signed-in overview, dated KPIs and threshold notifications
     assistant/      conversational workspace (in development)
     dashboard/      detailed financial dashboard
@@ -116,11 +116,17 @@ In the Supabase dashboard:
 
 - **Authentication → URL Configuration** — set Site URL to `http://localhost:3000`
   (add the deployed URL later).
-- **Authentication → Sign In / Providers → Email** — for local dev, turn
-  **"Confirm email" off** so sign-up logs you straight in. When you turn it back
-  on, point the confirmation email template at
-  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
-  (handled by `web/app/auth/confirm/route.ts`).
+- Public account creation remains available pending the team's access-policy decision.
+  The app does not change hosted Supabase Auth settings. Keep the Email provider
+  and **Allow new users to sign up** enabled to support `/signup`.
+- Landing-page entry links go to `/login` by default. Users can choose **Create an
+  account** from the sign-in card. Registration validates email and an eight-character
+  minimum password, then uses the existing Supabase signup flow.
+- With email confirmation enabled, users return to sign-in with an inbox notice.
+  Configure the confirmation email template with
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`.
+  With confirmation disabled, a new session redirects to `/home`.
+- No password-reset link is shown because the app has no complete reset flow.
 
 Protected routes are listed in `web/lib/supabase/proxy.ts`: `/home`, `/dashboard`,
 `/assistant`, `/insights`, `/reports`, and `/settings`. Successful sign-in defaults to `/home`;
