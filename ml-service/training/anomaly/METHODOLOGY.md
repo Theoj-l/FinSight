@@ -497,3 +497,30 @@ python -m training.anomaly.evaluate            # ~16 s  -> models/anomaly/v1/REP
 `--quick` (3 train, 2 validation and 2 test seeds) gives a smoke run in about
 35 s. `pytest` runs the whole suite, including that smoke run. Use
 `pytest -m "not slow"` to skip it.
+
+---
+
+## 11. From model to dashboard
+
+The trained model runs in production as a batch job, not per request. Code:
+`app/anomaly/score.py`.
+
+1. **Trigger.** A run starts after every `python -m datagen --load`, from a
+   scheduled `python -m app.anomaly.score`, or from `POST /anomalies/rescore`.
+   A Postgres advisory lock allows one run at a time; a second request gets 409.
+2. **Read.** The ledger is streamed from Postgres
+   (`loaders.from_postgres`). On the canonical dataset this gives exactly the
+   same 57 alerts, scores and reasons as the in-memory data used in §8.
+3. **Closed months only.** Months up to the end of last month (Singapore time)
+   are scored. A month still in progress has partial totals that look like a
+   sudden revenue drop, so it is left out until it ends. This is the same
+   causal rule as §5: a month is judged only on data up to its own end.
+4. **Store.** The alerts replace the contents of `anomaly_alert` in one
+   transaction, and the run is recorded in `anomaly_run`. An alert that is
+   raised again keeps its `first_flagged_at`, so the web app can notify about
+   each one once. If a run fails, the previous alerts stay in place.
+5. **Read in the app.** The dashboard reads the two tables through Prisma
+   (`web/app/dashboard/data/anomalies.ts`). It never loads the model.
+
+A run on the canonical ledger takes about 4 s: 3 s to read 105k ledger lines
+and 1–2 s to score.

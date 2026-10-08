@@ -1,7 +1,7 @@
 """Load the AutoCount tables the detectors need into typed DataFrames.
 
-Sources: an in-memory `datagen.pipeline.generate()` result or a directory of
-CSVs written by `python -m datagen`. (Postgres is next phase — same shape.)
+Sources: an in-memory `datagen.pipeline.generate()` result, a directory of
+CSVs written by `python -m datagen`, or the live Postgres database.
 
 Only ledger facts are loaded. `ar_invoice.outstanding` / `local_payment_amt`
 are deliberately dropped: they are a snapshot at the extract date, so using
@@ -10,13 +10,30 @@ rebuilt from invoices and GL receipts instead (features/receivables.py).
 """
 from __future__ import annotations
 
+import io
 import os
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
+if TYPE_CHECKING:
+    import psycopg
+
 CODE_COLS = ["acc_no", "dept_no", "debtor_code", "doc_no", "ref_no1", "acc_type"]
 PL_TYPES = ("RE", "OI", "CS", "EX")   # P&L account types (is_bs_type = false)
+
+PG_QUERIES = {
+    "gl_dtl": "select gl_trx_id, acc_no, dept_no, trans_date, journal_type, ref_no1, home_dr, home_cr "
+              "from gl_dtl order by gl_dtl_key",
+    "pbalance": "select period_no, acc_no, dept_no, home_dr, home_cr from pbalance "
+                "order by period_no, acc_no, dept_no",
+    "iv": "select doc_key, doc_no, doc_date, local_ex_tax from iv order by doc_key",
+    "iv_dtl": "select doc_key, dept_no, local_sub_total from iv_dtl order by dtl_key",
+    "ar_invoice": "select doc_no, debtor_code, doc_date, due_date, local_net_total from ar_invoice "
+                  "order by doc_key",
+    "gl_mast": "select acc_no, acc_type from gl_mast order by acc_no",
+}
 
 
 @dataclass
@@ -51,6 +68,8 @@ def _books(gl, pbalance, iv, iv_dtl, ar, gl_mast) -> Books:
     # model feature (see schema.BANNED_COLUMNS).
     gl = _frame(gl, ["gl_trx_id", "acc_no", "dept_no", "trans_date", "journal_type",
                      "ref_no1", "home_dr", "home_cr"])
+    if gl.empty:
+        raise ValueError("gl_dtl is empty: there is no ledger to score")
     gl["trans_date"] = pd.to_datetime(gl["trans_date"])
     gl["period_no"] = _period(gl["trans_date"])
 
@@ -86,6 +105,20 @@ def from_csv_dir(path: str) -> Books:
     """From a `python -m datagen` output directory."""
     def read(name: str) -> pd.DataFrame:
         return pd.read_csv(os.path.join(path, f"{name}.csv"), dtype={c: str for c in CODE_COLS})
+    return _books(read("gl_dtl"), read("pbalance"), read("iv"), read("iv_dtl"),
+                  read("ar_invoice"), read("gl_mast"))
+
+
+def from_postgres(conn: psycopg.Connection) -> Books:
+    """From the live database. Each table is streamed with COPY as CSV, so
+    values are parsed exactly as in `from_csv_dir`."""
+    def read(name: str) -> pd.DataFrame:
+        buf = io.BytesIO()
+        with conn.cursor().copy(f"copy ({PG_QUERIES[name]}) to stdout with (format csv, header)") as cp:
+            for chunk in cp:
+                buf.write(chunk)
+        buf.seek(0)
+        return pd.read_csv(buf, dtype={c: str for c in CODE_COLS})
     return _books(read("gl_dtl"), read("pbalance"), read("iv"), read("iv_dtl"),
                   read("ar_invoice"), read("gl_mast"))
 

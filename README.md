@@ -185,6 +185,22 @@ python -m datagen --load    # generate, validate, load
 See [ml-service/datagen/DATA_MODEL.md](ml-service/datagen/DATA_MODEL.md) for the
 business model, every table's meaning, the embedded patterns, and the anomalies.
 
+### Anomaly alerts
+
+`ml-service` scores the ledger and stores the results in two tables,
+`anomaly_alert` (current alerts) and `anomaly_run` (one row per scoring run).
+The dashboard reads them with Prisma through
+[web/app/dashboard/data/anomalies.ts](web/app/dashboard/data/anomalies.ts) and
+never calls the model. Alerts are refreshed:
+
+- automatically after `python -m datagen --load`
+- by `python -m app.anomaly.score` (from `ml-service/`; what a nightly cron runs)
+- by `POST /anomalies/rescore` on ml-service (`mlClient.rescoreAnomalies()` from `web/`)
+
+The model file is gitignored. Build it once with
+`python -m training.anomaly.train` (~80 s) before scoring. How the model works:
+[ml-service/training/anomaly/METHODOLOGY.md](ml-service/training/anomaly/METHODOLOGY.md).
+
 ## Run the Application
 
 ```bash

@@ -1,13 +1,14 @@
-// The 17 AutoCount tables below are INTROSPECTED from the database, not managed
-// by Prisma migrations. Source of truth: prisma/finsight_schema.sql.
+// Every model below is INTROSPECTED from the database, not managed by Prisma
+// migrations: the 17 AutoCount tables plus the anomaly_alert / anomaly_run app
+// tables. Source of truth: prisma/finsight_schema.sql.
 // Workflow: edit finsight_schema.sql -> `npm run db:apply` -> `npm run db:pull`
 // -> `npm run db:generate`. Do not hand-edit the models.
+// `prisma db pull` drops these comments; restore them after pulling.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // "native" covers local dev; "debian-openssl-3.0.x" is the query-engine
-  // target for the Docker images (node:22-bookworm-slim). `prisma db pull`
-  // preserves this block, so it survives re-introspection.
+  // target for the Docker images (node:22-bookworm-slim).
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
@@ -246,4 +247,40 @@ model sales_agent {
   is_active                                      Boolean
   ar_invoice_ar_invoice_sales_agentTosales_agent ar_invoice[] @relation("ar_invoice_sales_agentTosales_agent")
   debtor_debtor_sales_agentTosales_agent         debtor[]     @relation("debtor_sales_agentTosales_agent")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model anomaly_alert {
+  unit_kind        String      @db.VarChar(4)
+  unit_key         String      @db.VarChar(12)
+  period_no        Int
+  score            Float
+  reasons          Json        @default("[]")
+  model_version    String      @db.VarChar(20)
+  first_flagged_at DateTime    @default(now()) @db.Timestamptz(6)
+  run_id           BigInt
+  anomaly_run      anomaly_run @relation(fields: [run_id], references: [run_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_anomaly_alert_run_id")
+
+  @@id([unit_kind, unit_key, period_no], map: "pk_anomaly_alert")
+  @@index([period_no], map: "ix_anomaly_alert_period")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model anomaly_run {
+  run_id         BigInt          @id(map: "pk_anomaly_run") @default(autoincrement())
+  started_at     DateTime        @default(now()) @db.Timestamptz(6)
+  finished_at    DateTime?       @db.Timestamptz(6)
+  status         String          @default("running") @db.VarChar(10)
+  triggered_by   String          @db.VarChar(20)
+  model_version  String          @db.VarChar(20)
+  data_through   Int?
+  scored_through Int?
+  n_alerts       Int?
+  n_new          Int?
+  error          String?
+  anomaly_alert  anomaly_alert[]
 }

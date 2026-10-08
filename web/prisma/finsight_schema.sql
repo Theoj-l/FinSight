@@ -333,4 +333,62 @@ alter table item enable row level security;
 alter table item_group enable row level security;
 alter table sales_agent enable row level security;
 
+-- ---------------------------------------------------------------------------
+-- FinSight application tables (not AutoCount): anomaly-detection output.
+-- Written only by ml-service (app/anomaly/score.py); read by web/ through Prisma.
+-- No foreign keys into the ledger tables, so `python -m datagen --load`
+-- (truncate ... cascade) never empties them; it rescores them instead.
+-- ---------------------------------------------------------------------------
+create table anomaly_run (
+  run_id                 bigint           generated always as identity,
+  started_at             timestamptz      default now() not null,
+  finished_at            timestamptz     ,
+  status                 varchar(10)      default 'running' not null,
+  triggered_by           varchar(20)      not null,
+  model_version          varchar(20)      not null,
+  data_through           integer         ,
+  scored_through         integer         ,
+  n_alerts               integer         ,
+  n_new                  integer         ,
+  error                  text            ,
+  constraint pk_anomaly_run primary key (run_id),
+  constraint ck_anomaly_run_status check (status in ('running', 'ok', 'failed'))
+);
+
+create table anomaly_alert (
+  unit_kind              varchar(4)       not null,
+  unit_key               varchar(12)      not null,
+  period_no              integer          not null,
+  score                  double precision not null,
+  reasons                jsonb            default '[]' not null,
+  model_version          varchar(20)      not null,
+  first_flagged_at       timestamptz      default now() not null,
+  run_id                 bigint           not null,
+  constraint pk_anomaly_alert primary key (unit_kind, unit_key, period_no),
+  constraint ck_anomaly_alert_unit_kind check (unit_kind in ('dept', 'acc', 'cust')),
+  constraint fk_anomaly_alert_run_id foreign key (run_id) references anomaly_run(run_id)
+);
+create index ix_anomaly_alert_period on anomaly_alert (period_no);
+
+comment on table anomaly_run is 'One row per anomaly scoring run. The latest ok run says how fresh anomaly_alert is.';
+comment on column anomaly_run.status is 'running, ok or failed. On failure anomaly_alert keeps the previous run''s alerts.';
+comment on column anomaly_run.triggered_by is 'What started the run: cli (cron), api (POST /anomalies/rescore) or datagen (after a data load).';
+comment on column anomaly_run.model_version is 'Trained model that produced the alerts, e.g. v1 (ml-service/models/anomaly/<version>).';
+comment on column anomaly_run.data_through is 'Latest period_no present in the ledger when the run started.';
+comment on column anomaly_run.scored_through is 'Latest period_no scored. Only closed months are scored; a month still in progress is provisional.';
+comment on column anomaly_run.n_alerts is 'Alerts in anomaly_alert after the run.';
+comment on column anomaly_run.n_new is 'Alerts first raised by this run (not present before it).';
+comment on column anomaly_run.error is 'Exception text when status = failed.';
+comment on table anomaly_alert is 'Current anomaly alerts, replaced by every successful scoring run. One row per flagged unit-month.';
+comment on column anomaly_alert.unit_kind is 'dept = business unit (key dept_no), acc = corporate expense account (key acc_no on dept CP), cust = customer (key debtor acc_no).';
+comment on column anomaly_alert.unit_key is 'dept_no, acc_no or debtor code, depending on unit_kind. Not a foreign key: it points at different tables.';
+comment on column anomaly_alert.period_no is 'Month flagged, YYYYMM.';
+comment on column anomaly_alert.score is 'Model probability that the unit-month is anomalous, 0 to 1. Rows exist only at or above the alert threshold.';
+comment on column anomaly_alert.reasons is 'JSON array of plain-English evidence strings, strongest first. Safe to show as-is.';
+comment on column anomaly_alert.first_flagged_at is 'When this unit-month was first flagged. Kept across reruns, so (unit_kind, unit_key, period_no) is a stable notification id.';
+comment on column anomaly_alert.run_id is 'The run that last confirmed this alert.';
+
+alter table anomaly_run enable row level security;
+alter table anomaly_alert enable row level security;
+
 commit;

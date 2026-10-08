@@ -76,7 +76,23 @@ def main(argv=None) -> int:
         print("· load")
         sinks.load_postgres(tables, log, run_meta, args.db_url)
         print("loaded.")
+        rescore_anomalies(args.db_url)
     return 0
+
+
+def rescore_anomalies(db_url: str) -> None:
+    """The ledger just changed, so refresh the stored anomaly alerts."""
+    from app.anomaly import score
+    from app.config import get_settings
+
+    try:
+        model = score.load_model(score.model_dir(get_settings()))
+    except FileNotFoundError as e:
+        print(f"· anomaly alerts NOT refreshed: {e}")
+        return
+    print("· score anomalies")
+    s = score.run(db_url, model, triggered_by="datagen")
+    print(f"  {s.n_alerts} alerts ({s.n_new} new), scored through {s.scored_through}, {s.seconds}s")
 
 
 if __name__ == "__main__":
