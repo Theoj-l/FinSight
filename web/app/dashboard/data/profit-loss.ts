@@ -1,15 +1,21 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { aggregateProfitLoss, type ProfitLossStatement } from "./profit-loss-utils";
 import { ledgerDepartment, type DashboardScope } from "./dashboard-scope";
 
 export type { ProfitLossStatement } from "./profit-loss-utils";
 
+const readProfitLossFormatRows = () => prisma.pl_format.findMany({ orderBy: { seq: "asc" } });
+const getProfitLossFormatRows = process.env.NODE_ENV === "test"
+  ? readProfitLossFormatRows
+  : unstable_cache(readProfitLossFormatRows, ["dashboard-profit-loss-format"], { revalidate: 3600 });
+
 export async function getProfitLossData(scope: DashboardScope = {}): Promise<ProfitLossStatement> {
   const department = ledgerDepartment(scope);
   const [formatRows, latestPeriodRow] = await Promise.all([
-    prisma.pl_format.findMany({ orderBy: { seq: "asc" } }),
+    getProfitLossFormatRows(),
     scope.period === undefined
       ? prisma.pbalance.findFirst({ where: department, orderBy: { period_no: "desc" }, select: { period_no: true } })
       : Promise.resolve({ period_no: scope.period }),
