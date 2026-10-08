@@ -55,9 +55,28 @@ export type MlHealth = {
   service: string;
 };
 
+/** Result of one anomaly scoring run (mirrors ml-service RescoreResult). */
+export type AnomalyRescoreResult = {
+  run_id: number;
+  model_version: string;
+  /** Latest period_no (YYYYMM) in the ledger. */
+  data_through: number;
+  /** Latest closed period_no scored; later months are provisional. */
+  scored_through: number;
+  n_alerts: number;
+  /** Alerts raised for the first time by this run. */
+  n_new: number;
+  seconds: number;
+};
+
 export const mlClient = {
   health: (signal?: AbortSignal) => request<MlHealth>("/health", { signal }),
 
-  // Add prediction calls here as the model surface grows, e.g.:
-  // predict: (input: PredictInput) => request<PredictResult>("/predict", { method: "POST", body: input }),
+  /**
+   * Re-score the ledger and refresh the anomaly_alert table (about 5 s).
+   * Call after the ledger changes. Dashboards read the table instead, via
+   * app/dashboard/data/anomalies.ts. A run already in progress gives a 409.
+   */
+  rescoreAnomalies: (signal?: AbortSignal) =>
+    request<AnomalyRescoreResult>("/anomalies/rescore", { method: "POST", signal }),
 };

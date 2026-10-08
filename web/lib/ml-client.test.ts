@@ -59,6 +59,29 @@ describe("mlClient", () => {
     await expect(mlClient.health()).rejects.toThrow("network down");
   });
 
+  it("triggers an anomaly rescore with a POST", async () => {
+    const run = {
+      run_id: 3, model_version: "v1", data_through: 202608, scored_through: 202608,
+      n_alerts: 57, n_new: 0, seconds: 4.1,
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(run));
+
+    expect(await mlClient.rescoreAnomalies()).toEqual(run);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/anomalies\/rescore$/);
+    expect(options.method).toBe("POST");
+    expect(options.headers).toMatchObject({ "x-ml-service-token": expect.any(String) });
+  });
+
+  it("surfaces a run already in progress as a 409 MlServiceError", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('{"detail":"an anomaly scoring run is already in progress"}', { status: 409 }),
+    );
+
+    await expect(mlClient.rescoreAnomalies()).rejects.toMatchObject({ status: 409 });
+  });
+
   it("forwards an abort signal to fetch", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ status: "ok", service: "ml-service" }),

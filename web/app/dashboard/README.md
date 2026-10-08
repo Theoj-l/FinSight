@@ -61,3 +61,34 @@ Run `npm test`, `npm run lint`, and `npx tsc --noEmit` from `web/`.
 port is restricted. Tests cover URL validation, all/default behavior, composed
 query scopes, date boundaries, YTD scope, comparison scope, missing/ambiguous
 budgets, unsupported branch attribution and threshold migration.
+
+## Anomaly alerts
+
+`data/anomalies.ts` reads the alerts that ml-service stores in `anomaly_alert`.
+It never calls the model, so it costs the same as any other dashboard query.
+
+```ts
+import { getAnomalyAlerts, getAnomalyStatus } from "@/app/dashboard/data/anomalies";
+
+const alerts = await getAnomalyAlerts({ periodStart: 202601, periodEnd: 202608 });
+const status = await getAnomalyStatus();   // null before the first scoring run
+```
+
+Each alert is one flagged unit-month:
+
+| Field | Meaning |
+|---|---|
+| `id` | `kind:unitKey:periodNo`. Stable across rescoring, so it can key notifications. |
+| `kind` | `dept` business unit, `acc` corporate expense account, `cust` customer (`ANOMALY_KIND_LABEL` has display names) |
+| `unitKey`, `unitLabel` | the code and its name, e.g. `HL` / Heavy Lift & Haulage |
+| `periodNo` | flagged month, YYYYMM |
+| `score` | model probability, 0–1. Every stored alert is already above the threshold; use it for ordering or emphasis, not to re-filter. |
+| `reasons` | plain-English evidence, strongest first. Show as-is. |
+| `firstFlaggedAt` | when the alert first appeared |
+
+- Only closed months are scored. Months after `status.scoredThrough` are
+  provisional; show them as "not yet checked", never as "no anomalies".
+- `status.scoredAt` says how fresh the alerts are. Alerts change only when the
+  ledger is rescored (after a data load, a nightly run, or
+  `mlClient.rescoreAnomalies()`), so they are safe to cache with the page.
+- An alert can disappear after a rescore if new data explains it.

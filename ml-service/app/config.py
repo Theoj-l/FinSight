@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     # Directory holding trained model artifacts (gitignored).
     models_dir: str = "models"
 
+    # Which trained anomaly model to serve: <models_dir>/anomaly/<version>/.
+    anomaly_model_version: str = "v1"
+
+    # Supabase Postgres, session pooler (port 5432). Anomaly scoring reads the
+    # ledger here and writes anomaly_alert / anomaly_run.
+    database_url: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

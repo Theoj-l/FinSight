@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from datetime import date
 
 PHASE = 1
+# Bump when the generated data changes shape or meaning; recorded in
+# datagen.run.notes and SUMMARY.md. Changelog: DATA_MODEL.md §10.
+DATASET_VERSION = "1.1"
 CURRENCY = "SGD"
 
 # --- Run window -----------------------------------------------------------
@@ -139,6 +142,10 @@ OPEX_2021_MONTHLY = {
     "6800":  15_000,   # Motor vehicle expenses
     "6900":   3_000,   # Sundry expenses
 }
+# Opex accounts settled as one cash journal ("Expense {acc}") on the regular
+# payment day each month. Payroll, depreciation and interest are posted separately.
+CASH_OPEX_ACCOUNTS = ["6200", "6210", "6220", "6300", "6500", "6510", "6520",
+                      "6600", "6700", "6800", "6900"]
 OPEX_GROWTH = 0.05             # annual
 OPEX_MONTHLY_NOISE = 0.05
 SALARY_STEP_MONTH = 4          # April increment
