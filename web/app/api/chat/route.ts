@@ -69,39 +69,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ── 5. Intent routing & Data retrieval ────────────────────────────────
-    let data: RetrievalResult | null = null;
-    let reply: string;
-
-    switch (classification.intent) {
-      case "information_retrieval": {
-        // Execute database query engine
-        data = await retrieveData(classification);
-
-        // Synthesise natural-language answer with ground-truth data
-        reply = await generateResponse(query, classification, data);
-        break;
-      }
-
-      case "analytical_interpretation": {
-        // Analytical variance & driver drill-down (planned for subsequent phase)
-        reply = `I have classified this as an **Analytical Interpretation** (${classification.question_type}). Root-cause drill-down analysis is currently in progress.`;
-        break;
-      }
-
-      case "recommendation": {
-        // Actionable decision support (planned for subsequent phase)
-        reply = `I have classified this as a **Recommendation** (${classification.question_type}). Decision support workflows are currently in progress.`;
-        break;
-      }
-
-      default: {
-        reply =
-          classification.reason ||
-          "I am unable to process this request with the currently available models.";
-        break;
-      }
-    }
+    // ── 5. Route every supported question_type to its retrieval service ───
+    const data: RetrievalResult = await retrieveData(classification);
+    const reply = await generateResponse(query, classification, data);
 
     return NextResponse.json({
       reply,

@@ -189,7 +189,7 @@ export async function queryOutstanding(filters: ResolvedFilters): Promise<number
   return rows[0]?.amount ?? 0;
 }
 
-/** Query budget from budget_pbalance. */
+/** Query a P&L budget metric from budget_pbalance. */
 async function queryBudget(
   metric: string,
   periodNos: number[],
@@ -201,24 +201,20 @@ async function queryBudget(
       ? Prisma.sql`AND bp.dept_no IN (${Prisma.join(filters.deptNos)})`
       : Prisma.empty;
 
-  let accTypeCondition: Prisma.Sql;
-  if (metric === "revenue") {
-    accTypeCondition = Prisma.sql`AND pf.credit_as_positive = true`;
-  } else if (metric === "cogs") {
-    const cogsType = await prisma.pl_format.findFirst({
-      where: { credit_as_positive: false, acc_type: { not: null }, row_type: "A" },
-      orderBy: { seq: "asc" },
-      select: { acc_type: true },
-    });
-    accTypeCondition = cogsType?.acc_type
-      ? Prisma.sql`AND gm.acc_type = ${cogsType.acc_type}`
-      : Prisma.sql`AND 1 = 0`;
-  } else {
-    accTypeCondition = Prisma.sql`AND pf.credit_as_positive = false`;
-  }
+  const cogsType = await prisma.pl_format.findFirst({
+    where: { credit_as_positive: false, acc_type: { not: null }, row_type: "A" },
+    orderBy: { seq: "asc" },
+    select: { acc_type: true },
+  });
+  const cogsAccType = cogsType?.acc_type ?? "__NONE__";
 
-  const rows = await prisma.$queryRaw<{ amount: number }[]>`
-    SELECT COALESCE(SUM(bp.amount), 0)::float AS amount
+  const rows = await prisma.$queryRaw<
+    { revenue: number; expenses: number; cogs: number }[]
+  >`
+    SELECT
+      COALESCE(SUM(CASE WHEN pf.credit_as_positive = true THEN bp.amount ELSE 0 END), 0)::float AS revenue,
+      COALESCE(SUM(CASE WHEN pf.credit_as_positive = false THEN bp.amount ELSE 0 END), 0)::float AS expenses,
+      COALESCE(SUM(CASE WHEN gm.acc_type = ${cogsAccType} THEN bp.amount ELSE 0 END), 0)::float AS cogs
     FROM budget_pbalance bp
     JOIN gl_mast gm ON bp.acc_no = gm.acc_no
     JOIN acc_type at ON gm.acc_type = at.acc_type
@@ -226,9 +222,31 @@ async function queryBudget(
     WHERE at.is_bs_type = false
       AND bp.period_no IN (${periodList})
       ${deptCondition}
-      ${accTypeCondition}
   `;
-  return rows[0]?.amount ?? 0;
+  const row = rows[0] ?? { revenue: 0, expenses: 0, cogs: 0 };
+
+  switch (metric) {
+    case "revenue": return row.revenue;
+    case "cogs": return row.cogs;
+    case "total_cost": return row.expenses;
+    case "operating_expense": return row.expenses - row.cogs;
+    case "gross_profit": return row.revenue - row.cogs;
+    case "net_profit": return row.revenue - row.expenses;
+    case "gross_margin":
+      return row.revenue !== 0
+        ? ((row.revenue - row.cogs) / row.revenue) * 100
+        : 0;
+    case "net_margin":
+      return row.revenue !== 0
+        ? ((row.revenue - row.expenses) / row.revenue) * 100
+        : 0;
+    default:
+      throw new Error(`Metric "${metric}" is not supported for budget queries.`);
+  }
+}
+
+function isBudgetRequest(classification: ClassificationResult): boolean {
+  return classification.reason.toLowerCase().includes("budget");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -242,7 +260,7 @@ export async function getMetricValue(
   const period = await resolvePeriod(classification.period);
   const filters = await resolveFilters(classification);
 
-  const isBudget = classification.reason?.toLowerCase().includes("budget") ?? false;
+  const isBudget = isBudgetRequest(classification);
 
   let value: number;
   let source: "actual" | "budget" = "actual";
@@ -287,6 +305,47 @@ export async function getMetricComparison(
     throw new Error("A time period is required for metric comparison.");
   }
 
+  const filters = await resolveFilters(classification);
+
+  if (isBudgetRequest(classification)) {
+    if (!GL_METRICS.has(metric)) {
+      throw new Error(
+        `Metric "${metric}" is not supported for actual-versus-budget comparison.`
+      );
+    }
+
+    const actualValue = await computeGLMetric(
+      metric,
+      currentPeriod.periodNos,
+      filters
+    );
+    const budgetValue = await queryBudget(
+      metric,
+      currentPeriod.periodNos,
+      filters
+    );
+    const variance = actualValue - budgetValue;
+
+    return {
+      questionType: "metric_comparison",
+      metric,
+      comparisonType: "actual_vs_budget",
+      current: {
+        value: actualValue,
+        period: toPeriodInfo(currentPeriod),
+        source: "actual",
+      },
+      previous: {
+        value: budgetValue,
+        period: toPeriodInfo(currentPeriod),
+        source: "budget",
+      },
+      change: variance,
+      changePct: budgetValue !== 0 ? (variance / budgetValue) * 100 : null,
+      filters: filters.applied,
+    };
+  }
+
   const comparisonPeriod = await resolvePeriod(
     classification.comparison_period ?? "previous_period",
     currentPeriod.periodNos[0]
@@ -294,8 +353,6 @@ export async function getMetricComparison(
   if (!comparisonPeriod) {
     throw new Error("Could not resolve the comparison period.");
   }
-
-  const filters = await resolveFilters(classification);
 
   let currentValue: number;
   let previousValue: number;
@@ -316,8 +373,17 @@ export async function getMetricComparison(
   return {
     questionType: "metric_comparison",
     metric,
-    current: { value: currentValue, period: toPeriodInfo(currentPeriod) },
-    previous: { value: previousValue, period: toPeriodInfo(comparisonPeriod) },
+    comparisonType: "period",
+    current: {
+      value: currentValue,
+      period: toPeriodInfo(currentPeriod),
+      source: "actual",
+    },
+    previous: {
+      value: previousValue,
+      period: toPeriodInfo(comparisonPeriod),
+      source: "actual",
+    },
     change,
     changePct,
     filters: filters.applied,
