@@ -66,7 +66,7 @@ files — enforced in `vitest.config.ts` and `playwright.config.ts`.
 npm test                 # Vitest, once (CI mode)
 npm run test:watch       # Vitest, re-run on change
 
-npx playwright install chromium   # one-time, downloads the browser
+npx playwright install chromium webkit firefox   # one-time, downloads the browser
 npm run test:e2e         # Playwright, headless
 npm run test:e2e:ui      # Playwright, interactive debugger
 npm run test:e2e:report  # open the last HTML report
@@ -97,3 +97,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Landing-page carousel regression checks
+
+The landing, login and carousel suites run in Chromium, WebKit and Firefox.
+Run `npm run test:e2e -- e2e/carousel.spec.ts e2e/home.spec.ts e2e/auth.spec.ts`.
+Carousel checks cover 375/768/1440/2560px layouts, one visible feature at rest,
+forward/reverse wrapping, animation-frame clipping and continuous coverage,
+rapid clicks, keyboard/swipe controls, autoplay/pause/resume, reduced motion,
+resize/reload, and containment when its stylesheet rules are missing.
+The stylesheet-loss check deliberately removes only carousel rules from the
+bundled CSS; it must not disable unrelated page styles.
+
+Carousel geometry and hidden-slide state are also defined on the elements so
+that a missing or delayed development stylesheet cannot expose all features.
+Only the incoming and outgoing slides participate in a 700ms transition; a
+short fallback timer settles it if the animation event is interrupted.
