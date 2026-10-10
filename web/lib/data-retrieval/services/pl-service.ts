@@ -42,9 +42,12 @@ export async function getPLSummary(
   const plFormats = await prisma.pl_format.findMany({ orderBy: { seq: "asc" } });
 
   // Get amounts by acc_type
-  const amountRows = await prisma.$queryRaw<{ acc_type: string; amount: number }[]>`
+  const amountRows = await prisma.$queryRaw<
+    { acc_type: string; amount: number; profit_impact: number }[]
+  >`
     SELECT gm.acc_type,
-      SUM(CASE WHEN pf.credit_as_positive THEN pb.home_cr - pb.home_dr ELSE pb.home_dr - pb.home_cr END)::float AS amount
+      SUM(CASE WHEN pf.credit_as_positive THEN pb.home_cr - pb.home_dr ELSE pb.home_dr - pb.home_cr END)::float AS amount,
+      SUM(pb.home_cr - pb.home_dr)::float AS profit_impact
     FROM pbalance pb
     JOIN gl_mast gm ON pb.acc_no = gm.acc_no
     JOIN acc_type at ON gm.acc_type = at.acc_type
@@ -53,26 +56,43 @@ export async function getPLSummary(
     GROUP BY gm.acc_type
   `;
 
-  const amountByAccType = new Map<string, number>();
+  const amountByAccType = new Map<
+    string,
+    { amount: number; profitImpact: number }
+  >();
   for (const row of amountRows) {
-    amountByAccType.set(row.acc_type, row.amount ?? 0);
+    amountByAccType.set(row.acc_type, {
+      amount: row.amount ?? 0,
+      profitImpact: row.profit_impact ?? 0,
+    });
   }
 
   // Build rows
   const rows: PLRow[] = [];
+  // Track presentation subtotals separately from cumulative accounting profit.
   let runningSubtotal = 0;
+  let runningProfit = 0;
 
   for (const fmt of plFormats) {
     if (fmt.row_type === "A" && fmt.acc_type) {
-      const amount = amountByAccType.get(fmt.acc_type) ?? 0;
+      const values = amountByAccType.get(fmt.acc_type);
+      const amount = values?.amount ?? 0;
       runningSubtotal += amount;
+      runningProfit += values?.profitImpact ?? 0;
       rows.push({ seq: fmt.seq, label: fmt.description ?? "", rowType: "account", amount });
     } else if (fmt.row_type === "S" || fmt.row_type === "T") {
+      const label = fmt.description ?? "";
+      const isProfitLine = /\bprofit\b/i.test(label);
+
       rows.push({
         seq: fmt.seq,
-        label: fmt.description ?? "",
+        label,
         rowType: fmt.row_type === "T" ? "total" : "subtotal",
-        amount: runningSubtotal,
+        // Section totals (for example, Total Revenue) use only the current
+        // section. Profit lines are cumulative and include the accounting
+        // impact of every account above them: credits increase profit and
+        // debits reduce it.
+        amount: fmt.row_type === "T" || isProfitLine ? runningProfit : runningSubtotal,
       });
       if (fmt.row_type === "S") runningSubtotal = 0;
     } else {
