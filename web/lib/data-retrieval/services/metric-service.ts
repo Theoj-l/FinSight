@@ -610,15 +610,97 @@ async function topByProductCategory(period: RP, filters: RF, n: number): Promise
 async function topByDepartment(metric: string, period: RP, filters: RF, n: number): Promise<TopNItem[]> {
   if (!period) throw new Error("Period is required for department GL analysis.");
   const periodList = Prisma.join(period.periodNos);
-  const isRevenue = metric === "revenue" || metric === "sales";
+
+  // Look up the COGS acc_type (first expense A-row in pl_format by seq)
+  const cogsType = await prisma.pl_format.findFirst({
+    where: { credit_as_positive: false, acc_type: { not: null }, row_type: "A" },
+    orderBy: { seq: "asc" },
+    select: { acc_type: true },
+  });
+  const cogsAccType = cogsType?.acc_type ?? "__NONE__";
+
+  // Revenue / sales: credit-side P&L accounts only
+  if (metric === "revenue" || metric === "sales") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_cr - pb.home_dr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN acc_type at ON gm.acc_type = at.acc_type
+      JOIN pl_format pf ON pf.acc_type = at.acc_type
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE at.is_bs_type = false
+        AND pf.credit_as_positive = true
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // COGS: only the first expense acc_type in pl_format (e.g. 'CS')
+  if (metric === "cogs") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_dr - pb.home_cr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE gm.acc_type = ${cogsAccType}
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // Operating expense: all expense acc_types EXCEPT the COGS acc_type
+  if (metric === "operating_expense") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_dr - pb.home_cr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN acc_type at ON gm.acc_type = at.acc_type
+      JOIN pl_format pf ON pf.acc_type = at.acc_type
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE at.is_bs_type = false
+        AND pf.credit_as_positive = false
+        AND gm.acc_type != ${cogsAccType}
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // Total cost: all expense acc_types (COGS + OpEx combined)
+  if (metric === "total_cost") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_dr - pb.home_cr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN acc_type at ON gm.acc_type = at.acc_type
+      JOIN pl_format pf ON pf.acc_type = at.acc_type
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE at.is_bs_type = false
+        AND pf.credit_as_positive = false
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // Net profit: revenue contribution minus expense contribution per department
   return prisma.$queryRaw<TopNItem[]>`
     SELECT dept.description AS label,
-      SUM(CASE WHEN ${isRevenue} THEN pb.home_cr - pb.home_dr ELSE pb.home_dr - pb.home_cr END)::float AS value
-    FROM pbalance pb JOIN gl_mast gm ON pb.acc_no = gm.acc_no JOIN acc_type at ON gm.acc_type = at.acc_type JOIN pl_format pf ON pf.acc_type = at.acc_type JOIN dept ON pb.dept_no = dept.dept_no
-    WHERE at.is_bs_type = false AND pf.credit_as_positive = ${isRevenue} AND pb.period_no IN (${periodList})
+      SUM(CASE WHEN pf.credit_as_positive THEN pb.home_cr - pb.home_dr
+               ELSE -(pb.home_dr - pb.home_cr) END)::float AS value
+    FROM pbalance pb
+    JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+    JOIN acc_type at ON gm.acc_type = at.acc_type
+    JOIN pl_format pf ON pf.acc_type = at.acc_type
+    JOIN dept ON pb.dept_no = dept.dept_no
+    WHERE at.is_bs_type = false
+      AND pb.period_no IN (${periodList})
     GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
   `;
 }
+
 
 async function topByAccount(period: RP, filters: RF, n: number): Promise<TopNItem[]> {
   if (!period) throw new Error("Period is required for account-level analysis.");
