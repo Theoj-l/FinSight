@@ -1,6 +1,15 @@
 "use client";
 
-import { ArrowUp, MessageCircle, RotateCcw, Square, SquarePen, X } from "lucide-react";
+import {
+  ArrowUp,
+  Maximize2,
+  MessageCircle,
+  Minimize2,
+  RotateCcw,
+  Square,
+  SquarePen,
+  X,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { memo, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./chat-state";
@@ -91,6 +100,7 @@ const MessageBubble = memo(function MessageBubble({
 function ChatDock() {
   const { messages, streaming, send, retry, stop, reset } = useChat();
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [position, setPosition] = useState<Position | null>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -151,6 +161,7 @@ function ChatDock() {
 
   function close() {
     setOpen(false);
+    setExpanded(false);
     buttonRef.current?.focus();
   }
 
@@ -163,6 +174,17 @@ function ChatDock() {
 
   const panelStyle = (() => {
     if (!position || viewport.width === 0 || viewport.height === 0) return undefined;
+
+    if (expanded) {
+      const width = Math.min(960, viewport.width - VIEWPORT_MARGIN * 2);
+      const height = Math.min(720, viewport.height - VIEWPORT_MARGIN * 2);
+      return {
+        left: (viewport.width - width) / 2,
+        top: (viewport.height - height) / 2,
+        width,
+        height,
+      };
+    }
 
     const panelWidth = Math.min(384, viewport.width - VIEWPORT_MARGIN * 2);
     const panelHeight = Math.min(544, viewport.height - 128);
@@ -278,7 +300,11 @@ function ChatDock() {
             if (event.key === "Escape") close();
           }}
           style={panelStyle}
-          className="chat-pop fixed z-40 flex h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-brand-navy/20 print:hidden"
+          className={`chat-pop fixed z-40 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-brand-navy/20 transition-[width,height,left,top] duration-200 motion-reduce:transition-none print:hidden ${
+            expanded
+              ? ""
+              : "h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-2.5rem))]"
+          }`}
         >
           <header className="flex items-center gap-3 bg-brand-navy px-4 py-3 text-white">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/15">
@@ -299,6 +325,20 @@ function ChatDock() {
                 <SquarePen aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setExpanded((current) => !current)}
+              aria-label={expanded ? "Restore chat size" : "Expand chat"}
+              aria-pressed={expanded}
+              title={expanded ? "Restore size" : "Expand"}
+              className="grid h-8 w-8 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+            >
+              {expanded ? (
+                <Minimize2 aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <Maximize2 aria-hidden="true" className="h-4 w-4" />
+              )}
+            </button>
             <button
               type="button"
               onClick={close}
