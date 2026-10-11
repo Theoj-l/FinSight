@@ -137,11 +137,24 @@ export async function getVarianceBreakdown(
     case "revenue_variance":
       return buildGLVariance(qType, "revenue", true, null, currentPeriod, previousPeriod, filters);
     case "cost_variance":
-      return buildGLVariance(qType, "total_cost", false, null, currentPeriod, previousPeriod, filters);
+      return buildGLVariance(
+        qType,
+        classification.metric === "operating_expense" ? "operating_expense" : "total_cost",
+        false,
+        null,
+        currentPeriod,
+        previousPeriod,
+        filters
+      );
     case "profit_variance":
       return buildProfitVariance(currentPeriod, previousPeriod, filters);
     case "sales_variance":
-      return buildSalesVariance(currentPeriod, previousPeriod, filters);
+      return buildSalesVariance(
+        currentPeriod,
+        previousPeriod,
+        filters,
+        classification.dimensions[0] ?? "customer"
+      );
     case "payroll_variance":
       return buildGLVariance(qType, "payroll", false, ["6100", "6110"], currentPeriod, previousPeriod, filters);
     case "ar_variance":
@@ -173,7 +186,9 @@ async function buildGLVariance(
   // Account filter: either specific acc_nos or by credit_as_positive
   const accCondition = accNos
     ? Prisma.sql`AND gm.acc_no IN (${Prisma.join(accNos)})`
-    : Prisma.sql`AND pf.credit_as_positive = ${creditAsPositive}`;
+    : metric === "operating_expense"
+      ? Prisma.sql`AND gm.acc_type = 'EX'`
+      : Prisma.sql`AND pf.credit_as_positive = ${creditAsPositive}`;
 
   const signExpr = creditAsPositive
     ? Prisma.sql`pb.home_cr - pb.home_dr`
@@ -194,6 +209,23 @@ async function buildGLVariance(
 
   const totalChange = totalCurrent - totalPrevious;
   const totalChangePct = totalPrevious !== 0 ? (totalChange / totalPrevious) * 100 : null;
+  const changeExpr = Prisma.sql`
+    COALESCE(SUM(CASE WHEN pb.period_no IN (${curPeriods}) THEN ${signExpr} ELSE 0 END), 0)
+    - COALESCE(SUM(CASE WHEN pb.period_no IN (${prevPeriods}) THEN ${signExpr} ELSE 0 END), 0)
+  `;
+  // For operating-expense driver questions, return accounts contributing in
+  // the same direction as the overall movement. This matches "contributed
+  // most to the increase/decrease" rather than mixing in offsets.
+  const categoryDirection = metric === "operating_expense"
+    ? totalChange >= 0
+      ? Prisma.sql`AND (${changeExpr}) > 0`
+      : Prisma.sql`AND (${changeExpr}) < 0`
+    : Prisma.empty;
+  const categoryOrder = metric === "operating_expense"
+    ? totalChange >= 0
+      ? Prisma.sql`${changeExpr} DESC`
+      : Prisma.sql`${changeExpr} ASC`
+    : Prisma.sql`ABS(${changeExpr}) DESC`;
 
   // By category (account-level breakdown)
   const byCategory = await prisma.$queryRaw<
@@ -209,12 +241,12 @@ async function buildGLVariance(
     JOIN acc_type at ON gm.acc_type = at.acc_type
     JOIN pl_format pf ON pf.acc_type = at.acc_type
     WHERE at.is_bs_type = false ${accCondition} ${deptCond}
-      AND pb.period_no IN (${curPeriods}) OR pb.period_no IN (${prevPeriods})
+      AND (pb.period_no IN (${curPeriods}) OR pb.period_no IN (${prevPeriods}))
     GROUP BY gm.acc_no, gm.description
     HAVING ABS(COALESCE(SUM(CASE WHEN pb.period_no IN (${curPeriods}) THEN ${signExpr} ELSE 0 END), 0)
              - COALESCE(SUM(CASE WHEN pb.period_no IN (${prevPeriods}) THEN ${signExpr} ELSE 0 END), 0)) > 0
-    ORDER BY ABS(COALESCE(SUM(CASE WHEN pb.period_no IN (${curPeriods}) THEN ${signExpr} ELSE 0 END), 0)
-             - COALESCE(SUM(CASE WHEN pb.period_no IN (${prevPeriods}) THEN ${signExpr} ELSE 0 END), 0)) DESC
+      ${categoryDirection}
+    ORDER BY ${categoryOrder}
     LIMIT 10
   `;
 
@@ -361,7 +393,8 @@ async function buildProfitVariance(
 async function buildSalesVariance(
   currentPeriod: RP,
   previousPeriod: RP,
-  filters: ResolvedFilters
+  filters: ResolvedFilters,
+  dimension: string
 ): Promise<VarianceBreakdownResult> {
   const totalCurrent = await querySales(currentPeriod, filters);
   const totalPrevious = await querySales(previousPeriod, filters);
@@ -380,20 +413,65 @@ async function buildSalesVariance(
     ? Prisma.sql`AND ${Prisma.join(filterConds.slice(1), " AND ")}`
     : Prisma.empty;
 
-  const customerRows = await prisma.$queryRaw<
+  let varianceRows: { label: string; current_val: number; previous_val: number }[];
+
+  if (dimension === "product" || dimension === "product_category") {
+    const labelExpression = dimension === "product"
+      ? Prisma.sql`COALESCE(i.description, dtl.description, dtl.item_code, 'Unknown product')`
+      : Prisma.sql`COALESCE(ig.description, 'Uncategorised')`;
+    const categoryJoin = dimension === "product_category"
+      ? Prisma.sql`LEFT JOIN item_group ig ON i.item_group = ig.item_group`
+      : Prisma.empty;
+    const itemGroupCondition = filters.itemGroups?.length
+      ? Prisma.sql`AND i.item_group IN (${Prisma.join(filters.itemGroups)})`
+      : Prisma.empty;
+
+    varianceRows = await prisma.$queryRaw<
+      { label: string; current_val: number; previous_val: number }[]
+    >`
+      WITH product_sales AS (
+        SELECT
+          ${labelExpression} AS label,
+          COALESCE(SUM(CASE
+            WHEN iv.doc_date >= ${currentPeriod.dateFrom}
+             AND iv.doc_date < ${currentPeriod.dateToExclusive}
+            THEN dtl.local_sub_total ELSE 0 END), 0)::float AS current_val,
+          COALESCE(SUM(CASE
+            WHEN iv.doc_date >= ${previousPeriod.dateFrom}
+             AND iv.doc_date < ${previousPeriod.dateToExclusive}
+            THEN dtl.local_sub_total ELSE 0 END), 0)::float AS previous_val
+        FROM iv_dtl dtl
+        JOIN iv ON dtl.doc_key = iv.doc_key
+        LEFT JOIN item i ON dtl.item_code = i.item_code
+        ${categoryJoin}
+        WHERE iv.cancelled = false
+          AND iv.doc_date >= ${previousPeriod.dateFrom}
+          AND iv.doc_date < ${currentPeriod.dateToExclusive}
+          ${extraWhere}
+          ${itemGroupCondition}
+        GROUP BY ${labelExpression}
+      )
+      SELECT label, current_val, previous_val
+      FROM product_sales
+      WHERE current_val < previous_val
+      ORDER BY current_val - previous_val ASC
+      LIMIT 10
+    `;
+  } else {
+    varianceRows = await prisma.$queryRaw<
     { label: string; current_val: number; previous_val: number }[]
-  >`
+    >`
     WITH curr AS (
       SELECT iv.debtor_code, SUM(iv.local_ex_tax) AS amt
       FROM iv
-      WHERE iv.cancelled = false AND iv.doc_date >= ${currentPeriod.dateFrom} AND iv.doc_date <= ${currentPeriod.dateTo}
+      WHERE iv.cancelled = false AND iv.doc_date >= ${currentPeriod.dateFrom} AND iv.doc_date < ${currentPeriod.dateToExclusive}
         ${extraWhere}
       GROUP BY iv.debtor_code
     ),
     prev AS (
       SELECT iv.debtor_code, SUM(iv.local_ex_tax) AS amt
       FROM iv
-      WHERE iv.cancelled = false AND iv.doc_date >= ${previousPeriod.dateFrom} AND iv.doc_date <= ${previousPeriod.dateTo}
+      WHERE iv.cancelled = false AND iv.doc_date >= ${previousPeriod.dateFrom} AND iv.doc_date < ${previousPeriod.dateToExclusive}
         ${extraWhere}
       GROUP BY iv.debtor_code
     )
@@ -407,8 +485,9 @@ async function buildSalesVariance(
     ORDER BY ABS(COALESCE(curr.amt, 0) - COALESCE(prev.amt, 0)) DESC
     LIMIT 10
   `;
+  }
 
-  const byCategory = mapToVarianceComponents(customerRows, totalChange);
+  const byCategory = mapToVarianceComponents(varianceRows, totalChange);
 
   return {
     questionType: "sales_variance",

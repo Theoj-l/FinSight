@@ -78,6 +78,7 @@ export const DIMENSIONS = [
   "business_unit",
   "department",
   "customer",
+  "product",
   "product_category",
   "employee_category",
   "sales_channel",

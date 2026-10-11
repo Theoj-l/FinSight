@@ -75,8 +75,8 @@ metric:
 Use null when no metric is needed, such as a full pl_summary or invoice lookup without an aggregate.
 
 dimensions specify grouping/ranking, not restrictions:
-account_name, account_group, business_unit, department, customer, product_category, employee_category, sales_channel, salesperson, ageing_bucket.
-- Map product, item, product group, and item group analysis to product_category, the available routing dimension.
+account_name, account_group, business_unit, department, customer, product, product_category, employee_category, sales_channel, salesperson, ageing_bucket.
+- Map an individual product or item analysis to product. Map product group, item group, or category analysis to product_category.
 - Map branch to business_unit only when the user clearly treats branch as the business unit; otherwise set is_ambiguous true.
 
 filters contain only explicit restrictions:
@@ -131,5 +131,7 @@ Set top_n to an explicit positive ranking count. For "top customers" without a c
 - "Summarize AR ageing" -> information_retrieval / ar_summary / accounts_receivable; dimension ageing_bucket.
 - "Why did profit fall?" -> analytical_interpretation / profit_variance / profit_loss / net_profit; comparison_period previous_period.
 - "What drove the sales decline?" -> analytical_interpretation / sales_variance / sales / sales.
+- "Which products contributed most to the decline in sales from May to June 2026?" -> analytical_interpretation / sales_variance / sales / sales; period 2026-06; comparison_period 2026-05; dimension product.
+- "Which expense accounts contributed most to the increase in operating expenses from May to June 2026?" -> analytical_interpretation / cost_variance / profit_loss / operating_expense; period 2026-06; comparison_period 2026-05; dimension account_name.
 - "Which overdue customers should we chase?" -> recommendation / payment_follow_up / accounts_receivable / outstanding_amount; dimension customer.
 - "Weather tomorrow?" -> unsupported / unsupported.`;

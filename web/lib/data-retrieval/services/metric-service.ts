@@ -151,7 +151,7 @@ export async function querySales(
   const conditions: Prisma.Sql[] = [Prisma.sql`cancelled = false`];
   if (period) {
     conditions.push(
-      Prisma.sql`doc_date >= ${period.dateFrom} AND doc_date <= ${period.dateTo}`
+      Prisma.sql`doc_date >= ${period.dateFrom} AND doc_date < ${period.dateToExclusive}`
     );
   }
   if (filters.debtorCodes?.length) {

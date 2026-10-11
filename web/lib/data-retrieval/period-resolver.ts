@@ -74,6 +74,8 @@ export interface ResolvedPeriod {
   label: string;
   dateFrom: Date;
   dateTo: Date;
+  /** Midnight immediately after the period; use with `<` for timestamp columns. */
+  dateToExclusive: Date;
 }
 
 /**
@@ -196,11 +198,13 @@ export async function resolvePeriod(
 
 function buildResult(periodNos: number[]): ResolvedPeriod {
   const { from, to } = periodNosToDateRange(periodNos);
+  const last = parseYyyymm(Math.max(...periodNos));
   return {
     periodNos,
     label: periodLabels(periodNos),
     dateFrom: from,
     dateTo: to,
+    dateToExclusive: new Date(last.year, last.month, 1),
   };
 }
 
