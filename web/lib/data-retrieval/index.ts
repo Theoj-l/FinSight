@@ -26,6 +26,7 @@ import {
 
 import {
   getInvoiceStatus,
+  getOverdueCustomers,
   getARSummary,
 } from "./services/ar-service";
 
@@ -47,6 +48,7 @@ const QUESTION_TYPE_HANDLERS: Record<string, Handler> = {
   top_n:             getTopN,
   trend:             getMetricTrend,
   invoice_status:    getInvoiceStatus,
+  overdue_customers: getOverdueCustomers,
   ar_summary:        getARSummary,
   pl_summary:        getPLSummary,
 
@@ -95,6 +97,6 @@ export async function retrieveData(
 export type { RetrievalResult } from "./types";
 export { getMetricValue, getMetricComparison, getMetricTrend, getTopN } from "./services/metric-service";
 export { getPLSummary, getVarianceBreakdown, getMarginAnalysis } from "./services/pl-service";
-export { getInvoiceStatus, getARSummary } from "./services/ar-service";
+export { getInvoiceStatus, getOverdueCustomers, getARSummary } from "./services/ar-service";
 export { getPerformanceSummary } from "./services/performance-service";
 export { getPaymentFollowUp, getManagementPriorities } from "./services/recommendation-service";

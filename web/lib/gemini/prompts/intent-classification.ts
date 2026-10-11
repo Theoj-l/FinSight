@@ -32,7 +32,8 @@ information_retrieval:
 - metric_comparison: a metric between periods, or actual versus budget.
 - top_n: ranked entities/categories; use for top, bottom, highest, lowest, largest, or smallest.
 - trend: one metric across multiple periods.
-- invoice_status: invoice-level AR records, payment status, due dates, overdue lists, or threshold-filtered invoices.
+- invoice_status: invoice-level AR records, payment status, due dates, or threshold-filtered invoices. Use only when the user asks for invoices or invoice numbers.
+- overdue_customers: customer-level overdue lists and balances grouped by customer. Use when the user asks which customers/debtors are overdue, including a days-overdue threshold.
 - ar_summary: aggregate outstanding AR or ageing.
 - pl_summary: a full or summarized P&L statement, not a single metric.
 
@@ -126,6 +127,7 @@ Set top_n to an explicit positive ranking count. For "top customers" without a c
 - "Top 5 customers by sales" -> information_retrieval / top_n / sales / sales; dimension customer; top_n 5.
 - "Top product groups by gross profit" -> information_retrieval / top_n / sales / gross_profit; dimension product_category.
 - "Overdue invoices over 10000" -> information_retrieval / invoice_status / accounts_receivable / outstanding_amount; payment_status overdue; > 10000 condition.
+- "Which customers currently have invoices more than 60 days overdue?" -> information_retrieval / overdue_customers / accounts_receivable / outstanding_amount; dimension customer; days_overdue > 60 condition.
 - "Summarize AR ageing" -> information_retrieval / ar_summary / accounts_receivable; dimension ageing_bucket.
 - "Why did profit fall?" -> analytical_interpretation / profit_variance / profit_loss / net_profit; comparison_period previous_period.
 - "What drove the sales decline?" -> analytical_interpretation / sales_variance / sales / sales.

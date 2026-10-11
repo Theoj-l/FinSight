@@ -40,6 +40,38 @@ export async function getPaymentFollowUp(
       Prisma.sql`ar.sales_agent IN (${Prisma.join(filters.salesAgents)})`
     );
   }
+
+  // Metric conditions apply to individual invoices, before customer totals
+  // are calculated. For example, `days_overdue > 60` must exclude current
+  // invoices and invoices only 1-60 days overdue from the SUM and COUNT.
+  for (const condition of classification.metric_conditions ?? []) {
+    if (condition.metric !== "days_overdue") continue;
+
+    const value = Number(condition.value);
+    if (!Number.isFinite(value)) continue;
+
+    const daysOverdue = Prisma.sql`(CURRENT_DATE - ar.due_date)`;
+    switch (condition.operator) {
+      case ">":
+        conditions.push(Prisma.sql`${daysOverdue} > ${value}`);
+        break;
+      case ">=":
+        conditions.push(Prisma.sql`${daysOverdue} >= ${value}`);
+        break;
+      case "<":
+        conditions.push(Prisma.sql`${daysOverdue} < ${value}`);
+        break;
+      case "<=":
+        conditions.push(Prisma.sql`${daysOverdue} <= ${value}`);
+        break;
+      case "=":
+        conditions.push(Prisma.sql`${daysOverdue} = ${value}`);
+        break;
+      case "!=":
+        conditions.push(Prisma.sql`${daysOverdue} != ${value}`);
+        break;
+    }
+  }
   const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
 
   const rows = await prisma.$queryRaw<

@@ -153,8 +153,11 @@ export async function resolvePeriod(
   const pastN = token.match(/^past_(\d+)_months$/);
   if (pastN) {
     const n = parseInt(pastN[1]);
+    // Anchor at the last COMPLETED month — the current month is always partial
+    // and pbalance data may not be posted yet. Window: (now-n) ... (now-1).
+    const lastCompleted = addMonths(now, -1);
     periodNos = Array.from({ length: n }, (_, i) =>
-      addMonths(now, -(n - 1 - i))
+      addMonths(lastCompleted, -(n - 1 - i))
     );
     return buildResult(periodNos);
   }

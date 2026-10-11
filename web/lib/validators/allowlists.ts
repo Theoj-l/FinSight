@@ -32,6 +32,7 @@ export const QUESTION_TYPES_BY_INTENT: Record<Intent, Set<string>> = {
     "top_n",
     "trend",
     "invoice_status",
+    "overdue_customers",
     "ar_summary",
     "pl_summary",
   ]),

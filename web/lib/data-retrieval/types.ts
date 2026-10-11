@@ -111,6 +111,23 @@ export interface InvoiceStatusResult {
   filters: AppliedFilters;
 }
 
+export interface OverdueCustomerRow {
+  customer: string;
+  debtorCode: string;
+  outstanding: number;
+  daysOverdue: number;
+  invoiceCount: number;
+}
+
+export interface OverdueCustomersResult {
+  questionType: "overdue_customers";
+  customers: OverdueCustomerRow[];
+  totalCustomers: number;
+  totalInvoices: number;
+  totalOutstanding: number;
+  filters: AppliedFilters;
+}
+
 // ── ar_summary ──────────────────────────────────────────────────────────────
 
 export interface AgingBucket {
@@ -312,6 +329,7 @@ export type RetrievalResult =
   | TopNResult
   | TrendResult
   | InvoiceStatusResult
+  | OverdueCustomersResult
   | ARSummaryResult
   | PLSummaryResult
   // Analytical Interpretation

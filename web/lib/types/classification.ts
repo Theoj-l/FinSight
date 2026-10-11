@@ -25,6 +25,7 @@ export const QUESTION_TYPES = [
   "top_n",
   "trend",
   "invoice_status",
+  "overdue_customers",
   "ar_summary",
   "pl_summary",
   // Analytical Interpretation

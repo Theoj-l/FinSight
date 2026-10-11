@@ -160,5 +160,16 @@ export async function classifyIntent(
     parsed.filters as Record<string, string | null>
   );
 
+  // Customer-level AR questions must use the grouped customer retrieval route,
+  // even if the model selects the nearby invoice-level route.
+  if (
+    parsed.intent === "information_retrieval" &&
+    parsed.question_type === "invoice_status" &&
+    parsed.datasets.includes("accounts_receivable") &&
+    parsed.dimensions.includes("customer")
+  ) {
+    parsed.question_type = "overdue_customers";
+  }
+
   return parsed;
 }
