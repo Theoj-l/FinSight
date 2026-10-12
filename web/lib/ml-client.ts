@@ -69,8 +69,33 @@ export type AnomalyRescoreResult = {
   seconds: number;
 };
 
+/** Result of one forecast run (mirrors ml-service ForecastRunResult). */
+export type ForecastRunResult = {
+  run_id: number;
+  model_version: string;
+  /** Latest period_no (YYYYMM) in the ledger. */
+  data_through: number;
+  /** Last closed month forecast from; forecasts start the month after. */
+  history_through: number;
+  horizon: number;
+  n_forecast: number;
+  n_backtest: number;
+  /** Company-level 1-month-ahead MAPE (%) over the last 12 closed months, per metric. */
+  accuracy: Record<"revenue" | "cost" | "profit", number | null>;
+  seconds: number;
+};
+
 export const mlClient = {
   health: (signal?: AbortSignal) => request<MlHealth>("/health", { signal }),
+
+  /**
+   * Re-forecast the ledger and store a new forecast_run (about 10–20 s).
+   * The monthly cron does this already; call it after the ledger changes.
+   * Dashboards read the tables instead, via app/dashboard/data/forecast.ts.
+   * A run already in progress gives a 409.
+   */
+  runForecast: (signal?: AbortSignal) =>
+    request<ForecastRunResult>("/forecast/run", { method: "POST", signal }),
 
   /**
    * Re-score the ledger and refresh the anomaly_alert table (about 5 s).

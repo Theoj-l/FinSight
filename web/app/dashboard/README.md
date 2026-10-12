@@ -92,3 +92,64 @@ Each alert is one flagged unit-month:
   ledger is rescored (after a data load, a nightly run, or
   `mlClient.rescoreAnomalies()`), so they are safe to cache with the page.
 - An alert can disappear after a rescore if new data explains it.
+
+## Forecasts
+
+`data/forecast.ts` reads the revenue, cost and net-profit forecasts that
+ml-service stores in `forecast_run` / `forecast_value` (one run a month, after
+month end). Like the anomaly alerts, it never calls the model.
+
+```ts
+import { getForecast, getForecastStatus } from "@/app/dashboard/data/forecast";
+
+const data = await getForecast(scope);      // the dashboard's DashboardScope; null before the first run
+const status = await getForecastStatus();   // freshness only
+```
+
+`getForecast(scope)` returns `{ status, units, series: { revenue, cost, profit } }`.
+Each series has:
+
+| Field | Meaning |
+|---|---|
+| `history` | Actuals per month, `{ periodNo, actual }`, up to `status.historyThrough`. Same definitions as the KPIs. |
+| `forecast` | `{ periodNo, horizon, value, low, high }` for the months after `historyThrough` (12 by default). `low`/`high` is the 80% band: the range 80% of past forecasts at the same horizon landed in. |
+| `pastForecasts` | `{ periodNo, forecast, actual }`: what was forecast one month ahead for each shown past month, next to what happened. Use it to compare projections against actuals. |
+| `accuracy` | `{ months, mape, wape, mae, targetMape, meetsTarget }` for 1-month-ahead forecasts over the last 12 closed months, **for this unit selection**. |
+
+`status` has `forecastAt`, `historyThrough`, `dataThrough`, `horizon`,
+`modelVersion`, `method` and `targetMape` (15).
+
+### Rules
+
+- **Always label forecast values as projections.** Draw them distinctly from
+  actuals (dashed line or a shaded band), and say which month they start from:
+  "Forecast from Aug 2026 data".
+- **Show the accuracy, and disclose a miss (US3.5).** When
+  `accuracy.meetsTarget` is false, say so next to the chart. For example:
+  "Net profit forecasts have been off by 18% on average over the last 12 months,
+  above the 15% reliability target. Treat as indicative." Show the band too.
+  `meetsTarget` is null when there is no backtest yet; say "accuracy not yet
+  measured".
+- **Units filter.** Forecasts are stored per department. A selection of units
+  is the sum of its departments, exactly like the actuals, so every filter adds
+  up. **Branch filter:** forecasts come from the ledger, so a branch selection
+  throws `BRANCH_LEDGER_MESSAGE`, like the other ledger panels.
+- **Period filter.** A range selection sets where `history` starts. A single
+  month shows the trailing 24 months (`{ historyMonths }` to change). The
+  forecast itself always starts after the latest closed month.
+- **Profit is derived:** revenue − cost + other income, from the same model, so
+  revenue − cost always reconciles with the profit shown. Business-unit
+  profit is gross profit, because all overhead sits in `CP` (Corporate).
+- **Freshness.** Forecasts change only when ml-service runs: the monthly cron,
+  after a `datagen --load`, or `mlClient.runForecast()`. They are safe to cache
+  with the page.
+
+### For the assistant (US3.7)
+
+Add a `forecast` question type whose handler calls `getForecast(scope)` with
+the units from the classification, and reads the month asked for from
+`series[metric].forecast`. Using this same function keeps the answer identical
+to the forecast view. The answer must state the forecast month, say it is a
+projection, and quote the band and the accuracy when `meetsTarget` is false.
+Map the assistant's metrics: `revenue` → `revenue`, `total_cost` → `cost`,
+`net_profit` → `profit`.

@@ -45,7 +45,8 @@ ml-service/
     security.py
     routers/
   training/         offline scripts/notebooks that produce model artifacts
-  models/           trained artifacts; anomaly/v1/ is committed and ships in the image
+  models/           committed model artifacts (anomaly/v1/, forecast/v1/); ship in the image
+  DEPLOY.md         Railway deployment: API service + monthly forecast cron
   tests/
 ```
 
@@ -214,6 +215,26 @@ evaluated in its `REPORT.md`. To change it, retrain
 (`python -m training.anomaly.train`, ~90 s, deterministic), re-run
 `python -m training.anomaly.evaluate`, and commit the folder. How the model
 works: [ml-service/training/anomaly/METHODOLOGY.md](ml-service/training/anomaly/METHODOLOGY.md).
+
+### Forecasts
+
+`ml-service` forecasts revenue, cost and net profit per department 12 months
+ahead, and stores each run in `forecast_run` / `forecast_value`, together with a
+24-month backtest that gives the accuracy and the band. The dashboard reads them
+through [web/app/dashboard/data/forecast.ts](web/app/dashboard/data/forecast.ts)
+(`getForecast(scope)`; contract in
+[web/app/dashboard/README.md](web/app/dashboard/README.md#forecasts)) and never
+calls the model. Forecasts are refreshed:
+
+- automatically after `python -m datagen --load`
+- by `python -m app.forecast.run` (from `ml-service/`; what the monthly cron runs)
+- by `POST /forecast/run` on ml-service (`mlClient.runForecast()` from `web/`)
+
+The selected forecaster (`ml-service/models/forecast/v1/config.json`) was chosen
+by backtesting baselines, Holt-Winters and Prophet. Results are in its
+`REPORT.md`, and the method in
+[ml-service/training/forecast/METHODOLOGY.md](ml-service/training/forecast/METHODOLOGY.md).
+Deploying to Railway: [ml-service/DEPLOY.md](ml-service/DEPLOY.md).
 
 ## Run the Application
 

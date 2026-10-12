@@ -1,0 +1,1461 @@
+{
+  "model_version": "v1",
+  "selected": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+  "target_mape": 15.0,
+  "test_seeds": [
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50
+  ],
+  "showcase_seed": 20260901,
+  "window": [
+    202509,
+    202608
+  ],
+  "passed": false,
+  "headline": {
+    "revenue": {
+      "n": 120.0,
+      "n_mape": 120.0,
+      "mape": 3.657180448913632,
+      "wape": 3.8419530737683143,
+      "mae": 201163.34459872308,
+      "rmse": 261534.1202289614,
+      "meets_target": 1.0
+    },
+    "cost": {
+      "n": 120.0,
+      "n_mape": 120.0,
+      "mape": 3.0118629656493825,
+      "wape": 3.1158006711020256,
+      "mae": 142791.06096105796,
+      "rmse": 182199.5203573387,
+      "meets_target": 1.0
+    },
+    "profit": {
+      "n": 120.0,
+      "n_mape": 120.0,
+      "mape": 15.495734430457455,
+      "wape": 13.28666666359436,
+      "mae": 86783.31711818845,
+      "rmse": 109240.0628389544,
+      "meets_target": 0.0
+    }
+  },
+  "headline_showcase": {
+    "revenue": {
+      "n": 12.0,
+      "n_mape": 12.0,
+      "mape": 4.67021911926184,
+      "wape": 4.91882388671308,
+      "mae": 259960.78121131528,
+      "rmse": 316688.0527220284,
+      "meets_target": 1.0
+    },
+    "cost": {
+      "n": 12.0,
+      "n_mape": 12.0,
+      "mape": 3.5822050531679417,
+      "wape": 3.7562261148242917,
+      "mae": 173129.78094926034,
+      "rmse": 234094.47061370793,
+      "meets_target": 1.0
+    },
+    "profit": {
+      "n": 12.0,
+      "n_mape": 12.0,
+      "mape": 12.878398552186018,
+      "wape": 13.312305214953613,
+      "mae": 89974.87201831416,
+      "rmse": 109875.08285068395,
+      "meets_target": 1.0
+    }
+  },
+  "per_seed_spread": {
+    "cost": {
+      "min": 2.3791592951493854,
+      "median": 2.998735983927455,
+      "max": 3.7742221019114246
+    },
+    "profit": {
+      "min": 10.297924632632922,
+      "median": 13.313360398930985,
+      "max": 26.243921576382533
+    },
+    "revenue": {
+      "min": 2.6584270386956117,
+      "median": 3.655834434982067,
+      "max": 4.345307277855359
+    }
+  },
+  "comparison_h1": [
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.1194712743371005,
+      "wape": 3.191152885939092,
+      "mae": 146244.30583713172,
+      "rmse": 180666.0018342046,
+      "skill_vs_snaive": 0.44773410836871963
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 14.336228748859186,
+      "wape": 11.919571588877016,
+      "mae": 77853.98605240755,
+      "rmse": 98867.9894816583,
+      "skill_vs_snaive": 0.38843572107729574
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.709894240194593,
+      "wape": 3.827880686299169,
+      "mae": 200426.51921969626,
+      "rmse": 249145.49156024234,
+      "skill_vs_snaive": 0.45203153458304923
+    },
+    {
+      "candidate": "naive",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.065562360328812,
+      "wape": 5.051532604548647,
+      "mae": 231501.87583333332,
+      "rmse": 308040.0558851054,
+      "skill_vs_snaive": 0.1257738949932623
+    },
+    {
+      "candidate": "naive",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 38.750225840429145,
+      "wape": 22.628635652208732,
+      "mae": 147801.40975000005,
+      "rmse": 194326.88801092535,
+      "skill_vs_snaive": -0.16102035567802142
+    },
+    {
+      "candidate": "naive",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.676045306590811,
+      "wape": 5.7106524954244655,
+      "mae": 299007.80508333334,
+      "rmse": 405466.3407466802,
+      "skill_vs_snaive": 0.18250913732825325
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.0118629656493825,
+      "wape": 3.1158006711020256,
+      "mae": 142791.06096105796,
+      "rmse": 182199.5203573387,
+      "skill_vs_snaive": 0.4607746800996281
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 15.495734430457455,
+      "wape": 13.28666666359436,
+      "mae": 86783.31711818845,
+      "rmse": 109240.0628389544,
+      "skill_vs_snaive": 0.3182933919378421
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.657180448913632,
+      "wape": 3.8419530737683143,
+      "mae": 201163.34459872308,
+      "rmse": 261534.1202289614,
+      "skill_vs_snaive": 0.4500170453138771
+    },
+    {
+      "candidate": "snaive",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.743286178939285,
+      "wape": 5.7782907369366585,
+      "mae": 264807.782,
+      "rmse": 304720.34448091034,
+      "skill_vs_snaive": 0.0
+    },
+    {
+      "candidate": "snaive",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 23.779804027896557,
+      "wape": 19.49030052879124,
+      "mae": 127303.03050000004,
+      "rmse": 158920.7447748309,
+      "skill_vs_snaive": 0.0
+    },
+    {
+      "candidate": "snaive",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 6.88813256332323,
+      "wape": 6.985585718671827,
+      "mae": 365762.87116666674,
+      "rmse": 418348.42924038635,
+      "skill_vs_snaive": 0.0
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.7140098505788233,
+      "wape": 3.7170837703213047,
+      "mae": 170346.6913554461,
+      "rmse": 207760.32584714293,
+      "skill_vs_snaive": 0.3567156898906918
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 25.901174352110505,
+      "wape": 15.680099140381948,
+      "mae": 102416.28322571915,
+      "rmse": 134398.6637250878,
+      "skill_vs_snaive": 0.19549218252334444
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 4.097156243949913,
+      "wape": 4.0462746802525285,
+      "mae": 211861.55380246913,
+      "rmse": 257091.66888413444,
+      "skill_vs_snaive": 0.4207680152807789
+    }
+  ],
+  "horizons": [
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "cost",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.1194712743371005,
+      "wape": 3.191152885939092,
+      "mae": 146244.30583713172,
+      "rmse": 180666.0018342046
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "cost",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 3.744836104426124,
+      "wape": 3.839764932669728,
+      "mae": 176501.50311118684,
+      "rmse": 220434.8467010696
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "cost",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 5.590023248383843,
+      "wape": 5.707474902715391,
+      "mae": 271706.75865266426,
+      "rmse": 317137.2619474307
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "cost",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 9.591585670461788,
+      "wape": 9.632805604100351,
+      "mae": 477856.24386720173,
+      "rmse": 492462.2109750228
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "profit",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 14.336228748859186,
+      "wape": 11.919571588877016,
+      "mae": 77853.98605240755,
+      "rmse": 98867.9894816583
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "profit",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 16.74549919392981,
+      "wape": 14.55747113727873,
+      "mae": 95033.17686124724,
+      "rmse": 115798.47282093023
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "profit",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 16.18033393263632,
+      "wape": 16.847372504768256,
+      "mae": 127184.70596324322,
+      "rmse": 148136.56915985828
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "profit",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 16.75659612942314,
+      "wape": 17.241254809053768,
+      "mae": 140096.5066211919,
+      "rmse": 161332.02150433348
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "revenue",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.709894240194593,
+      "wape": 3.827880686299169,
+      "mae": 200426.51921969626,
+      "rmse": 249145.49156024234
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "revenue",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 4.536712249559195,
+      "wape": 4.719354964665527,
+      "mae": 247741.9948511926,
+      "rmse": 313515.83982649486
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "revenue",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 6.95618215877052,
+      "wape": 7.1354301977931005,
+      "mae": 393552.1854129333,
+      "rmse": 452585.29523192946
+    },
+    {
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "metric": "revenue",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 10.607066425761829,
+      "wape": 10.67522405368489,
+      "mae": 616310.8741528525,
+      "rmse": 644349.1902586378
+    },
+    {
+      "candidate": "naive",
+      "metric": "cost",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.065562360328812,
+      "wape": 5.051532604548647,
+      "mae": 231501.87583333332,
+      "rmse": 308040.0558851054
+    },
+    {
+      "candidate": "naive",
+      "metric": "cost",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 8.289544774407622,
+      "wape": 8.29798959649796,
+      "mae": 381431.58820000006,
+      "rmse": 472248.2605558895
+    },
+    {
+      "candidate": "naive",
+      "metric": "cost",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 12.698896522468717,
+      "wape": 12.765606581698757,
+      "mae": 607712.1048571428,
+      "rmse": 675348.1941280775
+    },
+    {
+      "candidate": "naive",
+      "metric": "cost",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 7.5306768562603255,
+      "wape": 7.576468790734291,
+      "mae": 375847.1899999998,
+      "rmse": 402241.9677428371
+    },
+    {
+      "candidate": "naive",
+      "metric": "profit",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 38.750225840429145,
+      "wape": 22.628635652208732,
+      "mae": 147801.40975000005,
+      "rmse": 194326.88801092535
+    },
+    {
+      "candidate": "naive",
+      "metric": "profit",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 56.893337802501634,
+      "wape": 37.222623532602796,
+      "mae": 242994.41380000004,
+      "rmse": 300931.71121479955
+    },
+    {
+      "candidate": "naive",
+      "metric": "profit",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 41.469482581328975,
+      "wape": 40.900836520516066,
+      "mae": 308769.8609999999,
+      "rmse": 359054.6547075916
+    },
+    {
+      "candidate": "naive",
+      "metric": "profit",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 17.041066965611048,
+      "wape": 17.54415642839799,
+      "mae": 142557.7810000001,
+      "rmse": 163365.5872167332
+    },
+    {
+      "candidate": "naive",
+      "metric": "revenue",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.676045306590811,
+      "wape": 5.7106524954244655,
+      "mae": 299007.80508333334,
+      "rmse": 405466.3407466802
+    },
+    {
+      "candidate": "naive",
+      "metric": "revenue",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 11.688275686428327,
+      "wape": 11.683437794011017,
+      "mae": 613320.7202,
+      "rmse": 731980.567573394
+    },
+    {
+      "candidate": "naive",
+      "metric": "revenue",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 16.50259651600284,
+      "wape": 16.608452477484754,
+      "mae": 916033.453857143,
+      "rmse": 1008817.053660022
+    },
+    {
+      "candidate": "naive",
+      "metric": "revenue",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 8.698892216126447,
+      "wape": 8.77663469040526,
+      "mae": 506699.941,
+      "rmse": 556846.0117678373
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "cost",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.0118629656493825,
+      "wape": 3.1158006711020256,
+      "mae": 142791.06096105796,
+      "rmse": 182199.5203573387
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "cost",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 3.0362166987824626,
+      "wape": 3.161619942498662,
+      "mae": 145329.3839342733,
+      "rmse": 187967.10296313258
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "cost",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 3.6196120649356422,
+      "wape": 3.7332524061979697,
+      "mae": 177723.06104013216,
+      "rmse": 219905.94103993432
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "cost",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 5.587077979804557,
+      "wape": 5.630440021661254,
+      "mae": 279310.20625240717,
+      "rmse": 302816.853064249
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "profit",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 15.495734430457455,
+      "wape": 13.28666666359436,
+      "mae": 86783.31711818845,
+      "rmse": 109240.0628389544
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "profit",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 16.771314336665654,
+      "wape": 14.328525891600203,
+      "mae": 93538.59076047916,
+      "rmse": 116714.40721689296
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "profit",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 14.234650486661934,
+      "wape": 14.920401832681328,
+      "mae": 112637.55932302946,
+      "rmse": 134270.62273141457
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "profit",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 13.307146412507986,
+      "wape": 13.881852462486355,
+      "mae": 112799.15858582818,
+      "rmse": 135902.54107706397
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "revenue",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.657180448913632,
+      "wape": 3.8419530737683143,
+      "mae": 201163.34459872308,
+      "rmse": 261534.1202289614
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "revenue",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 3.892559923689297,
+      "wape": 4.111027599368165,
+      "mae": 215807.9199342363,
+      "rmse": 279446.2694390378
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "revenue",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 4.637635097811392,
+      "wape": 4.833789454354195,
+      "mae": 266605.9860238639,
+      "rmse": 329591.4500739385
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "revenue",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 6.7178334477927395,
+      "wape": 6.791792095101172,
+      "mae": 392109.36483823555,
+      "rmse": 430492.9089270764
+    },
+    {
+      "candidate": "snaive",
+      "metric": "cost",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.743286178939285,
+      "wape": 5.7782907369366585,
+      "mae": 264807.782,
+      "rmse": 304720.34448091034
+    },
+    {
+      "candidate": "snaive",
+      "metric": "cost",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 5.73349248547977,
+      "wape": 5.763191664020808,
+      "mae": 264915.17300000007,
+      "rmse": 303086.8926674199
+    },
+    {
+      "candidate": "snaive",
+      "metric": "cost",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 5.639594048055558,
+      "wape": 5.676363115586782,
+      "mae": 270225.6688571429,
+      "rmse": 311155.11021347035
+    },
+    {
+      "candidate": "snaive",
+      "metric": "cost",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 7.5306768562603255,
+      "wape": 7.576468790734291,
+      "mae": 375847.1899999998,
+      "rmse": 402241.9677428371
+    },
+    {
+      "candidate": "snaive",
+      "metric": "profit",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 23.779804027896557,
+      "wape": 19.49030052879124,
+      "mae": 127303.03050000004,
+      "rmse": 158920.7447748309
+    },
+    {
+      "candidate": "snaive",
+      "metric": "profit",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 26.472446606740853,
+      "wape": 21.232530352355468,
+      "mae": 138608.8829,
+      "rmse": 169150.80306023287
+    },
+    {
+      "candidate": "snaive",
+      "metric": "profit",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 21.00721617583264,
+      "wape": 20.900030936093465,
+      "mae": 157779.16042857143,
+      "rmse": 186721.28940321316
+    },
+    {
+      "candidate": "snaive",
+      "metric": "profit",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 17.041066965611048,
+      "wape": 17.54415642839799,
+      "mae": 142557.7810000001,
+      "rmse": 163365.5872167332
+    },
+    {
+      "candidate": "snaive",
+      "metric": "revenue",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 6.88813256332323,
+      "wape": 6.985585718671827,
+      "mae": 365762.87116666674,
+      "rmse": 418348.42924038635
+    },
+    {
+      "candidate": "snaive",
+      "metric": "revenue",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 7.024875795602332,
+      "wape": 7.124473800678027,
+      "mae": 373998.4309000001,
+      "rmse": 424328.72168132215
+    },
+    {
+      "candidate": "snaive",
+      "metric": "revenue",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 7.4581487254616015,
+      "wape": 7.513233416033002,
+      "mae": 414389.7912857143,
+      "rmse": 461808.68298225803
+    },
+    {
+      "candidate": "snaive",
+      "metric": "revenue",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 8.698892216126447,
+      "wape": 8.77663469040526,
+      "mae": 506699.941,
+      "rmse": 556846.0117678373
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "cost",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.7140098505788233,
+      "wape": 3.7170837703213047,
+      "mae": 170346.6913554461,
+      "rmse": 207760.32584714293
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "cost",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 3.707584238634049,
+      "wape": 3.708943094426302,
+      "mae": 170488.04877358527,
+      "rmse": 208127.68725137867
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "cost",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 3.9849657332721096,
+      "wape": 3.978502680124633,
+      "mae": 189398.30414204905,
+      "rmse": 232335.274830464
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "cost",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 3.0636361936056415,
+      "wape": 3.070658814547142,
+      "mae": 152326.69978231666,
+      "rmse": 168868.66659946262
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "profit",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 25.901174352110505,
+      "wape": 15.680099140381948,
+      "mae": 102416.28322571915,
+      "rmse": 134398.6637250878
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "profit",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 29.425128668275335,
+      "wape": 16.867834936750622,
+      "mae": 110115.54999450277,
+      "rmse": 146336.8250546242
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "profit",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 12.385455280971659,
+      "wape": 12.040673779318546,
+      "mae": 90897.82717088598,
+      "rmse": 118993.34605672932
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "profit",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 11.155844358390818,
+      "wape": 11.223374043302373,
+      "mae": 91197.27730860663,
+      "rmse": 106408.7809997869
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "revenue",
+      "horizon": 1,
+      "n": 120,
+      "n_mape": 120,
+      "mape": 4.097156243949913,
+      "wape": 4.0462746802525285,
+      "mae": 211861.55380246913,
+      "rmse": 257091.66888413444
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "revenue",
+      "horizon": 3,
+      "n": 100,
+      "n_mape": 100,
+      "mape": 3.8937425082158037,
+      "wape": 3.8241953056768656,
+      "mae": 200750.69174121736,
+      "rmse": 246905.24060908463
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "revenue",
+      "horizon": 6,
+      "n": 70,
+      "n_mape": 70,
+      "mape": 3.4211743499173872,
+      "wape": 3.4117362330783747,
+      "mae": 188173.13229351782,
+      "rmse": 231772.21416207813
+    },
+    {
+      "candidate": "snaive_growth",
+      "metric": "revenue",
+      "horizon": 12,
+      "n": 10,
+      "n_mape": 10,
+      "mape": 3.6799566390379748,
+      "wape": 3.704042979253465,
+      "mae": 213844.87622584784,
+      "rmse": 257119.96858572875
+    }
+  ],
+  "fixed_origin": {
+    "origin": 202508,
+    "rows": [
+      {
+        "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+        "metric": "cost",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 4.400688645309496,
+        "wape": 4.557790423350774,
+        "mae": 208874.63573150247,
+        "rmse": 264361.84427808615
+      },
+      {
+        "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+        "metric": "profit",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 18.002906577615992,
+        "wape": 17.050922632882713,
+        "mae": 111369.96686020974,
+        "rmse": 135078.0284298998
+      },
+      {
+        "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+        "metric": "revenue",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 5.4316398653137234,
+        "wape": 5.698556024266265,
+        "mae": 298374.4380043235,
+        "rmse": 378177.4535291087
+      },
+      {
+        "candidate": "naive",
+        "metric": "cost",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 7.104732314226922,
+        "wape": 6.973638352929007,
+        "mae": 319588.2292499999,
+        "rmse": 369707.8156491168
+      },
+      {
+        "candidate": "naive",
+        "metric": "profit",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 46.97751157723367,
+        "wape": 26.659665050480946,
+        "mae": 174130.51933333336,
+        "rmse": 222790.73885126092
+      },
+      {
+        "candidate": "naive",
+        "metric": "revenue",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 9.50561360407525,
+        "wape": 9.224528792842733,
+        "mae": 482993.16225,
+        "rmse": 557439.1497340333
+      },
+      {
+        "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+        "metric": "cost",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 3.0292868713434484,
+        "wape": 3.1314805597878967,
+        "mae": 143509.6396435688,
+        "rmse": 183062.64334310457
+      },
+      {
+        "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+        "metric": "profit",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 16.271219096617077,
+        "wape": 14.515603305110245,
+        "mae": 94810.25126044854,
+        "rmse": 118709.04982791591
+      },
+      {
+        "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+        "metric": "revenue",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 3.7052002421707066,
+        "wape": 3.89866905083347,
+        "mae": 204132.9736960979,
+        "rmse": 269596.26948304044
+      },
+      {
+        "candidate": "snaive",
+        "metric": "cost",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 5.743286178939285,
+        "wape": 5.7782907369366585,
+        "mae": 264807.782,
+        "rmse": 304720.34448091034
+      },
+      {
+        "candidate": "snaive",
+        "metric": "profit",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 23.779804027896557,
+        "wape": 19.49030052879124,
+        "mae": 127303.03050000004,
+        "rmse": 158920.7447748309
+      },
+      {
+        "candidate": "snaive",
+        "metric": "revenue",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 6.88813256332323,
+        "wape": 6.985585718671827,
+        "mae": 365762.87116666674,
+        "rmse": 418348.42924038635
+      },
+      {
+        "candidate": "snaive_growth",
+        "metric": "cost",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 4.003258136073687,
+        "wape": 4.002239754529362,
+        "mae": 183414.83332681993,
+        "rmse": 219620.48629658832
+      },
+      {
+        "candidate": "snaive_growth",
+        "metric": "profit",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 25.429946453844636,
+        "wape": 15.055533304490917,
+        "mae": 98336.86312964406,
+        "rmse": 129628.89714683077
+      },
+      {
+        "candidate": "snaive_growth",
+        "metric": "revenue",
+        "n": 120,
+        "n_mape": 120,
+        "mape": 4.212256674660594,
+        "wape": 4.153894012601118,
+        "mae": 217496.46511529514,
+        "rmse": 262619.1048016229
+      }
+    ]
+  },
+  "departments_h1": [
+    {
+      "dept_no": "CP",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.9293952296841983,
+      "wape": 3.9088674890464947,
+      "mae": 27045.26443331434,
+      "rmse": 35255.568817090025
+    },
+    {
+      "dept_no": "CP",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 3.9293952296841983,
+      "wape": 3.9088674890464947,
+      "mae": 27045.26443331434,
+      "rmse": 35255.568817090025
+    },
+    {
+      "dept_no": "CP",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 0,
+      "mape": NaN,
+      "wape": NaN,
+      "mae": 0.0,
+      "rmse": 0.0
+    },
+    {
+      "dept_no": "CR",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.539170582316986,
+      "wape": 5.768602727732771,
+      "mae": 75981.0014455574,
+      "rmse": 98441.58884432478
+    },
+    {
+      "dept_no": "CR",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 8.10319992443485,
+      "wape": 8.168848593946326,
+      "mae": 44452.18366520099,
+      "rmse": 58015.40844048773
+    },
+    {
+      "dept_no": "CR",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.566383184804085,
+      "wape": 5.84334285503604,
+      "mae": 108762.98642848914,
+      "rmse": 144268.02028315287
+    },
+    {
+      "dept_no": "EN",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 7.951577926356516,
+      "wape": 8.195460254297316,
+      "mae": 36226.492489105665,
+      "rmse": 44004.62580764071
+    },
+    {
+      "dept_no": "EN",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 9.155995003718612,
+      "wape": 9.21234921484209,
+      "mae": 27050.048682548764,
+      "rmse": 34964.76191587639
+    },
+    {
+      "dept_no": "EN",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 7.865836414649199,
+      "wape": 8.062844270176893,
+      "mae": 59315.06725900588,
+      "rmse": 72427.33872535052
+    },
+    {
+      "dept_no": "FA",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.161589449370931,
+      "wape": 5.05714610336576,
+      "mae": 14389.20970569271,
+      "rmse": 18352.740229658844
+    },
+    {
+      "dept_no": "FA",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 10.67669729380949,
+      "wape": 11.07861305463349,
+      "mae": 7988.7220205737785,
+      "rmse": 9958.425169652875
+    },
+    {
+      "dept_no": "FA",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.0492882474348715,
+      "wape": 5.028878750991765,
+      "mae": 17935.07455736742,
+      "rmse": 22540.285358347865
+    },
+    {
+      "dept_no": "HL",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 9.215605355934496,
+      "wape": 9.621888156764708,
+      "mae": 96601.66056467072,
+      "rmse": 140540.09841842577
+    },
+    {
+      "dept_no": "HL",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 13.692370017236119,
+      "wape": 14.009328867533918,
+      "mae": 30687.524357246748,
+      "rmse": 44398.289542539525
+    },
+    {
+      "dept_no": "HL",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 9.533698003671654,
+      "wape": 9.985756731670667,
+      "mae": 122128.68566922055,
+      "rmse": 180394.72109783156
+    },
+    {
+      "dept_no": "MN",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 6.262875789215306,
+      "wape": 6.384867167019011,
+      "mae": 9592.035736335116,
+      "rmse": 11457.492837118045
+    },
+    {
+      "dept_no": "MN",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 6.269049916708055,
+      "wape": 6.432219647813972,
+      "mae": 7884.508771628191,
+      "rmse": 9658.170975913108
+    },
+    {
+      "dept_no": "MN",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 6.16425249118367,
+      "wape": 6.303336104830569,
+      "mae": 17196.076435839183,
+      "rmse": 20815.051168787584
+    },
+    {
+      "dept_no": "TP",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.160816611151577,
+      "wape": 5.144262968154838,
+      "mae": 26406.951173048095,
+      "rmse": 31815.624496748023
+    },
+    {
+      "dept_no": "TP",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 7.994639531631044,
+      "wape": 8.002169275400353,
+      "mae": 6206.231688678474,
+      "rmse": 7472.6088989114605
+    },
+    {
+      "dept_no": "TP",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.39440236699659,
+      "wape": 5.380809277781196,
+      "mae": 31794.39705782514,
+      "rmse": 38638.20372442952
+    },
+    {
+      "dept_no": "TR",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 8.503149352376846,
+      "wape": 8.353634380195087,
+      "mae": 15008.272767926856,
+      "rmse": 18016.462768605346
+    },
+    {
+      "dept_no": "TR",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 483.34416929154526,
+      "wape": 79.34559389474506,
+      "mae": 12928.12038623644,
+      "rmse": 13851.044762798561
+    },
+    {
+      "dept_no": "TR",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 5.313011361529711,
+      "wape": 5.316889050020763,
+      "mae": 10401.282628945226,
+      "rmse": 12880.904604883968
+    }
+  ],
+  "profit_by_month": [
+    {
+      "month": 1,
+      "mape": 13.71162288014798,
+      "actual": 497677.52999999997
+    },
+    {
+      "month": 2,
+      "mape": 8.198932737044455,
+      "actual": 430099.74400000006
+    },
+    {
+      "month": 3,
+      "mape": 17.994108013262633,
+      "actual": 705936.4890000001
+    },
+    {
+      "month": 4,
+      "mape": 16.132522514067027,
+      "actual": 821023.1100000001
+    },
+    {
+      "month": 5,
+      "mape": 16.582382688056583,
+      "actual": 855263.3610000001
+    },
+    {
+      "month": 6,
+      "mape": 16.248309045898203,
+      "actual": 840042.0199999999
+    },
+    {
+      "month": 7,
+      "mape": 7.520484481881707,
+      "actual": 819531.3359999999
+    },
+    {
+      "month": 8,
+      "mape": 9.360612026030227,
+      "actual": 812565.6059999999
+    },
+    {
+      "month": 9,
+      "mape": 13.344267307765756,
+      "actual": 630891.855
+    },
+    {
+      "month": 10,
+      "mape": 6.994958022858195,
+      "actual": 678901.6980000001
+    },
+    {
+      "month": 11,
+      "mape": 5.94203180636741,
+      "actual": 563272.0430000001
+    },
+    {
+      "month": 12,
+      "mape": 53.91858164210928,
+      "actual": 182726.51
+    }
+  ],
+  "bottom_up_vs_direct": {
+    "bottom_up": {
+      "cost": 3.0118629656493825,
+      "profit": 15.495734430457455,
+      "revenue": 3.657180448913632
+    },
+    "direct": {
+      "cost": 3.0114083097982336,
+      "profit": 15.477240799589968,
+      "revenue": 3.658571858622248
+    }
+  },
+  "stress": [
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 4.30958695487117,
+      "wape": 4.445370646240818,
+      "mae": 207478.47406294142,
+      "rmse": 319958.3938705045
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 49.62050527089394,
+      "wape": 20.725686662926947,
+      "mae": 129860.51642047343,
+      "rmse": 183939.52064440105
+    },
+    {
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 4.721751582211596,
+      "wape": 4.939439887634825,
+      "mae": 261487.08206456722,
+      "rmse": 428315.5009874776
+    },
+    {
+      "candidate": "snaive",
+      "metric": "cost",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 7.639583586262858,
+      "wape": 7.875687052998426,
+      "mae": 367581.39241666667,
+      "rmse": 498053.76213471126
+    },
+    {
+      "candidate": "snaive",
+      "metric": "profit",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 49.748386576439344,
+      "wape": 26.863221178095596,
+      "mae": 168316.34249999994,
+      "rmse": 231356.25438963439
+    },
+    {
+      "candidate": "snaive",
+      "metric": "revenue",
+      "n": 120,
+      "n_mape": 120,
+      "mape": 8.587446955368293,
+      "wape": 8.922776668286179,
+      "mae": 472359.3945833333,
+      "rmse": 643220.5224533258
+    }
+  ],
+  "seconds": 135.9
+}

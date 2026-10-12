@@ -22,6 +22,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.config import Settings, get_settings
+from app.periods import closed_through
 
 from . import loaders
 from .loaders import Books
@@ -67,13 +68,6 @@ def load_model(path: str) -> AnomalyModel:
         raise RuntimeError(f"the anomaly model at {path} was trained on a different feature set than "
                            "app/anomaly/schema.py: retrain with `python -m training.anomaly.train`")
     return model
-
-
-def closed_through(last_period: int, today: date) -> int:
-    """The latest month that has ended. A month still in progress has partial
-    totals that look like a sudden drop, so it is never scored."""
-    previous = today.year * 100 + today.month - 1 if today.month > 1 else (today.year - 1) * 100 + 12
-    return min(last_period, previous)
 
 
 def score_books(model: AnomalyModel, books: Books, today: date) -> tuple[pd.DataFrame, int]:

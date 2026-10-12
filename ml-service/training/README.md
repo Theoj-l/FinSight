@@ -36,3 +36,26 @@ connects to the database: every seed is generated in memory with
 | `metrics.py` | threshold selection (best validation F1 within the review budget) and all metrics |
 | `train.py` | fits the Isolation Forests and combiners, picks thresholds, saves the bundle |
 | `evaluate.py` | scores the test seeds and the showcase, writes `REPORT.md` |
+
+## Forecasting — `training/forecast/`
+
+How the revenue / cost / profit forecaster is benchmarked and chosen (seeds,
+time windows, rolling origin, candidates, selection rule, metrics):
+**[forecast/METHODOLOGY.md](forecast/METHODOLOGY.md)**.
+
+```bash
+cd ml-service && source venv/bin/activate
+python -m training.forecast.train       # ~9 min  -> models/forecast/v1/config.json (+ validation rows of comparison.csv)
+python -m training.forecast.evaluate    # ~3 min  -> models/forecast/v1/REPORT.md, metrics.json, comparison.csv
+```
+
+The forecasters are refitted on the live ledger at every run, so the artifact
+is the *choice* of method and settings (`config.json`), not fitted weights.
+
+| File | Role |
+|---|---|
+| `bench.py` | seed roles (shared with the anomaly model), time windows, rolling-origin backtest |
+| `candidates.py` | the baselines, Holt-Winters and Prophet settings compared |
+| `compare.py` | the shared comparison format (`comparison.csv`) other models' results are appended to |
+| `train.py` | validation backtest of every candidate; picks the production model |
+| `evaluate.py` | test-window results, target check, stress test; writes `REPORT.md` |

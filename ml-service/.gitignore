@@ -18,6 +18,7 @@ __pycache__/
 models/*
 !models/.gitkeep
 !models/anomaly/
+!models/forecast/
 
 # Generated dataset (CSV + reports); regenerate with `python -m datagen`
 datagen/output/

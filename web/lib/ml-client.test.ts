@@ -82,6 +82,21 @@ describe("mlClient", () => {
     await expect(mlClient.rescoreAnomalies()).rejects.toMatchObject({ status: 409 });
   });
 
+  it("triggers a forecast run with a POST", async () => {
+    const run = {
+      run_id: 4, model_version: "v1", data_through: 202608, history_through: 202608, horizon: 12,
+      n_forecast: 288, n_backtest: 5328, accuracy: { revenue: 3.2, cost: 2.9, profit: 14.1 }, seconds: 11.2,
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(run));
+
+    expect(await mlClient.runForecast()).toEqual(run);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/forecast\/run$/);
+    expect(options.method).toBe("POST");
+    expect(options.headers).toMatchObject({ "x-ml-service-token": expect.any(String) });
+  });
+
   it("forwards an abort signal to fetch", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ status: "ok", service: "ml-service" }),

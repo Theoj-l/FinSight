@@ -6,6 +6,11 @@ banned outright and a test enforces it (tests/test_anomaly_allowlist.py).
 """
 from __future__ import annotations
 
+# Period helpers live in app/periods.py; re-exported for the anomaly code.
+from app.periods import period_at as period_at
+from app.periods import period_index as period_index
+from app.periods import periods_between as periods_between
+
 KINDS = ("dept", "acc", "cust")
 KIND_LABEL = {"dept": "business unit", "acc": "expense account", "cust": "customer"}
 
@@ -56,19 +61,3 @@ CUST_FEATURES = [
     "days_since_receipt", "gap_ratio", "out_growth_3m",
 ]
 FEATURES = {"dept": DEPT_FEATURES, "acc": ACC_FEATURES, "cust": CUST_FEATURES}
-
-
-# --- period helpers ------------------------------------------------------------
-def period_index(period_no: int, first_period: int) -> int:
-    return (period_no // 100 - first_period // 100) * 12 + (period_no % 100 - first_period % 100)
-
-
-def period_at(index: int, first_period: int) -> int:
-    y0, m0 = divmod(first_period, 100)
-    k = (y0 * 12 + m0 - 1) + index
-    return (k // 12) * 100 + k % 12 + 1
-
-
-def periods_between(first_period: int, last_period: int) -> list[int]:
-    n = period_index(last_period, first_period) + 1
-    return [period_at(i, first_period) for i in range(n)]

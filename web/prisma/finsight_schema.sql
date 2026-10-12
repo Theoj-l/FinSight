@@ -391,4 +391,69 @@ comment on column anomaly_alert.run_id is 'The run that last confirmed this aler
 alter table anomaly_run enable row level security;
 alter table anomaly_alert enable row level security;
 
+-- ---------------------------------------------------------------------------
+-- FinSight application tables (not AutoCount): revenue / cost / profit forecasts.
+-- Written only by ml-service (app/forecast/run.py, monthly); read by web/ through
+-- Prisma (app/dashboard/data/forecast.ts). Every run is kept. No foreign keys into
+-- the ledger tables, so `python -m datagen --load` never empties them.
+-- ---------------------------------------------------------------------------
+create table forecast_run (
+  run_id                 bigint           generated always as identity,
+  started_at             timestamptz      default now() not null,
+  finished_at            timestamptz     ,
+  status                 varchar(10)      default 'running' not null,
+  triggered_by           varchar(20)      not null,
+  model_version          varchar(20)      not null,
+  data_through           integer         ,
+  history_through        integer         ,
+  horizon                smallint        ,
+  n_series               integer         ,
+  summary                jsonb           ,
+  error                  text            ,
+  constraint pk_forecast_run primary key (run_id),
+  constraint ck_forecast_run_status check (status in ('running', 'ok', 'failed'))
+);
+
+create table forecast_value (
+  run_id                 bigint           not null,
+  kind                   varchar(8)       not null,
+  dept_no                varchar(10)      not null,
+  metric                 varchar(8)       not null,
+  origin                 integer          not null,
+  period_no              integer          not null,
+  horizon                smallint         not null,
+  yhat                   double precision not null,
+  actual                 double precision,
+  method                 varchar(20)      not null,
+  constraint pk_forecast_value primary key (run_id, kind, dept_no, metric, origin, period_no),
+  constraint ck_forecast_value_kind check (kind in ('forecast', 'backtest')),
+  constraint ck_forecast_value_metric check (metric in ('revenue', 'cost', 'profit')),
+  constraint ck_forecast_value_horizon check (horizon between 1 and 24),
+  constraint fk_forecast_value_run_id foreign key (run_id) references forecast_run(run_id) on delete cascade
+);
+
+comment on table forecast_run is 'One row per forecast run (monthly cron, POST /forecast/run or after a datagen load). The latest ok run is the current forecast.';
+comment on column forecast_run.status is 'running, ok or failed. A failed run stores no values; readers use the latest ok run.';
+comment on column forecast_run.triggered_by is 'What started the run: cli (cron), api (POST /forecast/run) or datagen (after a data load).';
+comment on column forecast_run.model_version is 'Selected forecaster, e.g. v1 (ml-service/models/forecast/<version>/config.json).';
+comment on column forecast_run.data_through is 'Latest period_no present in pbalance when the run started.';
+comment on column forecast_run.history_through is 'Last closed month the forecast was made from (a month in progress is never used). Forecasts start the month after.';
+comment on column forecast_run.horizon is 'Months forecast ahead of history_through.';
+comment on column forecast_run.n_series is 'Department x metric series forecast.';
+comment on column forecast_run.summary is 'JSON: the methods used, the 15% MAPE target, and company-level accuracy of 1-month-ahead backtest forecasts over the last 12 closed months (mape, wape, mae, rmse, meets_target per metric).';
+comment on column forecast_run.error is 'Exception text when status = failed.';
+comment on table forecast_value is 'Forecast and backtest values per department, metric and month. Selections of departments (All units, a segment) are sums of these rows.';
+comment on column forecast_value.kind is 'forecast = the months after history_through; backtest = past months re-forecast from the data before them, with the actual, for accuracy and the band.';
+comment on column forecast_value.dept_no is 'Department (business unit or CP). Not a foreign key, so reloading the ledger leaves forecasts in place.';
+comment on column forecast_value.metric is 'revenue (RE, credit - debit), cost (CS + EX, debit - credit) or profit (revenue - cost + other income; derived, never forecast on its own).';
+comment on column forecast_value.origin is 'Last month of data the forecast was made from, YYYYMM.';
+comment on column forecast_value.period_no is 'Month forecast, YYYYMM.';
+comment on column forecast_value.horizon is 'Months ahead of origin (1 = next month).';
+comment on column forecast_value.yhat is 'Forecast value, S$ (home currency).';
+comment on column forecast_value.actual is 'Actual value for backtest rows; null for forecast rows.';
+comment on column forecast_value.method is 'Method that produced the value (e.g. holt_winters, or snaive when history is short); derived for profit.';
+
+alter table forecast_run enable row level security;
+alter table forecast_value enable row level security;
+
 commit;

@@ -34,6 +34,8 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 # --- runner: minimal production image ------------------------------
 FROM base AS runner
 COPY --from=deps /opt/venv /opt/venv
+# Prophet imports matplotlib, which wants a writable cache dir; appuser has no home.
+ENV MPLCONFIGDIR=/tmp/matplotlib
 RUN useradd --system --uid 1001 appuser
 # Only the serving layer and the trained models are needed at runtime;
 # datagen/ and training/ are offline tooling.
@@ -41,4 +43,7 @@ COPY app ./app
 COPY models ./models
 USER appuser
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Hosts such as Railway pass the port to listen on in $PORT; 8000 otherwise.
+# A cron service built from this image overrides the command instead, e.g.
+# `python -m app.forecast.run` (see DEPLOY.md).
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

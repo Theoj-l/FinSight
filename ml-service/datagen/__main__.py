@@ -77,6 +77,7 @@ def main(argv=None) -> int:
         sinks.load_postgres(tables, log, run_meta, args.db_url)
         print("loaded.")
         rescore_anomalies(args.db_url)
+        refresh_forecasts(args.db_url)
     return 0
 
 
@@ -93,6 +94,22 @@ def rescore_anomalies(db_url: str) -> None:
     print("· score anomalies")
     s = score.run(db_url, model, triggered_by="datagen")
     print(f"  {s.n_alerts} alerts ({s.n_new} new), scored through {s.scored_through}, {s.seconds}s")
+
+
+def refresh_forecasts(db_url: str) -> None:
+    """The ledger just changed, so store a fresh forecast run."""
+    from app.config import get_settings
+    from app.forecast import run as forecast_run
+
+    try:
+        model = forecast_run.load_model(forecast_run.model_dir(get_settings()))
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"· forecasts NOT refreshed: {e}")
+        return
+    print("· forecast")
+    s = forecast_run.run(db_url, model, triggered_by="datagen")
+    print(f"  {s.n_forecast} forecast values after {s.history_through}, "
+          f"{s.n_backtest} backtest, {s.seconds}s")
 
 
 if __name__ == "__main__":
