@@ -1,0 +1,58 @@
+kind,key,period_no,score,reasons,anomaly_id
+dept,TR,202201,0.4020484861020444,"weaker signals: gross-margin z vs 12m -5.9, gross-margin shortfall CUSUM +7.0",
+dept,EN,202204,0.5018930438678287,gross margin 37% vs typical 40%,
+dept,CR,202209,0.981868639440824,gross margin 10% vs typical 34%,A03
+acc,6900,202212,0.9992718294101801,"round-number journal of 100,000 at month end; monthly total 103,489 is 31.8x its trailing median (z 6.0)",A08
+dept,HL,202307,0.9918097282234504,revenue 10.3 robust SDs above its trailing 12 months,A01
+dept,TR,202307,0.4889746199096867,gross margin 8% vs typical 12%,
+acc,6200,202311,0.9998652493154564,"monthly total 104,715 is 2.1x its trailing median (z 21.4); the same amount was posted twice within 3 days; 2 postings this month, usually 1",A04
+dept,EN,202403,0.9644337796143333,revenue 4.8 robust SDs below its trailing 12 months; revenue persistently below last year's pattern (CUSUM 4.5),A02
+dept,EN,202404,0.9175756920890956,revenue persistently below last year's pattern (CUSUM 9.0),A02
+dept,EN,202405,0.9656637443078157,revenue persistently below last year's pattern (CUSUM 12.3),A02
+dept,FA,202406,0.9909085143468251,gross margin -17% vs typical 25%; 19% of the unit's revenue/cost is on an account this unit has never used,A06
+dept,EN,202406,0.9504614746955923,revenue persistently below last year's pattern (CUSUM 16.6),A02
+dept,EN,202407,0.9281749481139767,revenue persistently below last year's pattern (CUSUM 18.9),A02
+dept,TR,202407,0.8514958030970502,"weaker signals: gross-margin shortfall CUSUM +5.3, gross-margin z vs 12m -2.6",A10
+dept,EN,202408,0.8813717917378631,revenue persistently below last year's pattern (CUSUM 23.4),A02
+dept,TR,202408,0.8025309496591787,"weaker signals: gross-margin shortfall CUSUM +7.1, gross-margin z vs 12m -2.3, revenue year-on-year z +1.6",A10
+dept,TR,202409,0.8553499474311169,"weaker signals: gross-margin shortfall CUSUM +7.5, gross-margin trend (Mann–Kendall z) -1.8",A10
+dept,TR,202410,0.8855687616121258,"weaker signals: gross-margin shortfall CUSUM +7.8, gross-margin trend (Mann–Kendall z) -1.9",A10
+cust,C0122,202411,0.4791252602118306,days past due 62 vs the customer's own history (z 12.1); collected 0% of the last 90 days' billing,A09
+dept,TR,202411,0.8471474710843847,gross margin trending down: -3.6 pts vs a year earlier (Mann–Kendall z -2.1),A10
+cust,C0122,202412,0.9749590214708015,days past due 71 vs the customer's own history (z 13.7); 74% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing; no receipt for 141 days (usually every 47),A09
+dept,EN,202412,0.9902129915677608,GL revenue differs from sales invoices by +27.3%; revenue persistently below last year's pattern (CUSUM 17.7),A07
+dept,TR,202412,0.8712006221399194,gross margin trending down: -3.8 pts vs a year earlier (Mann–Kendall z -2.1),A10
+cust,C0122,202501,0.9991535437716783,days past due 62 vs the customer's own history (z 11.9); 47% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing; no receipt for 172 days (usually every 47),A09
+cust,C0085,202501,0.42297330319341364,days past due 48 vs the customer's own history (z 9.6); no receipt for 234 days (usually every 71),
+dept,TR,202501,0.9925763363815489,gross margin trending down: -4.9 pts vs a year earlier (Mann–Kendall z -2.7); gross margin 4% vs typical 9%,A10
+cust,C0122,202502,0.9994328917730382,47% of unpaid invoices are 90+ days overdue; days past due 80 vs the customer's own history (z 5.7); no receipt for 200 days (usually every 47); collected 0% of the last 90 days' billing,A09
+dept,TR,202502,0.9792301697821721,gross margin trending down: -5.8 pts vs a year earlier (Mann–Kendall z -2.7),A10
+acc,6800,202503,0.5805099615997088,"monthly total 224,882 is 12.4x its trailing median (z 159.4); 2 postings this month, usually 1",A05
+cust,C0122,202503,0.9996691223371152,no receipt for 231 days (usually every 47); collected 0% of the last 90 days' billing,A09
+dept,TR,202503,0.9842812626684613,gross margin trending down: -7.3 pts vs a year earlier (Mann–Kendall z -2.9),A10
+cust,C0122,202504,0.9999023280549374,no receipt for 261 days (usually every 47); collected 0% of the last 90 days' billing,A09
+dept,TR,202504,0.9790609946092802,gross margin trending down: -6.1 pts vs a year earlier (Mann–Kendall z -2.7),A10
+cust,C0122,202505,0.9999101851791333,no receipt for 292 days (usually every 47); 38% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202505,0.956113663455332,gross margin trending down: -6.0 pts vs a year earlier (Mann–Kendall z -2.6),A10
+cust,C0122,202506,0.9999003405411689,no receipt for 322 days (usually every 47); 36% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202506,0.9870773010348135,gross margin trending down: -5.7 pts vs a year earlier (Mann–Kendall z -2.6),A10
+cust,C0122,202507,0.9998943868717661,no receipt for 353 days (usually every 47); 68% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202507,0.9774222006767134,gross margin trending down: -6.8 pts vs a year earlier (Mann–Kendall z -2.9),A10
+cust,C0122,202508,0.9999081314684387,no receipt for 384 days (usually every 47); 72% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202508,0.9537487246618165,gross margin trending down: -7.2 pts vs a year earlier (Mann–Kendall z -3.0),A10
+cust,C0122,202509,0.9999090308931399,no receipt for 414 days (usually every 47); 55% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202509,0.9919703278872246,gross margin trending down: -6.6 pts vs a year earlier (Mann–Kendall z -3.0),A10
+cust,C0122,202510,0.9999020224570768,no receipt for 445 days (usually every 47); 71% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202510,0.9763164524103676,gross margin trending down: -6.6 pts vs a year earlier (Mann–Kendall z -2.7),A10
+cust,C0122,202511,0.9999078858132943,no receipt for 475 days (usually every 47); 71% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202511,0.9815068924292881,gross margin trending down: -7.6 pts vs a year earlier (Mann–Kendall z -2.7),A10
+cust,C0122,202512,0.9999245905151752,no receipt for 506 days (usually every 47); 64% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+dept,TR,202512,0.9905054608202347,gross margin trending down: -7.6 pts vs a year earlier (Mann–Kendall z -2.7),A10
+cust,C0122,202601,0.9999245905151752,no receipt for 537 days (usually every 47); 90% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202602,0.9999245905151752,no receipt for 565 days (usually every 47); 90% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202603,0.9999299847474896,no receipt for 596 days (usually every 47); 80% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202604,0.9999203132064846,no receipt for 626 days (usually every 47); 72% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202605,0.9999203132064846,no receipt for 657 days (usually every 47); 80% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202606,0.9999299847474896,no receipt for 687 days (usually every 47); 80% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202607,0.9999203132064846,no receipt for 718 days (usually every 47); 77% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09
+cust,C0122,202608,0.9999203132064846,no receipt for 749 days (usually every 47); 77% of unpaid invoices are 90+ days overdue; collected 0% of the last 90 days' billing,A09

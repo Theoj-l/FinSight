@@ -35,9 +35,10 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 FROM base AS runner
 COPY --from=deps /opt/venv /opt/venv
 RUN useradd --system --uid 1001 appuser
-# Only the serving layer is needed at runtime; datagen/ and training/ are
-# offline tooling.
+# Only the serving layer and the trained models are needed at runtime;
+# datagen/ and training/ are offline tooling.
 COPY app ./app
+COPY models ./models
 USER appuser
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

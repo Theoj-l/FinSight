@@ -1,7 +1,9 @@
-"""The live-scoring wiring: which months get scored, and the /anomalies/rescore
-endpoint. No database: score.run is replaced where it would connect."""
+"""The live-scoring wiring: the committed model, which months get scored, and
+the /anomalies/rescore endpoint. No database: score.run is replaced where it
+would connect."""
 from __future__ import annotations
 
+import os
 from datetime import date
 
 import pandas as pd
@@ -9,10 +11,35 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.anomaly import loaders, score
+from app.anomaly.model import AnomalyModel
 from app.config import Settings, get_settings
 from app.main import app
 from app.routers import anomalies
 from datagen.pipeline import generate
+from training.anomaly import labels
+
+SERVED_MODEL = os.path.join(os.path.dirname(__file__), os.pardir, "models", "anomaly", "v1")
+
+
+@pytest.fixture(scope="module")
+def served_model():
+    return score.load_model(SERVED_MODEL)
+
+
+def test_served_model_finds_every_showcase_anomaly(served_model):
+    tables = generate(20260901)
+    alerts, through = score.score_books(served_model, loaders.from_tables(tables), today=date(2026, 10, 8))
+    events = labels.match_events(alerts, tables["_anomaly_log"], seed=20260901)
+    assert through == 202608
+    assert events["detected"].all(), events.loc[~events["detected"], "anomaly_id"].tolist()
+
+
+def test_a_model_trained_on_other_features_is_refused(tmp_path):
+    model = AnomalyModel.load(SERVED_MODEL)
+    model.meta = {**model.meta, "features": {"dept": ["rev_z12"]}}
+    model.save(str(tmp_path))
+    with pytest.raises(RuntimeError, match="different feature set"):
+        score.load_model(str(tmp_path))
 
 
 @pytest.mark.parametrize("last, today, expected", [

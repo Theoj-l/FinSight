@@ -13,9 +13,11 @@ __pycache__/
 .env.local
 !.env.example
 
-# Trained model artifacts
+# Trained model artifacts. The served anomaly model is committed so a deploy
+# ships exactly the artifact evaluated in its REPORT.md.
 models/*
 !models/.gitkeep
+!models/anomaly/
 
 # Generated dataset (CSV + reports); regenerate with `python -m datagen`
 datagen/output/

@@ -45,7 +45,7 @@ ml-service/
     security.py
     routers/
   training/         offline scripts/notebooks that produce model artifacts
-  models/           trained artifacts (gitignored)
+  models/           trained artifacts; anomaly/v1/ is committed and ships in the image
   tests/
 ```
 
@@ -208,9 +208,12 @@ never calls the model. Alerts are refreshed:
 - by `python -m app.anomaly.score` (from `ml-service/`; what a nightly cron runs)
 - by `POST /anomalies/rescore` on ml-service (`mlClient.rescoreAnomalies()` from `web/`)
 
-The model file is gitignored. Build it once with
-`python -m training.anomaly.train` (~80 s) before scoring. How the model works:
-[ml-service/training/anomaly/METHODOLOGY.md](ml-service/training/anomaly/METHODOLOGY.md).
+The served model, `ml-service/models/anomaly/v1/`, is committed, so scoring
+works straight after a clone and the deployed image carries exactly the model
+evaluated in its `REPORT.md`. To change it, retrain
+(`python -m training.anomaly.train`, ~90 s, deterministic), re-run
+`python -m training.anomaly.evaluate`, and commit the folder. How the model
+works: [ml-service/training/anomaly/METHODOLOGY.md](ml-service/training/anomaly/METHODOLOGY.md).
 
 ## Run the Application
 
@@ -300,6 +303,34 @@ changing either value. All other config is read at container start from the
 `web/Dockerfile` (generic) and `web/Dockerfile.vercel` (Vercel Functions: listens
 on `$PORT`, default 80) are separate on purpose — keep them in sync when the
 build changes.
+
+#### `ml-service` on Railway: anomaly scoring
+
+The image already contains the trained model (`models/anomaly/v1/`), so nothing
+is trained on Railway. Set these variables on the service:
+
+| Variable | Value |
+| -------- | ----- |
+| `ML_SERVICE_TOKEN` | same value as in `web` |
+| `DATABASE_URL` | Supabase **session pooler** URL (port 5432), the same as in `ml-service/.env`. Not the transaction pooler (6543): a scoring run takes a session-level lock. |
+
+- **Memory:** a scoring run peaks at about 500 MB. Give the service at least 1 GB.
+- **Nightly refresh:** add a second Railway service from the same repo and Root
+  Directory. Set its start command to `python -m app.anomaly.score` and give it a
+  cron schedule, for example `0 18 * * *` (02:00 Singapore; Railway cron runs in
+  UTC). It needs `DATABASE_URL` only. A run takes 5–15 s, then exits; exit code 0
+  means the alerts were refreshed.
+- `web/` reads the alerts from Supabase, not from this service. It needs
+  `ML_SERVICE_URL` only for `mlClient.rescoreAnomalies()`.
+
+Check a deploy:
+
+```bash
+curl https://<ml-service-domain>/health
+curl -X POST -H "x-ml-service-token: <token>" https://<ml-service-domain>/anomalies/rescore
+# {"run_id": …, "scored_through": 202608, "n_alerts": 57, …}
+# 503 means DATABASE_URL is missing; 401 means the token does not match.
+```
 
 ## Common Commands
 

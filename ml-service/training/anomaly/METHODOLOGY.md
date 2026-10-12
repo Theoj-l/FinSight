@@ -10,7 +10,7 @@ so each claim can be checked.
 | Data generator | `ml-service/datagen/` (dataset **v1.1**; changelog in `datagen/DATA_MODEL.md` §10) |
 | Feature and model code | `ml-service/app/anomaly/` (shipped with the serving image) |
 | Training and evaluation | `ml-service/training/anomaly/` (offline only) |
-| Artifacts and report | `ml-service/models/anomaly/v1/` (gitignored; rebuild with §10) |
+| Artifacts and report | `ml-service/models/anomaly/v1/` (committed; the deployed model; rebuild with §10) |
 
 ---
 
@@ -498,6 +498,11 @@ python -m training.anomaly.evaluate            # ~16 s  -> models/anomaly/v1/REP
 35 s. `pytest` runs the whole suite, including that smoke run. Use
 `pytest -m "not slow"` to skip it.
 
+**Training is deterministic.** Retraining from commit `ded048c` reproduced the
+2026-09-23 model exactly: identical thresholds, identical validation metrics,
+and identical combiner scores on every showcase unit. The model in
+`models/anomaly/v1/` (trained from `ded048c`) is the one deployed.
+
 ---
 
 ## 11. From model to dashboard
@@ -523,4 +528,10 @@ The trained model runs in production as a batch job, not per request. Code:
    (`web/app/dashboard/data/anomalies.ts`). It never loads the model.
 
 A run on the canonical ledger takes about 4 s: 3 s to read 105k ledger lines
-and 1–2 s to score.
+and 1–2 s to score. It peaks at about 500 MB of memory.
+
+**Deployment.** The trained model is committed and copied into the production
+image, so the service runs exactly the artifact evaluated in `REPORT.md` and
+nothing is trained at deploy time. On load, the service refuses a model whose
+recorded feature lists differ from `app/anomaly/schema.py`. This stops a feature
+change from going live without a retrain.

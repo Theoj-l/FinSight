@@ -1,0 +1,2052 @@
+{
+  "model": {
+    "model_version": "v1",
+    "created_at": "2026-10-08T20:35:07",
+    "git_sha": "ded048c",
+    "versions": {
+      "python": "3.14.7",
+      "sklearn": "1.9.1",
+      "numpy": "2.5.2",
+      "pandas": "3.0.5",
+      "dataset": "1.1"
+    },
+    "quick": false,
+    "seeds": {
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "val": [
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40
+      ],
+      "test": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "showcase": 20260901
+    },
+    "review_budget": {
+      "dept": 2.0,
+      "acc": 1.5,
+      "cust": 1.5
+    },
+    "line_features": [
+      "log_amt",
+      "log_ratio_cell",
+      "trailing_zeros",
+      "month_end",
+      "dom",
+      "jt_code",
+      "n_lines",
+      "pair_freq",
+      "dup_count",
+      "is_contra"
+    ],
+    "features": {
+      "dept": [
+        "rev_z12",
+        "rev_zyoy",
+        "rev_level",
+        "rev_cusum_neg",
+        "rev_cusum_pos",
+        "cost_z12",
+        "cost_zyoy",
+        "gm",
+        "gm_dev12",
+        "gm_z12",
+        "gm_shift",
+        "gm_mkz12",
+        "gm_slope12",
+        "gm_cusum_neg",
+        "recon_gap",
+        "new_pair_share",
+        "min_pair_freq",
+        "n_manual",
+        "n_manual_dev",
+        "manual_share",
+        "max_line_ratio",
+        "max_jscore"
+      ],
+      "acc": [
+        "z12",
+        "zyoy",
+        "log_ratio_med12",
+        "cusum_pos",
+        "n_journals",
+        "n_journals_dev",
+        "max_line_share",
+        "max_line_ratio",
+        "max_trailing_zeros",
+        "round_month_end",
+        "dup_max",
+        "max_jscore"
+      ],
+      "cust": [
+        "log_outstanding",
+        "overdue30_share",
+        "overdue90_share",
+        "wavg_dpd",
+        "dpd_excess",
+        "dpd_z",
+        "n_open",
+        "n_overdue30",
+        "collect_ratio_90",
+        "log_billed_90",
+        "days_since_receipt",
+        "gap_ratio",
+        "out_growth_3m"
+      ]
+    },
+    "combiner_fixed_params": {
+      "min_samples_leaf": 20,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 0
+    },
+    "combiner_grid": {
+      "dept": [
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 200,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.8837
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 200,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.8832
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 400,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.8829
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 400,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.8803
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 200,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.8798
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 200,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.8794
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 400,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.8788
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 400,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.8772
+        }
+      ],
+      "acc": [
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 200,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9983
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 200,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9986
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 400,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9981
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 400,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9986
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 200,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9985
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 200,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9986
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 400,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9988
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 400,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9987
+        }
+      ],
+      "cust": [
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 200,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9349
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 200,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9331
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 400,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9321
+        },
+        {
+          "params": {
+            "learning_rate": 0.05,
+            "max_iter": 400,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.931
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 200,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9317
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 200,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9296
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 400,
+            "max_leaf_nodes": 15
+          },
+          "val_average_precision": 0.9308
+        },
+        {
+          "params": {
+            "learning_rate": 0.1,
+            "max_iter": 400,
+            "max_leaf_nodes": 31
+          },
+          "val_average_precision": 0.9288
+        }
+      ]
+    },
+    "combiner_chosen": {
+      "dept": {
+        "learning_rate": 0.05,
+        "max_iter": 200,
+        "max_leaf_nodes": 15
+      },
+      "acc": {
+        "learning_rate": 0.1,
+        "max_iter": 400,
+        "max_leaf_nodes": 15
+      },
+      "cust": {
+        "learning_rate": 0.05,
+        "max_iter": 200,
+        "max_leaf_nodes": 15
+      }
+    },
+    "journal_iforest": {
+      "sample": 300000,
+      "n_estimators": 200,
+      "max_samples": 512
+    },
+    "thresholds": {
+      "rules": {
+        "dept": 1.0,
+        "acc": 1.0,
+        "cust": 1.0
+      },
+      "stat": {
+        "dept": 6.348707981648263,
+        "acc": 94.47296878524784,
+        "cust": 7.019125207984692
+      },
+      "iforest": {
+        "dept": 0.42196937099812726,
+        "acc": 0.6389531439791432,
+        "cust": 0.6934915868797424
+      },
+      "combiner": {
+        "dept": 0.3032323544513168,
+        "acc": 0.1129997849748467,
+        "cust": 0.3519108774354158
+      }
+    },
+    "rows": {
+      "dept": {
+        "train_units": 11760,
+        "train_positives": 1835,
+        "val_units": 3920,
+        "val_positives": 566
+      },
+      "acc": {
+        "train_units": 24060,
+        "train_positives": 312,
+        "val_units": 8020,
+        "val_positives": 98
+      },
+      "cust": {
+        "train_units": 383453,
+        "train_positives": 3080,
+        "val_units": 127858,
+        "val_positives": 698
+      }
+    },
+    "val_metrics": {
+      "rules": {
+        "method": "rules",
+        "seeds": [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        "thresholds": {
+          "dept": 1.0,
+          "acc": 1.0,
+          "cust": 1.0
+        },
+        "per_kind": {
+          "dept": {
+            "units": 3920,
+            "positives": 566,
+            "average_precision": 0.2441587942597534,
+            "alerts_per_month": 0.11785714285714285,
+            "precision": 1.0,
+            "unit_recall": 0.1166077738515901
+          },
+          "acc": {
+            "units": 8020,
+            "positives": 98,
+            "average_precision": 0.6774594126927579,
+            "alerts_per_month": 0.11785714285714285,
+            "precision": 1.0,
+            "unit_recall": 0.673469387755102
+          },
+          "cust": {
+            "units": 127858,
+            "positives": 698,
+            "average_precision": 0.7136064404543346,
+            "alerts_per_month": 0.8875,
+            "precision": 1.0,
+            "unit_recall": 0.7120343839541547
+          }
+        },
+        "alerts_per_month": 1.1232142857142857,
+        "alert_precision": 1.0,
+        "event_recall": 0.5165562913907285,
+        "events": 302,
+        "recall_by_category": {
+          "expense": {
+            "recall": 0.5,
+            "n": 64
+          },
+          "margin": {
+            "recall": 0.0,
+            "n": 52
+          },
+          "posting_error": {
+            "recall": 0.9900990099009901,
+            "n": 101
+          },
+          "receivables": {
+            "recall": 0.96,
+            "n": 25
+          },
+          "revenue": {
+            "recall": 0.0,
+            "n": 60
+          }
+        },
+        "recall_by_subtype": {
+          "cost_overrun": {
+            "recall": 0.0,
+            "n": 33
+          },
+          "customer_delinquency": {
+            "recall": 0.96,
+            "n": 25
+          },
+          "duplicate_payment": {
+            "recall": 1.0,
+            "n": 32
+          },
+          "gradual_erosion": {
+            "recall": 0.0,
+            "n": 19
+          },
+          "one_off_spike": {
+            "recall": 0.0,
+            "n": 37
+          },
+          "outlier_charge": {
+            "recall": 0.0,
+            "n": 32
+          },
+          "revenue_cutoff": {
+            "recall": 1.0,
+            "n": 38
+          },
+          "round_number_journal": {
+            "recall": 1.0,
+            "n": 34
+          },
+          "sustained_drop": {
+            "recall": 0.0,
+            "n": 23
+          },
+          "wrong_department": {
+            "recall": 0.9655172413793104,
+            "n": 29
+          }
+        },
+        "recall_by_difficulty": {
+          "easy": {
+            "recall": 0.49193548387096775,
+            "n": 124
+          },
+          "hard": {
+            "recall": 0.4444444444444444,
+            "n": 63
+          },
+          "medium": {
+            "recall": 0.5826086956521739,
+            "n": 115
+          }
+        },
+        "median_delay_by_subtype": {
+          "customer_delinquency": 6.5,
+          "duplicate_payment": 0.0,
+          "revenue_cutoff": 0.0,
+          "round_number_journal": 0.0,
+          "wrong_department": 0.0
+        },
+        "decoy_alert_rate": 0.0
+      },
+      "stat": {
+        "method": "stat",
+        "seeds": [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        "thresholds": {
+          "dept": 6.348707981648263,
+          "acc": 94.47296878524784,
+          "cust": 7.019125207984692
+        },
+        "per_kind": {
+          "dept": {
+            "units": 3920,
+            "positives": 566,
+            "average_precision": 0.5640352275407461,
+            "alerts_per_month": 1.1107142857142858,
+            "precision": 0.5160771704180064,
+            "unit_recall": 0.5671378091872792
+          },
+          "acc": {
+            "units": 8020,
+            "positives": 98,
+            "average_precision": 0.12224824190923195,
+            "alerts_per_month": 0.5017857142857143,
+            "precision": 0.18149466192170818,
+            "unit_recall": 0.5204081632653061
+          },
+          "cust": {
+            "units": 127858,
+            "positives": 698,
+            "average_precision": 0.15555192008009655,
+            "alerts_per_month": 0.5857142857142857,
+            "precision": 0.32926829268292684,
+            "unit_recall": 0.15472779369627507
+          }
+        },
+        "alerts_per_month": 2.1982142857142857,
+        "alert_precision": 0.38992688870836717,
+        "event_recall": 0.6390728476821192,
+        "events": 302,
+        "recall_by_category": {
+          "expense": {
+            "recall": 0.40625,
+            "n": 64
+          },
+          "margin": {
+            "recall": 0.9038461538461539,
+            "n": 52
+          },
+          "posting_error": {
+            "recall": 0.5445544554455446,
+            "n": 101
+          },
+          "receivables": {
+            "recall": 0.92,
+            "n": 25
+          },
+          "revenue": {
+            "recall": 0.7,
+            "n": 60
+          }
+        },
+        "recall_by_subtype": {
+          "cost_overrun": {
+            "recall": 0.8484848484848485,
+            "n": 33
+          },
+          "customer_delinquency": {
+            "recall": 0.92,
+            "n": 25
+          },
+          "duplicate_payment": {
+            "recall": 0.0,
+            "n": 32
+          },
+          "gradual_erosion": {
+            "recall": 1.0,
+            "n": 19
+          },
+          "one_off_spike": {
+            "recall": 0.8648648648648649,
+            "n": 37
+          },
+          "outlier_charge": {
+            "recall": 0.8125,
+            "n": 32
+          },
+          "revenue_cutoff": {
+            "recall": 0.10526315789473684,
+            "n": 38
+          },
+          "round_number_journal": {
+            "recall": 0.7352941176470589,
+            "n": 34
+          },
+          "sustained_drop": {
+            "recall": 0.43478260869565216,
+            "n": 23
+          },
+          "wrong_department": {
+            "recall": 0.896551724137931,
+            "n": 29
+          }
+        },
+        "recall_by_difficulty": {
+          "easy": {
+            "recall": 0.8306451612903226,
+            "n": 124
+          },
+          "hard": {
+            "recall": 0.42857142857142855,
+            "n": 63
+          },
+          "medium": {
+            "recall": 0.5478260869565217,
+            "n": 115
+          }
+        },
+        "median_delay_by_subtype": {
+          "cost_overrun": 0.0,
+          "customer_delinquency": 3.0,
+          "gradual_erosion": 4.0,
+          "one_off_spike": 0.0,
+          "outlier_charge": 0.0,
+          "revenue_cutoff": 0.0,
+          "round_number_journal": 0.0,
+          "sustained_drop": 0.5,
+          "wrong_department": 0.0
+        },
+        "decoy_alert_rate": 0.20903954802259886
+      },
+      "iforest": {
+        "method": "iforest",
+        "seeds": [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        "thresholds": {
+          "dept": 0.42196937099812726,
+          "acc": 0.6389531439791432,
+          "cust": 0.6934915868797424
+        },
+        "per_kind": {
+          "dept": {
+            "units": 3920,
+            "positives": 566,
+            "average_precision": 0.6057761409414572,
+            "alerts_per_month": 0.9303571428571429,
+            "precision": 0.6621880998080614,
+            "unit_recall": 0.6095406360424028
+          },
+          "acc": {
+            "units": 8020,
+            "positives": 98,
+            "average_precision": 0.6298091167833315,
+            "alerts_per_month": 0.3267857142857143,
+            "precision": 0.5136612021857924,
+            "unit_recall": 0.9591836734693877
+          },
+          "cust": {
+            "units": 127858,
+            "positives": 698,
+            "average_precision": 0.8925366199504271,
+            "alerts_per_month": 1.0910714285714285,
+            "precision": 0.9590834697217676,
+            "unit_recall": 0.839541547277937
+          }
+        },
+        "alerts_per_month": 2.3482142857142856,
+        "alert_precision": 0.779467680608365,
+        "event_recall": 0.8841059602649006,
+        "events": 302,
+        "recall_by_category": {
+          "expense": {
+            "recall": 0.9375,
+            "n": 64
+          },
+          "margin": {
+            "recall": 0.7307692307692307,
+            "n": 52
+          },
+          "posting_error": {
+            "recall": 1.0,
+            "n": 101
+          },
+          "receivables": {
+            "recall": 1.0,
+            "n": 25
+          },
+          "revenue": {
+            "recall": 0.7166666666666667,
+            "n": 60
+          }
+        },
+        "recall_by_subtype": {
+          "cost_overrun": {
+            "recall": 0.5757575757575758,
+            "n": 33
+          },
+          "customer_delinquency": {
+            "recall": 1.0,
+            "n": 25
+          },
+          "duplicate_payment": {
+            "recall": 1.0,
+            "n": 32
+          },
+          "gradual_erosion": {
+            "recall": 1.0,
+            "n": 19
+          },
+          "one_off_spike": {
+            "recall": 0.8648648648648649,
+            "n": 37
+          },
+          "outlier_charge": {
+            "recall": 0.875,
+            "n": 32
+          },
+          "revenue_cutoff": {
+            "recall": 1.0,
+            "n": 38
+          },
+          "round_number_journal": {
+            "recall": 1.0,
+            "n": 34
+          },
+          "sustained_drop": {
+            "recall": 0.4782608695652174,
+            "n": 23
+          },
+          "wrong_department": {
+            "recall": 1.0,
+            "n": 29
+          }
+        },
+        "recall_by_difficulty": {
+          "easy": {
+            "recall": 0.9596774193548387,
+            "n": 124
+          },
+          "hard": {
+            "recall": 0.7142857142857143,
+            "n": 63
+          },
+          "medium": {
+            "recall": 0.8956521739130435,
+            "n": 115
+          }
+        },
+        "median_delay_by_subtype": {
+          "cost_overrun": 0.0,
+          "customer_delinquency": 4.0,
+          "duplicate_payment": 0.0,
+          "gradual_erosion": 5.0,
+          "one_off_spike": 0.0,
+          "outlier_charge": 0.0,
+          "revenue_cutoff": 0.0,
+          "round_number_journal": 0.0,
+          "sustained_drop": 0.0,
+          "wrong_department": 0.0
+        },
+        "decoy_alert_rate": 0.6892655367231638
+      },
+      "combiner": {
+        "method": "combiner",
+        "seeds": [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        "thresholds": {
+          "dept": 0.3032323544513168,
+          "acc": 0.1129997849748467,
+          "cust": 0.3519108774354158
+        },
+        "per_kind": {
+          "dept": {
+            "units": 3920,
+            "positives": 566,
+            "average_precision": 0.8836746442568231,
+            "alerts_per_month": 0.9017857142857143,
+            "precision": 0.897029702970297,
+            "unit_recall": 0.8003533568904594
+          },
+          "acc": {
+            "units": 8020,
+            "positives": 98,
+            "average_precision": 0.9987613371798627,
+            "alerts_per_month": 0.1767857142857143,
+            "precision": 0.9797979797979798,
+            "unit_recall": 0.9897959183673469
+          },
+          "cust": {
+            "units": 127858,
+            "positives": 698,
+            "average_precision": 0.9349124494167448,
+            "alerts_per_month": 1.1553571428571427,
+            "precision": 0.9829984544049459,
+            "unit_recall": 0.9111747851002865
+          }
+        },
+        "alerts_per_month": 2.2339285714285713,
+        "alert_precision": 0.9480415667466027,
+        "event_recall": 0.9735099337748344,
+        "events": 302,
+        "recall_by_category": {
+          "expense": {
+            "recall": 0.984375,
+            "n": 64
+          },
+          "margin": {
+            "recall": 0.9807692307692307,
+            "n": 52
+          },
+          "posting_error": {
+            "recall": 1.0,
+            "n": 101
+          },
+          "receivables": {
+            "recall": 1.0,
+            "n": 25
+          },
+          "revenue": {
+            "recall": 0.9,
+            "n": 60
+          }
+        },
+        "recall_by_subtype": {
+          "cost_overrun": {
+            "recall": 0.9696969696969697,
+            "n": 33
+          },
+          "customer_delinquency": {
+            "recall": 1.0,
+            "n": 25
+          },
+          "duplicate_payment": {
+            "recall": 1.0,
+            "n": 32
+          },
+          "gradual_erosion": {
+            "recall": 1.0,
+            "n": 19
+          },
+          "one_off_spike": {
+            "recall": 0.9459459459459459,
+            "n": 37
+          },
+          "outlier_charge": {
+            "recall": 0.96875,
+            "n": 32
+          },
+          "revenue_cutoff": {
+            "recall": 1.0,
+            "n": 38
+          },
+          "round_number_journal": {
+            "recall": 1.0,
+            "n": 34
+          },
+          "sustained_drop": {
+            "recall": 0.8260869565217391,
+            "n": 23
+          },
+          "wrong_department": {
+            "recall": 1.0,
+            "n": 29
+          }
+        },
+        "recall_by_difficulty": {
+          "easy": {
+            "recall": 0.9919354838709677,
+            "n": 124
+          },
+          "hard": {
+            "recall": 0.9365079365079365,
+            "n": 63
+          },
+          "medium": {
+            "recall": 0.9739130434782609,
+            "n": 115
+          }
+        },
+        "median_delay_by_subtype": {
+          "cost_overrun": 0.0,
+          "customer_delinquency": 2.0,
+          "duplicate_payment": 0.0,
+          "gradual_erosion": 2.0,
+          "one_off_spike": 0.0,
+          "outlier_charge": 0.0,
+          "revenue_cutoff": 0.0,
+          "round_number_journal": 0.0,
+          "sustained_drop": 0.0,
+          "wrong_department": 0.0
+        },
+        "decoy_alert_rate": 0.011299435028248588
+      }
+    },
+    "timings": {
+      "featurize_s": 30.4,
+      "journal_iforest_s": 6.1,
+      "combiner_s": 52.8,
+      "total_s": 92.6
+    },
+    "command": "python -m training.anomaly.train --out /private/tmp/claude-501/-Users-azluv-projects-FinSight/9b6cc4e3-b6d5-4475-a9dd-1b7968fce362/scratchpad/retrain"
+  },
+  "test": {
+    "rules": {
+      "method": "rules",
+      "seeds": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "thresholds": {
+        "dept": 1.0,
+        "acc": 1.0,
+        "cust": 1.0
+      },
+      "per_kind": {
+        "dept": {
+          "units": 3920,
+          "positives": 677,
+          "average_precision": 0.2704643083230338,
+          "alerts_per_month": 0.14285714285714285,
+          "precision": 1.0,
+          "unit_recall": 0.11816838995568685
+        },
+        "acc": {
+          "units": 8020,
+          "positives": 101,
+          "average_precision": 0.6676057381299227,
+          "alerts_per_month": 0.11964285714285715,
+          "precision": 1.0,
+          "unit_recall": 0.6633663366336634
+        },
+        "cust": {
+          "units": 127964,
+          "positives": 1006,
+          "average_precision": 0.740623854012619,
+          "alerts_per_month": 1.3267857142857142,
+          "precision": 1.0,
+          "unit_recall": 0.7385685884691849
+        }
+      },
+      "alerts_per_month": 1.5892857142857142,
+      "alert_precision": 1.0,
+      "event_recall": 0.5313432835820896,
+      "events": 335,
+      "recall_by_category": {
+        "expense": {
+          "recall": 0.46875,
+          "n": 64
+        },
+        "margin": {
+          "recall": 0.0,
+          "n": 58
+        },
+        "posting_error": {
+          "recall": 1.0,
+          "n": 117
+        },
+        "receivables": {
+          "recall": 0.96875,
+          "n": 32
+        },
+        "revenue": {
+          "recall": 0.0,
+          "n": 64
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 0.0,
+          "n": 34
+        },
+        "customer_delinquency": {
+          "recall": 0.96875,
+          "n": 32
+        },
+        "duplicate_payment": {
+          "recall": 1.0,
+          "n": 30
+        },
+        "gradual_erosion": {
+          "recall": 0.0,
+          "n": 24
+        },
+        "one_off_spike": {
+          "recall": 0.0,
+          "n": 40
+        },
+        "outlier_charge": {
+          "recall": 0.0,
+          "n": 34
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 39
+        },
+        "round_number_journal": {
+          "recall": 1.0,
+          "n": 37
+        },
+        "sustained_drop": {
+          "recall": 0.0,
+          "n": 24
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 41
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 0.44274809160305345,
+          "n": 131
+        },
+        "hard": {
+          "recall": 0.5647058823529412,
+          "n": 85
+        },
+        "medium": {
+          "recall": 0.6050420168067226,
+          "n": 119
+        }
+      },
+      "median_delay_by_subtype": {
+        "customer_delinquency": 6.0,
+        "duplicate_payment": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.0
+    },
+    "stat": {
+      "method": "stat",
+      "seeds": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "thresholds": {
+        "dept": 6.348707981648263,
+        "acc": 94.47296878524784,
+        "cust": 7.019125207984692
+      },
+      "per_kind": {
+        "dept": {
+          "units": 3920,
+          "positives": 677,
+          "average_precision": 0.5647985752974007,
+          "alerts_per_month": 1.6107142857142858,
+          "precision": 0.4678492239467849,
+          "unit_recall": 0.6233382570162481
+        },
+        "acc": {
+          "units": 8020,
+          "positives": 101,
+          "average_precision": 0.12682446608592504,
+          "alerts_per_month": 0.49642857142857144,
+          "precision": 0.17625899280575538,
+          "unit_recall": 0.48514851485148514
+        },
+        "cust": {
+          "units": 127964,
+          "positives": 1006,
+          "average_precision": 0.16019335737871632,
+          "alerts_per_month": 0.7428571428571429,
+          "precision": 0.3317307692307692,
+          "unit_recall": 0.13717693836978131
+        }
+      },
+      "alerts_per_month": 2.85,
+      "alert_precision": 0.3815789473684211,
+      "event_recall": 0.6746268656716418,
+      "events": 335,
+      "recall_by_category": {
+        "expense": {
+          "recall": 0.359375,
+          "n": 64
+        },
+        "margin": {
+          "recall": 0.896551724137931,
+          "n": 58
+        },
+        "posting_error": {
+          "recall": 0.5811965811965812,
+          "n": 117
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 32
+        },
+        "revenue": {
+          "recall": 0.796875,
+          "n": 64
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 0.8235294117647058,
+          "n": 34
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 32
+        },
+        "duplicate_payment": {
+          "recall": 0.0,
+          "n": 30
+        },
+        "gradual_erosion": {
+          "recall": 1.0,
+          "n": 24
+        },
+        "one_off_spike": {
+          "recall": 0.95,
+          "n": 40
+        },
+        "outlier_charge": {
+          "recall": 0.6764705882352942,
+          "n": 34
+        },
+        "revenue_cutoff": {
+          "recall": 0.10256410256410256,
+          "n": 39
+        },
+        "round_number_journal": {
+          "recall": 0.7027027027027027,
+          "n": 37
+        },
+        "sustained_drop": {
+          "recall": 0.5416666666666666,
+          "n": 24
+        },
+        "wrong_department": {
+          "recall": 0.926829268292683,
+          "n": 41
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 0.816793893129771,
+          "n": 131
+        },
+        "hard": {
+          "recall": 0.5058823529411764,
+          "n": 85
+        },
+        "medium": {
+          "recall": 0.6386554621848739,
+          "n": 119
+        }
+      },
+      "median_delay_by_subtype": {
+        "cost_overrun": 0.0,
+        "customer_delinquency": 3.0,
+        "gradual_erosion": 3.5,
+        "one_off_spike": 0.0,
+        "outlier_charge": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "sustained_drop": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.23529411764705882
+    },
+    "iforest": {
+      "method": "iforest",
+      "seeds": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "thresholds": {
+        "dept": 0.42196937099812726,
+        "acc": 0.6389531439791432,
+        "cust": 0.6934915868797424
+      },
+      "per_kind": {
+        "dept": {
+          "units": 3920,
+          "positives": 677,
+          "average_precision": 0.6120111610587355,
+          "alerts_per_month": 1.2428571428571429,
+          "precision": 0.6163793103448276,
+          "unit_recall": 0.6336779911373708
+        },
+        "acc": {
+          "units": 8020,
+          "positives": 101,
+          "average_precision": 0.6483506413666106,
+          "alerts_per_month": 0.3125,
+          "precision": 0.5257142857142857,
+          "unit_recall": 0.9108910891089109
+        },
+        "cust": {
+          "units": 127964,
+          "positives": 1006,
+          "average_precision": 0.910357768524204,
+          "alerts_per_month": 1.6196428571428572,
+          "precision": 0.9558985667034179,
+          "unit_recall": 0.8618290258449304
+        }
+      },
+      "alerts_per_month": 3.175,
+      "alert_precision": 0.7806524184476941,
+      "event_recall": 0.8985074626865671,
+      "events": 335,
+      "recall_by_category": {
+        "expense": {
+          "recall": 0.859375,
+          "n": 64
+        },
+        "margin": {
+          "recall": 0.8275862068965517,
+          "n": 58
+        },
+        "posting_error": {
+          "recall": 1.0,
+          "n": 117
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 32
+        },
+        "revenue": {
+          "recall": 0.765625,
+          "n": 64
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 0.7058823529411765,
+          "n": 34
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 32
+        },
+        "duplicate_payment": {
+          "recall": 1.0,
+          "n": 30
+        },
+        "gradual_erosion": {
+          "recall": 1.0,
+          "n": 24
+        },
+        "one_off_spike": {
+          "recall": 0.875,
+          "n": 40
+        },
+        "outlier_charge": {
+          "recall": 0.7352941176470589,
+          "n": 34
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 39
+        },
+        "round_number_journal": {
+          "recall": 1.0,
+          "n": 37
+        },
+        "sustained_drop": {
+          "recall": 0.5833333333333334,
+          "n": 24
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 41
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 0.9465648854961832,
+          "n": 131
+        },
+        "hard": {
+          "recall": 0.8470588235294118,
+          "n": 85
+        },
+        "medium": {
+          "recall": 0.8823529411764706,
+          "n": 119
+        }
+      },
+      "median_delay_by_subtype": {
+        "cost_overrun": 0.0,
+        "customer_delinquency": 4.0,
+        "duplicate_payment": 0.0,
+        "gradual_erosion": 5.0,
+        "one_off_spike": 0.0,
+        "outlier_charge": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "sustained_drop": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.6705882352941176
+    },
+    "combiner": {
+      "method": "combiner",
+      "seeds": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "thresholds": {
+        "dept": 0.3032323544513168,
+        "acc": 0.1129997849748467,
+        "cust": 0.3519108774354158
+      },
+      "per_kind": {
+        "dept": {
+          "units": 3920,
+          "positives": 677,
+          "average_precision": 0.9063326203382884,
+          "alerts_per_month": 1.1321428571428571,
+          "precision": 0.8738170347003155,
+          "unit_recall": 0.8183161004431314
+        },
+        "acc": {
+          "units": 8020,
+          "positives": 101,
+          "average_precision": 0.9980283230995967,
+          "alerts_per_month": 0.18035714285714285,
+          "precision": 0.9702970297029703,
+          "unit_recall": 0.9702970297029703
+        },
+        "cust": {
+          "units": 127964,
+          "positives": 1006,
+          "average_precision": 0.9473941907946969,
+          "alerts_per_month": 1.6821428571428572,
+          "precision": 0.9830148619957537,
+          "unit_recall": 0.9204771371769384
+        }
+      },
+      "alerts_per_month": 2.994642857142857,
+      "alert_precision": 0.9409660107334525,
+      "event_recall": 0.9671641791044776,
+      "events": 335,
+      "recall_by_category": {
+        "expense": {
+          "recall": 0.953125,
+          "n": 64
+        },
+        "margin": {
+          "recall": 0.9655172413793104,
+          "n": 58
+        },
+        "posting_error": {
+          "recall": 1.0,
+          "n": 117
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 32
+        },
+        "revenue": {
+          "recall": 0.90625,
+          "n": 64
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 0.9411764705882353,
+          "n": 34
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 32
+        },
+        "duplicate_payment": {
+          "recall": 1.0,
+          "n": 30
+        },
+        "gradual_erosion": {
+          "recall": 1.0,
+          "n": 24
+        },
+        "one_off_spike": {
+          "recall": 0.95,
+          "n": 40
+        },
+        "outlier_charge": {
+          "recall": 0.9117647058823529,
+          "n": 34
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 39
+        },
+        "round_number_journal": {
+          "recall": 1.0,
+          "n": 37
+        },
+        "sustained_drop": {
+          "recall": 0.8333333333333334,
+          "n": 24
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 41
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 0.9923664122137404,
+          "n": 131
+        },
+        "hard": {
+          "recall": 0.9294117647058824,
+          "n": 85
+        },
+        "medium": {
+          "recall": 0.9663865546218487,
+          "n": 119
+        }
+      },
+      "median_delay_by_subtype": {
+        "cost_overrun": 0.0,
+        "customer_delinquency": 2.5,
+        "duplicate_payment": 0.0,
+        "gradual_erosion": 2.0,
+        "one_off_spike": 0.0,
+        "outlier_charge": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "sustained_drop": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.011764705882352941
+    }
+  },
+  "showcase": {
+    "rules": {
+      "method": "rules",
+      "seeds": [
+        20260901
+      ],
+      "thresholds": {
+        "dept": 1.0,
+        "acc": 1.0,
+        "cust": 1.0
+      },
+      "per_kind": {
+        "dept": {
+          "units": 392,
+          "positives": 34,
+          "average_precision": 0.1404561824729892,
+          "alerts_per_month": 0.03571428571428571,
+          "precision": 1.0,
+          "unit_recall": 0.058823529411764705
+        },
+        "acc": {
+          "units": 802,
+          "positives": 3,
+          "average_precision": 0.6679135494596841,
+          "alerts_per_month": 0.03571428571428571,
+          "precision": 1.0,
+          "unit_recall": 0.6666666666666666
+        },
+        "cust": {
+          "units": 12884,
+          "positives": 24,
+          "average_precision": 0.6256985408258305,
+          "alerts_per_month": 0.26785714285714285,
+          "precision": 1.0,
+          "unit_recall": 0.625
+        }
+      },
+      "alerts_per_month": 0.3392857142857143,
+      "alert_precision": 1.0,
+      "event_recall": 0.5,
+      "events": 10,
+      "recall_by_category": {
+        "expense": {
+          "recall": 0.5,
+          "n": 2
+        },
+        "margin": {
+          "recall": 0.0,
+          "n": 2
+        },
+        "posting_error": {
+          "recall": 1.0,
+          "n": 3
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue": {
+          "recall": 0.0,
+          "n": 2
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "duplicate_payment": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "gradual_erosion": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "one_off_spike": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "outlier_charge": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "round_number_journal": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "sustained_drop": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 0.4444444444444444,
+          "n": 9
+        },
+        "medium": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "median_delay_by_subtype": {
+        "customer_delinquency": 3.0,
+        "duplicate_payment": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.0
+    },
+    "stat": {
+      "method": "stat",
+      "seeds": [
+        20260901
+      ],
+      "thresholds": {
+        "dept": 6.348707981648263,
+        "acc": 94.47296878524784,
+        "cust": 7.019125207984692
+      },
+      "per_kind": {
+        "dept": {
+          "units": 392,
+          "positives": 34,
+          "average_precision": 0.48841503726092206,
+          "alerts_per_month": 0.6071428571428571,
+          "precision": 0.5,
+          "unit_recall": 0.5
+        },
+        "acc": {
+          "units": 802,
+          "positives": 3,
+          "average_precision": 0.043197454420364635,
+          "alerts_per_month": 0.44642857142857145,
+          "precision": 0.04,
+          "unit_recall": 0.3333333333333333
+        },
+        "cust": {
+          "units": 12884,
+          "positives": 24,
+          "average_precision": 0.09192952726141038,
+          "alerts_per_month": 0.7142857142857143,
+          "precision": 0.075,
+          "unit_recall": 0.125
+        }
+      },
+      "alerts_per_month": 1.7678571428571428,
+      "alert_precision": 0.21212121212121213,
+      "event_recall": 0.8,
+      "events": 10,
+      "recall_by_category": {
+        "expense": {
+          "recall": 0.5,
+          "n": 2
+        },
+        "margin": {
+          "recall": 1.0,
+          "n": 2
+        },
+        "posting_error": {
+          "recall": 0.6666666666666666,
+          "n": 3
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue": {
+          "recall": 1.0,
+          "n": 2
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "duplicate_payment": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "gradual_erosion": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "one_off_spike": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "outlier_charge": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "round_number_journal": {
+          "recall": 0.0,
+          "n": 1
+        },
+        "sustained_drop": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 0.7777777777777778,
+          "n": 9
+        },
+        "medium": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "median_delay_by_subtype": {
+        "cost_overrun": 0.0,
+        "customer_delinquency": 2.0,
+        "gradual_erosion": 14.0,
+        "one_off_spike": 0.0,
+        "outlier_charge": 0.0,
+        "revenue_cutoff": 0.0,
+        "sustained_drop": 3.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.06666666666666667
+    },
+    "iforest": {
+      "method": "iforest",
+      "seeds": [
+        20260901
+      ],
+      "thresholds": {
+        "dept": 0.42196937099812726,
+        "acc": 0.6389531439791432,
+        "cust": 0.6934915868797424
+      },
+      "per_kind": {
+        "dept": {
+          "units": 392,
+          "positives": 34,
+          "average_precision": 0.6291397761798196,
+          "alerts_per_month": 0.4642857142857143,
+          "precision": 0.7307692307692307,
+          "unit_recall": 0.5588235294117647
+        },
+        "acc": {
+          "units": 802,
+          "positives": 3,
+          "average_precision": 0.5074074074074074,
+          "alerts_per_month": 0.19642857142857142,
+          "precision": 0.2727272727272727,
+          "unit_recall": 1.0
+        },
+        "cust": {
+          "units": 12884,
+          "positives": 24,
+          "average_precision": 0.8248005560420838,
+          "alerts_per_month": 0.3392857142857143,
+          "precision": 0.8421052631578947,
+          "unit_recall": 0.6666666666666666
+        }
+      },
+      "alerts_per_month": 1.0,
+      "alert_precision": 0.6785714285714286,
+      "event_recall": 1.0,
+      "events": 10,
+      "recall_by_category": {
+        "expense": {
+          "recall": 1.0,
+          "n": 2
+        },
+        "margin": {
+          "recall": 1.0,
+          "n": 2
+        },
+        "posting_error": {
+          "recall": 1.0,
+          "n": 3
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue": {
+          "recall": 1.0,
+          "n": 2
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "duplicate_payment": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "gradual_erosion": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "one_off_spike": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "outlier_charge": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "round_number_journal": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "sustained_drop": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 1.0,
+          "n": 9
+        },
+        "medium": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "median_delay_by_subtype": {
+        "cost_overrun": 0.0,
+        "customer_delinquency": 8.0,
+        "duplicate_payment": 0.0,
+        "gradual_erosion": 13.0,
+        "one_off_spike": 0.0,
+        "outlier_charge": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "sustained_drop": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.6666666666666666
+    },
+    "combiner": {
+      "method": "combiner",
+      "seeds": [
+        20260901
+      ],
+      "thresholds": {
+        "dept": 0.3032323544513168,
+        "acc": 0.1129997849748467,
+        "cust": 0.3519108774354158
+      },
+      "per_kind": {
+        "dept": {
+          "units": 392,
+          "positives": 34,
+          "average_precision": 0.9205183447181512,
+          "alerts_per_month": 0.5535714285714286,
+          "precision": 0.9032258064516129,
+          "unit_recall": 0.8235294117647058
+        },
+        "acc": {
+          "units": 802,
+          "positives": 3,
+          "average_precision": 1.0,
+          "alerts_per_month": 0.05357142857142857,
+          "precision": 1.0,
+          "unit_recall": 1.0
+        },
+        "cust": {
+          "units": 12884,
+          "positives": 24,
+          "average_precision": 0.9250649535176388,
+          "alerts_per_month": 0.4107142857142857,
+          "precision": 0.9565217391304348,
+          "unit_recall": 0.9166666666666666
+        }
+      },
+      "alerts_per_month": 1.0178571428571428,
+      "alert_precision": 0.9298245614035088,
+      "event_recall": 1.0,
+      "events": 10,
+      "recall_by_category": {
+        "expense": {
+          "recall": 1.0,
+          "n": 2
+        },
+        "margin": {
+          "recall": 1.0,
+          "n": 2
+        },
+        "posting_error": {
+          "recall": 1.0,
+          "n": 3
+        },
+        "receivables": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue": {
+          "recall": 1.0,
+          "n": 2
+        }
+      },
+      "recall_by_subtype": {
+        "cost_overrun": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "customer_delinquency": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "duplicate_payment": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "gradual_erosion": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "one_off_spike": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "outlier_charge": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "revenue_cutoff": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "round_number_journal": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "sustained_drop": {
+          "recall": 1.0,
+          "n": 1
+        },
+        "wrong_department": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "recall_by_difficulty": {
+        "easy": {
+          "recall": 1.0,
+          "n": 9
+        },
+        "medium": {
+          "recall": 1.0,
+          "n": 1
+        }
+      },
+      "median_delay_by_subtype": {
+        "cost_overrun": 0.0,
+        "customer_delinquency": 2.0,
+        "duplicate_payment": 0.0,
+        "gradual_erosion": 6.0,
+        "one_off_spike": 0.0,
+        "outlier_charge": 0.0,
+        "revenue_cutoff": 0.0,
+        "round_number_journal": 0.0,
+        "sustained_drop": 0.0,
+        "wrong_department": 0.0
+      },
+      "decoy_alert_rate": 0.0
+    }
+  },
+  "evaluate_seconds": 15.3,
+  "quick": false
+}

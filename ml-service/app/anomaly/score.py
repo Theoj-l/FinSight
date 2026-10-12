@@ -26,6 +26,7 @@ from app.config import Settings, get_settings
 from . import loaders
 from .loaders import Books
 from .model import MODEL_FILE, AnomalyModel
+from .schema import FEATURES, LINE_FEATURES
 
 TZ = ZoneInfo("Asia/Singapore")
 LOCK_ID = 4_721_001     # Postgres advisory-lock id: one scoring run at a time
@@ -61,7 +62,11 @@ def model_dir(settings: Settings) -> str:
 def load_model(path: str) -> AnomalyModel:
     if not os.path.exists(os.path.join(path, MODEL_FILE)):
         raise FileNotFoundError(f"no anomaly model at {path}: run `python -m training.anomaly.train`")
-    return AnomalyModel.load(path)
+    model = AnomalyModel.load(path)
+    if model.meta.get("features") != FEATURES or model.meta.get("line_features") != LINE_FEATURES:
+        raise RuntimeError(f"the anomaly model at {path} was trained on a different feature set than "
+                           "app/anomaly/schema.py: retrain with `python -m training.anomaly.train`")
+    return model
 
 
 def closed_through(last_period: int, today: date) -> int:

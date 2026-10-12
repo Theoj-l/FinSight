@@ -6,6 +6,8 @@ shipped with the serving container.
 Convention:
 
 - One entry point per model, writing artifacts to `../models/<model>/<version>/`.
+  The served version is committed (it ships in the Docker image), so commit a
+  retrained model only when you mean to deploy it.
 - Keep notebooks for exploration; move anything reproducible into a script.
 - The serving layer (`app/`) only *loads* artifacts from `models/` — it never
   trains. Code that both training and serving need (features, detectors, the
