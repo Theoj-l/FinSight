@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client";
 import type { ClassificationResult } from "@/lib/types/classification";
 import { resolvePeriod, toPeriodInfo, periodNosToDateRange } from "../period-resolver";
 import { resolveFilters, type ResolvedFilters } from "../filter-builder";
-import { computeGLMetric, querySales, queryOutstanding } from "./metric-service";
+import { computeGLMetric, querySales } from "./metric-service";
 import type {
   PLSummaryResult,
   PLRow,
@@ -158,7 +158,12 @@ export async function getVarianceBreakdown(
     case "payroll_variance":
       return buildGLVariance(qType, "payroll", false, ["6100", "6110"], currentPeriod, previousPeriod, filters);
     case "ar_variance":
-      return buildARVariance(currentPeriod, previousPeriod, filters);
+      return buildARVariance(
+        currentPeriod,
+        previousPeriod,
+        filters,
+        classification.dimensions[0] ?? "ageing_bucket"
+      );
     default:
       throw new Error(`Unsupported variance type: ${qType}`);
   }
@@ -510,36 +515,83 @@ async function buildSalesVariance(
 async function buildARVariance(
   currentPeriod: RP,
   previousPeriod: RP,
-  filters: ResolvedFilters
+  filters: ResolvedFilters,
+  dimension: string
 ): Promise<VarianceBreakdownResult> {
-  // Outstanding AR at current vs previous period doc_date ranges
-  const totalCurrent = await queryOutstanding(filters);
-
-  // For previous, we approximate by looking at invoices issued in the previous period
-  const prevConds: Prisma.Sql[] = [
-    Prisma.sql`cancelled = false`,
-    Prisma.sql`outstanding > 0`,
-    Prisma.sql`doc_date >= ${previousPeriod.dateFrom} AND doc_date <= ${previousPeriod.dateTo}`,
+  const baseConds: Prisma.Sql[] = [
+    Prisma.sql`ar.cancelled = false`,
+    Prisma.sql`ar.outstanding > 0`,
   ];
   if (filters.debtorCodes?.length) {
-    prevConds.push(Prisma.sql`debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
+    baseConds.push(Prisma.sql`ar.debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
   }
-  const prevWhere = Prisma.sql`WHERE ${Prisma.join(prevConds, " AND ")}`;
-  const prevRows = await prisma.$queryRaw<{ amount: number }[]>`
-    SELECT COALESCE(SUM(outstanding), 0)::float AS amount FROM ar_invoice ${prevWhere}
+  if (filters.salesAgents?.length) {
+    baseConds.push(Prisma.sql`ar.sales_agent IN (${Prisma.join(filters.salesAgents)})`);
+  }
+  if (filters.branchCodes?.length) {
+    baseConds.push(Prisma.sql`ar.branch_code IN (${Prisma.join(filters.branchCodes)})`);
+  }
+  const baseWhere = Prisma.sql`WHERE ${Prisma.join(baseConds, " AND ")}`;
+  const previousCutoff = previousPeriod.dateTo;
+
+  const totalRows = await prisma.$queryRaw<
+    { total_previous: number; total_current: number }[]
+  >`
+    SELECT
+      COALESCE(SUM(CASE WHEN ar.due_date < ${previousCutoff} THEN ar.outstanding ELSE 0 END), 0)::float AS total_previous,
+      COALESCE(SUM(CASE WHEN ar.due_date < CURRENT_DATE THEN ar.outstanding ELSE 0 END), 0)::float AS total_current
+    FROM ar_invoice ar
+    ${baseWhere}
   `;
-  const totalPrevious = prevRows[0]?.amount ?? 0;
+  const totalPrevious = totalRows[0]?.total_previous ?? 0;
+  const totalCurrent = totalRows[0]?.total_current ?? 0;
 
   const totalChange = totalCurrent - totalPrevious;
   const totalChangePct = totalPrevious !== 0 ? (totalChange / totalPrevious) * 100 : null;
 
-  // By aging bucket
-  const arConds: Prisma.Sql[] = [Prisma.sql`cancelled = false`, Prisma.sql`outstanding > 0`];
-  if (filters.debtorCodes?.length) {
-    arConds.push(Prisma.sql`debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
-  }
-  const arWhere = Prisma.sql`WHERE ${Prisma.join(arConds, " AND ")}`;
+  if (dimension === "customer") {
+    const customerRows = await prisma.$queryRaw<
+      { label: string; current_val: number; previous_val: number }[]
+    >`
+      WITH customer_overdue AS (
+        SELECT
+          ar.debtor_code,
+          d.company_name AS label,
+          COALESCE(SUM(CASE
+            WHEN ar.due_date < ${previousCutoff} THEN ar.outstanding ELSE 0
+          END), 0)::float AS previous_val,
+          COALESCE(SUM(CASE
+            WHEN ar.due_date < CURRENT_DATE THEN ar.outstanding ELSE 0
+          END), 0)::float AS current_val
+        FROM ar_invoice ar
+        JOIN debtor d ON ar.debtor_code = d.acc_no
+        ${baseWhere}
+        GROUP BY ar.debtor_code, d.company_name
+      )
+      SELECT label, current_val, previous_val
+      FROM customer_overdue
+      WHERE current_val > previous_val
+      ORDER BY current_val - previous_val DESC
+      LIMIT 10
+    `;
 
+    return {
+      questionType: "ar_variance",
+      metric: "outstanding_amount",
+      totalCurrent,
+      totalPrevious,
+      totalChange,
+      totalChangePct,
+      byCategory: mapToVarianceComponents(customerRows, totalChange),
+      byDepartment: [],
+      topDriverTransactions: [],
+      currentPeriod: toPeriodInfo(currentPeriod),
+      previousPeriod: toPeriodInfo(previousPeriod),
+      filters: filters.applied,
+    };
+  }
+
+  // By aging bucket
   const bucketRows = await prisma.$queryRaw<{ label: string; current_val: number }[]>`
     SELECT
       CASE
@@ -550,8 +602,9 @@ async function buildARVariance(
         ELSE '90+ days'
       END AS label,
       SUM(outstanding)::float AS current_val
-    FROM ar_invoice
-    ${arWhere}
+    FROM ar_invoice ar
+    ${baseWhere}
+      AND ar.due_date < CURRENT_DATE
     GROUP BY label
   `;
 

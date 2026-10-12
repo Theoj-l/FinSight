@@ -133,5 +133,6 @@ Set top_n to an explicit positive ranking count. For "top customers" without a c
 - "What drove the sales decline?" -> analytical_interpretation / sales_variance / sales / sales.
 - "Which products contributed most to the decline in sales from May to June 2026?" -> analytical_interpretation / sales_variance / sales / sales; period 2026-06; comparison_period 2026-05; dimension product.
 - "Which expense accounts contributed most to the increase in operating expenses from May to June 2026?" -> analytical_interpretation / cost_variance / profit_loss / operating_expense; period 2026-06; comparison_period 2026-05; dimension account_name.
+- "Which customers contributed most to the increase in overdue receivables this month?" -> analytical_interpretation / ar_variance / accounts_receivable / outstanding_amount; period this_month; comparison_period previous_period; dimension customer.
 - "Which overdue customers should we chase?" -> recommendation / payment_follow_up / accounts_receivable / outstanding_amount; dimension customer.
 - "Weather tomorrow?" -> unsupported / unsupported.`;
