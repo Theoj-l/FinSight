@@ -9,6 +9,7 @@ import {
   KpiPanel,
   ProfitLossPanel,
   ProfitMarginPanel,
+  ProfitYoyComparisonPanel,
   RevenueByBusinessTypePanel,
   RevenueByGroupPanel,
   RevenueExpensePanel,
@@ -51,6 +52,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {filterError ? null : <Suspense fallback={<DashboardPanelLoading label="KPI data" />}>
           <KpiPanel scope={scope} userId={user.id} />
         </Suspense>}
+
+        {!filterError && <div className="mt-8">
+          <Suspense fallback={<DashboardPanelLoading label="profit comparison data" />}>
+            <ProfitYoyComparisonPanel scope={scope} />
+          </Suspense>
+        </div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           <div className="h-full">

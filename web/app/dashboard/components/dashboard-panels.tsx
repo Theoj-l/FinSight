@@ -3,6 +3,7 @@ import { ExpenseByBusinessTypeChart } from "./expense-by-business-type-chart";
 import { KpiCards } from "./kpi-cards";
 import { ProfitLossTable } from "./profit-loss-table";
 import { ProfitMarginChart } from "./profit-margin-chart";
+import { ProfitYoyComparisonChart } from "./profit-yoy-comparison-chart";
 import { RevenueByGroupChart } from "./revenue-by-group-chart";
 import { RevenueByBusinessTypeChart } from "./revenue-by-business-type-chart";
 import { RevenueExpenseChart } from "./revenue-expense-chart";
@@ -11,10 +12,11 @@ import { getExpenseByBusinessTypeData } from "../data/expense-by-business-type";
 import { getKpiData } from "../data/kpi";
 import { getProfitLossData } from "../data/profit-loss";
 import { getProfitMarginData } from "../data/profit-margin";
+import { getProfitYoyComparisonData } from "../data/profit-yoy-comparison";
 import { getRevenueByGroupData } from "../data/revenue-by-group";
 import { getRevenueByBusinessTypeData } from "../data/revenue-by-business-type";
 import { getRevenueExpenseData } from "../data/revenue-expense";
-import type { DashboardScope } from "../data/dashboard-scope";
+import { BRANCH_LEDGER_MESSAGE, type DashboardScope } from "../data/dashboard-scope";
 
 export function DashboardPanelLoading({ label }: { label: string }) {
   return (
@@ -54,7 +56,21 @@ export async function ProfitMarginPanel({ scope }: { scope: DashboardScope }) {
   } catch {
     error = "Profit data could not be loaded right now.";
   }
+
   return <ProfitMarginChart data={data} error={error} />;
+}
+
+export async function ProfitYoyComparisonPanel({ scope }: { scope: DashboardScope }) {
+  let data;
+  let error;
+  try {
+    data = await getProfitYoyComparisonData(scope);
+  } catch (cause) {
+    error = cause instanceof Error && cause.message === BRANCH_LEDGER_MESSAGE
+      ? BRANCH_LEDGER_MESSAGE
+      : "Profit comparison data could not be loaded right now. Please refresh to retry.";
+  }
+  return <ProfitYoyComparisonChart data={data} error={error} />;
 }
 
 export async function RevenueByGroupPanel({ scope }: { scope: DashboardScope }) {

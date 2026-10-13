@@ -12,6 +12,12 @@ scope is ready. Browser history and copied URLs retain the selection.
 - Every monthly chart and KPI uses the selected month. KPI and expense-category
   comparisons use the preceding calendar month within the same unit. P&L YTD is
   January through the selected month, within that unit.
+- The profit year-over-year comparison uses the three calendar months ending at
+  the selected end month and compares them with the same three months one year
+  earlier. It uses net profit = revenue + other income - cost of sales -
+  operating expenses. Missing ledger months remain unavailable rather than
+  being treated as zero; totals and percentage changes are withheld when the
+  comparison is incomplete.
 - Invoice revenue uses document dates from the first day of the month inclusive
   to the first day of the next month exclusive, and excludes cancelled invoices.
   It is an invoice-based measure and need not reconcile to ledger revenue where
