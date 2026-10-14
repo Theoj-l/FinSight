@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,10 +16,14 @@ import {
   formatCurrencyExact,
   type RevenueExpensePoint,
 } from "../data/revenue-expense-utils";
+import { ChartAnomalyNote } from "./chart-anomaly";
+import { previousCalendarMonths, type ChartAnomaly } from "../data/anomaly-evidence";
+import { formatPeriod } from "../data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
 
 type RevenueExpenseChartProps = {
   data?: RevenueExpensePoint[];
+  focus?: ChartAnomaly | null;
   error?: string;
   loading?: boolean;
 };
@@ -27,8 +32,11 @@ export function RevenueExpenseChart({
   data = [],
   error,
   loading = false,
+  focus,
 }: RevenueExpenseChartProps) {
   const fx = useCurrency();
+  const periods = focus ? [...new Set([...previousCalendarMonths(focus.alert.periodNo), ...focus.finding.comparison.periods])].sort((a, b) => a - b) : data.map(p => p.periodNo);
+  const chartData = periods.map(periodNo => ({ ...(data.find(p => p.periodNo === periodNo) ?? { periodNo, period: formatPeriod(periodNo), revenue: null, expenses: null }), modelRevenue: focus?.finding.history.find(h => h.periodNo === periodNo)?.value ?? null }));
   return (
     <section aria-labelledby="revenue-expense-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -40,6 +48,7 @@ export function RevenueExpenseChart({
         </div>
       </div>
 
+      <ChartAnomalyNote focus={focus} target="revenue-expense-title" ready={!loading && !error && data.length > 0} />
       {loading ? (
         <div className="mt-6 flex h-80 items-center justify-center text-sm text-muted" role="status">
           Loading financial data...
@@ -55,12 +64,14 @@ export function RevenueExpenseChart({
       ) : (
         <div className="mt-6 h-80 w-full" role="img" aria-label="Clustered bar chart comparing revenue and operating expenses by accounting period">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
               <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
               <YAxis tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <Tooltip formatter={(value, name) => [formatCurrencyExact(Number(value), fx), name]} />
               <Legend />
+              {focus && <ReferenceLine x={formatPeriod(focus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label="Anomaly" />}
+              {focus && <Bar dataKey="modelRevenue" name="Model revenue (includes other income)" fill="#b45309" radius={[3, 3, 0, 0]} />}
               <Bar dataKey="revenue" name="Revenue" fill="#1f2a79" radius={[3, 3, 0, 0]} />
               <Bar dataKey="expenses" name="Expenses" fill="#e02718" radius={[3, 3, 0, 0]} />
             </BarChart>

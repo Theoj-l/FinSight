@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Legend,
+  ReferenceLine,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -16,25 +17,53 @@ import {
   formatCurrencyExact,
   type ProfitMarginPoint,
 } from "../data/profit-margin-utils";
+import { useSearchParams } from "next/navigation";
+import { ChartAnomalyNote } from "./chart-anomaly";
+import { previousCalendarMonths, type ChartAnomaly } from "../data/anomaly-evidence";
+import { formatPeriod } from "../data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
 
 type ProfitMarginChartProps = {
   data?: ProfitMarginPoint[];
+  mode?: "net" | "gross";
+  focus?: ChartAnomaly | null;
   error?: string;
   loading?: boolean;
 };
 
-export function ProfitMarginChart({ data = [], error, loading = false }: ProfitMarginChartProps) {
+export function ProfitMarginChart({ data = [], error, loading = false, mode = "net", focus }: ProfitMarginChartProps) {
   const fx = useCurrency();
+  const params = useSearchParams();
+  const selectedMode = params.get("profitMode") ?? mode;
+  const gross = selectedMode === "gross";
+  // Server-provided evidence remains available for browser Back, but is only
+  // shown while its gross comparison is selected in the current URL.
+  const activeFocus = gross && params.get("anomaly") === focus?.alert.id && params.get("reason") === focus?.finding.code ? focus : null;
+  const name = gross ? "Gross" : "Net";
+  const periods = activeFocus ? [...new Set([...previousCalendarMonths(activeFocus.alert.periodNo), ...activeFocus.finding.comparison.periods])].sort((a, b) => a - b) : data.map(p => p.periodNo);
+  const chartData = periods.map(periodNo => {
+    const modelValue = activeFocus?.finding.history.find(h => h.periodNo === periodNo)?.value;
+    return { ...(data.find(p => p.periodNo === periodNo) ?? { periodNo, period: formatPeriod(periodNo), netProfit: null, grossProfit: null, netMarginPct: null, grossMarginPct: null }), modelMargin: modelValue == null ? null : modelValue * 100 };
+  });
+  function selectMode(value: string) {
+    const query = new URLSearchParams(params.toString());
+    query.set("profitMode", value);
+    if (value === "net" && focus) { query.delete("anomaly"); query.delete("reason"); }
+    // Both series are already loaded. Native history updates Next's client
+    // search params without a server navigation or rerunning dashboard queries.
+    window.history.pushState(null, "", `${window.location.pathname}?${query}${window.location.hash}`);
+  }
   return (
     <section aria-labelledby="profit-margin-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="profit-margin-title" className="text-lg font-semibold text-brand-navy">
-          Net Profit and Margin
+          {name} Profit and Margin
         </h2>
-        <p className="mt-1 text-sm text-muted">Selected reporting month · Selected business unit</p>
+        <label className="text-sm text-brand-navy">View <select aria-label="Profit and margin measure" value={selectedMode} onChange={e => selectMode(e.target.value)} className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5"><option value="net">Net</option><option value="gross">Gross</option></select></label>
+        <p className="w-full mt-1 text-sm text-muted">Selected reporting month · Selected business unit</p>
       </div>
 
+      <ChartAnomalyNote focus={activeFocus} target="profit-margin-title" ready={!loading && !error && data.length > 0} />
       {loading ? (
         <div className="mt-6 flex h-80 items-center justify-center text-sm text-muted" role="status">
           Loading profit data...
@@ -48,22 +77,24 @@ export function ProfitMarginChart({ data = [], error, loading = false }: ProfitM
           No profit or margin data is available for the selected periods.
         </div>
       ) : (
-        <div className="mt-6 h-80 w-full" role="img" aria-label="Combined chart showing net profit and net margin percentage by accounting period">
+        <div className="mt-6 h-80 w-full" role="img" aria-label={`Combined chart showing ${name.toLowerCase()} profit and ${name.toLowerCase()} margin percentage by accounting period`}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
               <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
               <YAxis yAxisId="currency" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <YAxis yAxisId="percentage" orientation="right" tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
               <Tooltip
                 formatter={(value, name) => [
-                  name === "Net Margin %" ? `${Number(value).toFixed(2)}%` : formatCurrencyExact(Number(value), fx),
+                  String(name).includes("Margin") ? `${Number(value).toFixed(2)}%` : formatCurrencyExact(Number(value), fx),
                   name,
                 ]}
               />
               <Legend />
-              <Bar yAxisId="currency" dataKey="netProfit" name="Net Profit" fill="#1f2a79" radius={[3, 3, 0, 0]} />
-              <Line yAxisId="percentage" type="monotone" dataKey="netMarginPct" name="Net Margin %" stroke="#e02718" strokeWidth={2.5} connectNulls={false} dot={{ r: 3 }} />
+              {activeFocus && <ReferenceLine yAxisId="currency" x={formatPeriod(activeFocus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label="Anomaly" />}
+              {activeFocus && <Line yAxisId="percentage" dataKey="modelMargin" name="Model Gross Margin % (includes other income)" stroke="#b45309" strokeDasharray="4 4" connectNulls={false} />}
+              <Bar yAxisId="currency" dataKey={gross ? "grossProfit" : "netProfit"} name={`${name} Profit`} fill="#1f2a79" radius={[3, 3, 0, 0]} />
+              <Line yAxisId="percentage" type="monotone" dataKey={gross ? "grossMarginPct" : "netMarginPct"} name={`${name} Margin %`} stroke="#e02718" strokeWidth={2.5} connectNulls={false} dot={{ r: 3 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

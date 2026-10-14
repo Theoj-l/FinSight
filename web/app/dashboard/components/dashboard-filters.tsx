@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/app/components/page-loading";
 import { BRANCH_LEDGER_MESSAGE, type FilterOptions, type FilterSelection } from "../data/dashboard-scope";
 import { formatPeriod } from "../data/revenue-expense-utils";
 
 export function DashboardFilters({ options, selection, error, destination = "/dashboard", hidePeriod = false, children }: { options: FilterOptions; selection: FilterSelection; error?: string; destination?: string; hidePeriod?: boolean; children: ReactNode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(selection);
   const [periodMode, setPeriodMode] = useState<"month" | "range">(selection.periodStart === selection.periodEnd ? "month" : "range");
@@ -16,6 +17,7 @@ export function DashboardFilters({ options, selection, error, destination = "/da
 
   function applyFilters() {
     const query = new URLSearchParams();
+    if (destination === "/dashboard" && searchParams.get("profitMode") === "gross") query.set("profitMode", "gross");
     if (!hidePeriod && draft.periodStart) query.set("periodStart", draft.periodStart);
     if (!hidePeriod && draft.periodEnd) query.set("periodEnd", periodMode === "range" ? draft.periodEnd : draft.periodStart);
     draft.units.forEach(unit => query.append("unit", unit));

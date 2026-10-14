@@ -1,3 +1,6 @@
+// Keep aligned with ml-service/app/anomaly/schema.py FIRST_SCORED_PERIOD.
+export const FIRST_ANOMALY_PERIOD = 202201;
+
 export type AnomalyKind = "dept" | "acc" | "cust";
 
 export const ANOMALY_KIND_LABEL: Record<AnomalyKind, string> = {
@@ -24,6 +27,7 @@ export type AnomalyAlert = {
 };
 
 export type AnomalyStatus = {
+  scoredFrom?: number;
   /** When the alerts on screen were produced. */
   scoredAt: string;
   /** Latest month scored (YYYYMM). Later months are provisional: not scored yet. */

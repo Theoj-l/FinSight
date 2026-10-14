@@ -1,6 +1,8 @@
 import "server-only";
+import { Prisma } from "@prisma/client";
+import { readEvidence, type ChartAnomaly } from "./anomaly-evidence";
 import { prisma } from "@/lib/db";
-import { toAnomalyAlert, type AnomalyAlert, type AnomalyKind, type AnomalyLabels, type AnomalyStatus } from "./anomalies-utils";
+import { FIRST_ANOMALY_PERIOD, toAnomalyAlert, type AnomalyAlert, type AnomalyKind, type AnomalyLabels, type AnomalyStatus } from "./anomalies-utils";
 
 export type { AnomalyAlert, AnomalyKind, AnomalyStatus };
 export { ANOMALY_KIND_LABEL } from "./anomalies-utils";
@@ -10,6 +12,7 @@ export type AnomalyQuery = {
   periodStart?: number;
   periodEnd?: number;
   kinds?: AnomalyKind[];
+  departmentIds?: string[];
 };
 
 /**
@@ -22,7 +25,12 @@ export async function getAnomalyAlerts(query: AnomalyQuery = {}): Promise<Anomal
     where: {
       period_no: { gte: query.periodStart, lte: query.periodEnd },
       ...(query.kinds ? { unit_kind: { in: query.kinds } } : {}),
+      ...(query.departmentIds?.length ? { OR: [
+        { unit_kind: "dept", unit_key: { in: query.departmentIds } },
+        ...(query.departmentIds.includes("CP") ? [{ unit_kind: "acc", unit_key: { not: "" } }] : []),
+      ] } : {}),
     },
+    select: { unit_kind: true, unit_key: true, period_no: true, score: true, reasons: true, first_flagged_at: true, model_version: true },
     orderBy: [{ period_no: "desc" }, { score: "desc" }],
   });
   const keys = (kind: AnomalyKind) => [...new Set(rows.filter(row => row.unit_kind === kind).map(row => row.unit_key))];
@@ -44,10 +52,27 @@ export async function getAnomalyStatus(): Promise<AnomalyStatus | null> {
   const run = await prisma.anomaly_run.findFirst({ where: { status: "ok" }, orderBy: { run_id: "desc" } });
   if (!run) return null;
   return {
+    scoredFrom: FIRST_ANOMALY_PERIOD,
     scoredAt: (run.finished_at ?? run.started_at).toISOString(),
     scoredThrough: run.scored_through,
     dataThrough: run.data_through,
     modelVersion: run.model_version,
     alertCount: run.n_alerts ?? 0,
   };
+}
+
+/** Read only the selected finding, excluding potentially large record snapshots. */
+export async function getChartAnomaly(id: string, reason?: string): Promise<ChartAnomaly | null> {
+  const parts = id.split(":");
+  if (parts.length !== 3 || !["dept", "acc", "cust"].includes(parts[0]) || !/^\d{6}$/.test(parts[2])) return null;
+  const [kind, key, month] = parts;
+  const rows = await prisma.$queryRaw<Array<{ findings: unknown }>>(Prisma.sql`
+    SELECT evidence->'findings' AS findings FROM anomaly_alert
+    WHERE unit_kind = ${kind} AND unit_key = ${key} AND period_no = ${Number(month)}`);
+  const evidence = readEvidence({ version: 1, asOf: "", records: {}, findings: rows[0]?.findings });
+  const finding = evidence?.findings.find(f => f.code === reason && f.chart);
+  if (!finding || kind !== "dept") return null;
+  const alerts = await getAnomalyAlerts({ periodStart: Number(month), periodEnd: Number(month), kinds: ["dept"], departmentIds: [key] });
+  const alert = alerts.find(a => a.id === id);
+  return alert ? { alert, finding } : null;
 }

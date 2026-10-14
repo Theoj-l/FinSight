@@ -361,6 +361,7 @@ create table anomaly_alert (
   period_no              integer          not null,
   score                  double precision not null,
   reasons                jsonb            default '[]' not null,
+  evidence               jsonb,
   model_version          varchar(20)      not null,
   first_flagged_at       timestamptz      default now() not null,
   run_id                 bigint           not null,
@@ -384,6 +385,7 @@ comment on column anomaly_alert.unit_kind is 'dept = business unit (key dept_no)
 comment on column anomaly_alert.unit_key is 'dept_no, acc_no or debtor code, depending on unit_kind. Not a foreign key: it points at different tables.';
 comment on column anomaly_alert.period_no is 'Month flagged, YYYYMM.';
 comment on column anomaly_alert.score is 'Model probability that the unit-month is anomalous, 0 to 1. Rows exist only at or above the alert threshold.';
+comment on column anomaly_alert.evidence is 'Versioned review evidence, comparison values, source IDs and as-of snapshots; not model inputs.';
 comment on column anomaly_alert.reasons is 'JSON array of plain-English evidence strings, strongest first. Safe to show as-is.';
 comment on column anomaly_alert.first_flagged_at is 'When this unit-month was first flagged. Kept across reruns, so (unit_kind, unit_key, period_no) is a stable notification id.';
 comment on column anomaly_alert.run_id is 'The run that last confirmed this alert.';

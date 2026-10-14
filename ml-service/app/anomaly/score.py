@@ -7,6 +7,7 @@ One run reads the ledger, scores every closed month with the combiner, then
 replaces the contents of `anomaly_alert` and records itself in `anomaly_run`.
 The dashboard reads those two tables and never calls the model.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,19 +25,19 @@ from psycopg.types.json import Jsonb
 from app.config import Settings, get_settings
 from app.periods import closed_through
 
-from . import loaders
+from . import evidence, loaders
 from .loaders import Books
 from .model import MODEL_FILE, AnomalyModel
 from .schema import FEATURES, LINE_FEATURES
 
 TZ = ZoneInfo("Asia/Singapore")
-LOCK_ID = 4_721_001     # Postgres advisory-lock id: one scoring run at a time
+LOCK_ID = 4_721_001  # Postgres advisory-lock id: one scoring run at a time
 
 UPSERT = """
-insert into anomaly_alert (unit_kind, unit_key, period_no, score, reasons, model_version, run_id)
-values (%s, %s, %s, %s, %s, %s, %s)
+insert into anomaly_alert (unit_kind, unit_key, period_no, score, reasons, model_version, run_id, evidence)
+values (%s, %s, %s, %s, %s, %s, %s, %s)
 on conflict (unit_kind, unit_key, period_no) do update
-set score = excluded.score, reasons = excluded.reasons,
+set score = excluded.score, reasons = excluded.reasons, evidence = excluded.evidence,
     model_version = excluded.model_version, run_id = excluded.run_id
 """
 
@@ -65,8 +66,10 @@ def load_model(path: str) -> AnomalyModel:
         raise FileNotFoundError(f"no anomaly model at {path}: run `python -m training.anomaly.train`")
     model = AnomalyModel.load(path)
     if model.meta.get("features") != FEATURES or model.meta.get("line_features") != LINE_FEATURES:
-        raise RuntimeError(f"the anomaly model at {path} was trained on a different feature set than "
-                           "app/anomaly/schema.py: retrain with `python -m training.anomaly.train`")
+        raise RuntimeError(
+            f"the anomaly model at {path} was trained on a different feature set than "
+            "app/anomaly/schema.py: retrain with `python -m training.anomaly.train`"
+        )
     return model
 
 
@@ -74,8 +77,10 @@ def score_books(model: AnomalyModel, books: Books, today: date) -> tuple[pd.Data
     through = closed_through(books.last_period, today)
     if through < books.last_period:
         books = loaders.truncate(books, through)
-    scored = model.score_units(model.featurize(books).units)
-    return model.alerts(scored), through
+    fs = model.featurize(books)
+    scored = model.score_units(fs.units)
+    alerts = model.alerts(scored)
+    return evidence.enrich(alerts, scored, fs, books), through
 
 
 def run(database_url: str, model: AnomalyModel, triggered_by: str, today: date | None = None) -> RunSummary:
@@ -89,7 +94,8 @@ def run(database_url: str, model: AnomalyModel, triggered_by: str, today: date |
         try:
             run_id = conn.execute(
                 "insert into anomaly_run (triggered_by, model_version) values (%s, %s) returning run_id",
-                (triggered_by, version)).fetchone()[0]  # type: ignore[index]
+                (triggered_by, version),
+            ).fetchone()[0]  # type: ignore[index]
             try:
                 books = loaders.from_postgres(conn)
                 alerts, through = score_books(model, books, today)
@@ -98,24 +104,45 @@ def run(database_url: str, model: AnomalyModel, triggered_by: str, today: date |
                     conn.execute(
                         "update anomaly_run set status = 'ok', finished_at = now(), data_through = %s, "
                         "scored_through = %s, n_alerts = %s, n_new = %s where run_id = %s",
-                        (books.last_period, through, len(alerts), n_new, run_id))
+                        (books.last_period, through, len(alerts), n_new, run_id),
+                    )
             except Exception as e:
-                conn.execute("update anomaly_run set status = 'failed', finished_at = now(), error = %s "
-                             "where run_id = %s", (f"{type(e).__name__}: {e}"[:2000], run_id))
+                conn.execute(
+                    "update anomaly_run set status = 'failed', finished_at = now(), error = %s "
+                    "where run_id = %s",
+                    (f"{type(e).__name__}: {e}"[:2000], run_id),
+                )
                 raise
         finally:
             conn.execute("select pg_advisory_unlock(%s)", (LOCK_ID,))
-    return RunSummary(run_id=run_id, model_version=version, data_through=books.last_period,
-                      scored_through=through, n_alerts=len(alerts), n_new=n_new,
-                      seconds=round(time.monotonic() - t0, 1))
+    return RunSummary(
+        run_id=run_id,
+        model_version=version,
+        data_through=books.last_period,
+        scored_through=through,
+        n_alerts=len(alerts),
+        n_new=n_new,
+        seconds=round(time.monotonic() - t0, 1),
+    )
 
 
 def _replace_alerts(conn: psycopg.Connection, alerts: pd.DataFrame, run_id: int, version: str) -> int:
     """Upsert this run's alerts, drop the ones it no longer raises, and return
     how many are new. Upserting keeps first_flagged_at for repeat alerts."""
     existing = {tuple(r) for r in conn.execute("select unit_kind, unit_key, period_no from anomaly_alert")}
-    rows = [(a.kind, str(a.key), int(a.period_no), float(a.score), Jsonb(list(a.reasons)), version, run_id)
-            for a in alerts.itertuples(index=False)]
+    rows = [
+        (
+            a.kind,
+            str(a.key),
+            int(a.period_no),
+            float(a.score),
+            Jsonb(list(a.reasons)),
+            version,
+            run_id,
+            Jsonb(a.evidence),
+        )
+        for a in alerts.itertuples(index=False)
+    ]
     with conn.cursor() as cur:
         cur.executemany(UPSERT, rows)
     conn.execute("delete from anomaly_alert where run_id <> %s", (run_id,))
@@ -123,8 +150,10 @@ def _replace_alerts(conn: psycopg.Connection, alerts: pd.DataFrame, run_id: int,
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m app.anomaly.score",
-                                 description="Score the ledger in DATABASE_URL and refresh anomaly_alert.")
+    ap = argparse.ArgumentParser(
+        prog="python -m app.anomaly.score",
+        description="Score the ledger in DATABASE_URL and refresh anomaly_alert.",
+    )
     ap.parse_args(argv)
     settings = get_settings()
     if not settings.database_url:
@@ -136,8 +165,10 @@ def main(argv: list[str] | None = None) -> int:
     except (FileNotFoundError, AlreadyRunning) as e:
         print(e)
         return 2
-    print(f"run {s.run_id}: {s.n_alerts} alerts ({s.n_new} new), scored through {s.scored_through}, "
-          f"model {s.model_version}, {s.seconds}s")
+    print(
+        f"run {s.run_id}: {s.n_alerts} alerts ({s.n_new} new), scored through {s.scored_through}, "
+        f"model {s.model_version}, {s.seconds}s"
+    )
     return 0
 
 

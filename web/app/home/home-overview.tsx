@@ -1,5 +1,7 @@
 "use client";
 
+import { AnomalyStatusText } from "@/app/components/anomalies/anomaly-status";
+import type { AnomalyAlert, AnomalyStatus } from "@/app/dashboard/data/anomalies-utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -23,7 +25,7 @@ const tones = { favorable: "text-emerald-700", unfavorable: "text-red-700", neut
 const panel = "rounded-2xl border border-slate-200 bg-white shadow-sm";
 const linkStyle = "inline-flex items-center gap-2 text-sm font-semibold text-brand-navy hover:text-brand-red focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue";
 
-export function HomeOverview({ userId, data, error, loadedAt }: { userId: string; data?: KpiData | null; error?: string; loadedAt: string }) {
+export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: { anomalyResult?: { alerts: AnomalyAlert[]; status: AnomalyStatus | null; error?: string }; userId: string; data?: KpiData | null; error?: string; loadedAt: string }) {
   const router = useRouter();
   const [refreshing, startTransition] = useTransition();
   const currency = useCurrency();
@@ -32,7 +34,7 @@ export function HomeOverview({ userId, data, error, loadedAt }: { userId: string
   const fx = currency.currency === "SGD" || (rate && Number.isFinite(rate) && rate > 0)
     ? currency : { currency: "SGD" as const, rates: null };
   const financialData = error ? null : data;
-  const notifications = useHomeAlerts(userId, financialData);
+  const notifications = useHomeAlerts(userId, financialData, anomalyResult?.alerts);
   const { thresholds, ready } = notifications;
   const period = financialData ? reportingMonth(financialData.period) : null;
   const dashboardHref = financialData ? `/dashboard?period=${financialData.period.replace("-", "")}` : "/dashboard";
@@ -89,7 +91,7 @@ export function HomeOverview({ userId, data, error, loadedAt }: { userId: string
       </section>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-8">
-        <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} />
+        <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} anomalyAvailable={!!anomalyResult?.status && !anomalyResult.error} />
 
         <section className={`${panel} min-w-0 p-6 sm:p-7`} aria-labelledby="monitoring-heading">
           <div className="flex items-center gap-3">
@@ -99,8 +101,8 @@ export function HomeOverview({ userId, data, error, loadedAt }: { userId: string
           <div className="mt-7 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Threshold monitoring</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{!ready ? "Loading" : financialData && evaluable ? "Available" : "Unavailable"}</span></div>
             <div className="border-t border-slate-100 pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Anomaly detection</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Not connected</span></div>
-              <p className="mt-3 text-xs leading-5 text-muted">Anomaly results are not available in this overview yet. This does not mean no anomalies exist.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Anomaly detection</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{anomalyResult?.error ? "Unavailable" : anomalyResult?.status ? "Available" : "Not yet checked"}</span></div>
+              <div className="mt-3"><AnomalyStatusText status={anomalyResult?.status} error={anomalyResult?.error} /></div>
             </div>
           </div>
           <p className="mt-6 text-xs text-muted">As of <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p>

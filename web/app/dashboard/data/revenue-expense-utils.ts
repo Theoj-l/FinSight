@@ -1,5 +1,6 @@
 export type RevenueExpensePoint = {
   period: string;
+  periodNo: number;
   revenue: number;
   expenses: number;
 };
@@ -41,5 +42,5 @@ export function aggregateRevenueExpense(rows: BalanceRow[]): RevenueExpensePoint
 
   return [...totals.entries()]
     .sort(([firstPeriod], [secondPeriod]) => firstPeriod - secondPeriod)
-    .map(([periodNo, total]) => ({ period: formatPeriod(periodNo), ...total }));
+    .map(([periodNo, total]) => ({ period: formatPeriod(periodNo), periodNo, ...total }));
 }

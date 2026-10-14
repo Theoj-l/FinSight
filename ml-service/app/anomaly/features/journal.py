@@ -85,7 +85,7 @@ def line_features(books: Books, cell_activity: pd.DataFrame) -> pd.DataFrame:
     pl = pl.merge(cell_activity[["acc_no", "dept_no", "period_no", "pair_freq"]],
                   on=["acc_no", "dept_no", "period_no"], how="left")
     pl["dup_count"] = _dup_counts(pl)
-    return pl[["gl_trx_id", "acc_no", "dept_no", "acc_type", "period_no", "journal_type",
+    return pl[[c for c in ("gl_dtl_key",) if c in pl.columns] + ["gl_trx_id", "acc_no", "dept_no", "acc_type", "period_no", "journal_type",
                "amt", "log_amt", "log_ratio_cell", "trailing_zeros", "month_end", "dom",
                "jt_code", "n_lines", "pair_freq", "dup_count", "is_contra"]]
 

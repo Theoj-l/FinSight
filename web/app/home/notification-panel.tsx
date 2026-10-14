@@ -1,5 +1,6 @@
 "use client";
 
+import { AnomalyAlert } from "@/app/components/anomalies/anomaly-alert";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ArrowRight, Bell, CheckCheck, ChevronDown, X } from "lucide-react";
@@ -29,6 +30,11 @@ function NotificationRow({ alert, entry, markViewed, clear, period, priorPeriod,
     return () => observer.disconnect();
   }, [alert.id, entry.viewedAt, markViewed]);
 
+  if (alert.type === "anomaly") return <li ref={row} className="space-y-2">
+    <div className="flex items-center justify-between gap-3 text-xs text-muted"><span>{entry.viewedAt ? "Viewed" : "New"} · Anomaly detected · Notified {timestamp(entry.notifiedAt)}</span><button type="button" onClick={clear} aria-label={`Clear ${alert.anomaly.unitLabel} anomaly notification`} className="rounded p-2 hover:bg-slate-100"><X aria-hidden="true" className="h-4 w-4" /></button></div>
+    <AnomalyAlert alert={alert.anomaly} />
+  </li>;
+
   return (
     <li ref={row} className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
@@ -46,15 +52,15 @@ function NotificationRow({ alert, entry, markViewed, clear, period, priorPeriod,
   );
 }
 
-export function NotificationPanel({ notifications, period, priorPeriod, dashboardHref, evaluable, loadedAt }: {
+export function NotificationPanel({ notifications, period, priorPeriod, dashboardHref, evaluable, loadedAt, anomalyAvailable = false }: {
   notifications: Notifications; period?: string; priorPeriod?: string;
-  dashboardHref: string; evaluable: number; loadedAt: string;
+  dashboardHref: string; evaluable: number; loadedAt: string; anomalyAvailable?: boolean;
 }) {
   const { alerts, inbox, ready, preferences, unreadCount, viewedCount, pendingCount, nextDelivery } = notifications;
   const visible = inbox.collapsed ? alerts.slice(0, PREVIEW_SIZE) : alerts;
   const canExpand = alerts.length > PREVIEW_SIZE;
   const frequency = preferences.frequency === "immediate" ? "As new issues are found" : preferences.frequency === "daily" ? "Daily" : "Weekly";
-  const emptyMessage = !preferences.enabled ? "Notifications are paused in Settings." : !period ? "Notifications unavailable until financial data is loaded." : !evaluable ? "No enabled threshold checks have a calculable comparison." : pendingCount ? "New alerts are waiting for your next notification update." : "No notifications to review.";
+  const emptyMessage = !preferences.enabled ? "Notifications are paused in Settings." : !period && !anomalyAvailable ? "Notifications unavailable until financial data is loaded." : !evaluable && !anomalyAvailable ? "No enabled threshold checks have a calculable comparison." : pendingCount ? "New alerts are waiting for your next notification update." : "No notifications to review.";
 
   return (
     <section aria-labelledby="home-attention" className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -62,7 +68,7 @@ export function NotificationPanel({ notifications, period, priorPeriod, dashboar
         <h2 id="home-attention" className="min-w-0 flex-1">
           <div className="flex w-full items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700"><Bell aria-hidden="true" className="h-5 w-5" /></span>
-            <span className="min-w-0 flex-1"><span className="block font-semibold text-brand-navy">Notifications{ready && alerts.length > 0 ? ` (${alerts.length})` : ""}</span><span className="mt-0.5 block text-xs font-normal text-muted">{!ready ? "Loading…" : unreadCount ? `${unreadCount} unread · Requires attention` : alerts.length ? "All notifications viewed" : !preferences.enabled ? "Paused" : !period ? "Data unavailable" : !evaluable ? "No checks available" : pendingCount ? `${pendingCount} scheduled` : "No notifications"}</span></span>
+            <span className="min-w-0 flex-1"><span className="block font-semibold text-brand-navy">Notifications{ready && alerts.length > 0 ? ` (${alerts.length})` : ""}</span><span className="mt-0.5 block text-xs font-normal text-muted">{!ready ? "Loading…" : unreadCount ? `${unreadCount} unread · Requires attention` : alerts.length ? "All notifications viewed" : !preferences.enabled ? "Paused" : !period && !anomalyAvailable ? "Data unavailable" : !evaluable && !anomalyAvailable ? "No checks available" : pendingCount ? `${pendingCount} scheduled` : "No notifications"}</span></span>
           </div>
         </h2>
       </div>
@@ -72,8 +78,8 @@ export function NotificationPanel({ notifications, period, priorPeriod, dashboar
           <p className="text-xs text-muted">{preferences.enabled ? frequency : "Notifications paused"}</p>
           <button type="button" disabled={!viewedCount} onClick={notifications.clearViewed} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-brand-navy hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-brand-blue"><CheckCheck aria-hidden="true" className="h-4 w-4" />Clear all viewed{viewedCount > 0 ? ` (${viewedCount})` : ""}</button>
         </div>
-        {alerts.length > 0 && period && priorPeriod ? <ul id="notification-content" key={String(inbox.collapsed)} aria-label="Notifications requiring attention" tabIndex={0} className={`space-y-4 overflow-y-auto overscroll-contain px-6 pb-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-blue sm:px-7 ${inbox.collapsed ? "max-h-[380px]" : "max-h-[520px]"}`}>
-          {visible.map(alert => <NotificationRow key={alert.id} alert={alert} entry={inbox.entries[alert.id]} markViewed={notifications.markViewed} clear={() => notifications.clearOne(alert.id)} period={period} priorPeriod={priorPeriod} dashboardHref={dashboardHref} />)}
+        {alerts.length > 0 ? <ul id="notification-content" key={String(inbox.collapsed)} aria-label="Notifications requiring attention" tabIndex={0} className={`space-y-4 overflow-y-auto overscroll-contain px-6 pb-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-blue sm:px-7 ${inbox.collapsed ? "max-h-[380px]" : "max-h-[520px]"}`}>
+          {visible.map(alert => <NotificationRow key={alert.id} alert={alert} entry={inbox.entries[alert.id]} markViewed={notifications.markViewed} clear={() => notifications.clearOne(alert.id)} period={period ?? ""} priorPeriod={priorPeriod ?? ""} dashboardHref={dashboardHref} />)}
         </ul> : <p role="status" className="px-6 pb-6 text-sm text-muted sm:px-7">{!ready ? "Loading notifications…" : emptyMessage}</p>}
 
         {canExpand && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 text-xs text-muted sm:px-7">

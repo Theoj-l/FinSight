@@ -4,9 +4,10 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { restoreThresholds, type KpiData } from "@/app/dashboard/data/kpi-presentation";
 import { clearNotifications, deliverNotifications, nextDeliveryAt, restoreInbox, viewNotifications, type NotificationInbox } from "@/lib/notifications";
 import { notificationInboxKey, notificationStorageIsTemporary, readNotificationStorage as read, subscribeNotifications as subscribe, useNotificationPreferences, writeNotificationStorage as write } from "@/lib/notification-store";
+import type { AnomalyAlert } from "@/app/dashboard/data/anomalies-utils";
 import { thresholdAlerts } from "./overview-data";
 
-export function useHomeAlerts(userId: string, data?: KpiData | null) {
+export function useHomeAlerts(userId: string, data?: KpiData | null, anomalies: AnomalyAlert[] = []) {
   const settingsKey = `finsight:kpi-thresholds:v1:${userId}`;
   const legacyKey = `finsight:home-alerts:v1:${userId}`;
   const inboxKey = notificationInboxKey(userId);
@@ -17,7 +18,10 @@ export function useHomeAlerts(userId: string, data?: KpiData | null) {
   const { preferences, sessionOnly } = useNotificationPreferences(userId);
   const { enabled, frequency } = preferences;
   const thresholds = restoreThresholds(rawSettings);
-  const candidates = data && ready ? thresholdAlerts(data, thresholds) : [];
+  const candidates = ready ? [
+    ...(data ? thresholdAlerts(data, thresholds).map(alert => ({ ...alert, type: "threshold" as const })) : []),
+    ...anomalies.map(alert => ({ id: alert.id, type: "anomaly" as const, anomaly: alert })),
+  ] : [];
   const inbox = restoreInbox(rawInbox, rawLegacy);
   const ids = JSON.stringify(candidates.map(alert => alert.id));
 

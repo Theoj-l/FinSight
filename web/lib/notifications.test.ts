@@ -79,3 +79,15 @@ describe("viewing and clearing", () => {
     expect(restoreNotificationPreferences('null')).toEqual(defaultNotificationPreferences);
   });
 });
+
+it("delivers mixed threshold/anomaly IDs once and does not revive a cleared anomaly", () => {
+  const preferences = { enabled: true, frequency: "immediate" as const };
+  const time = "2026-10-14T00:00:00.000Z";
+  const ids = ["2026-08:revenue:0:0:below", "acc:6900:202608"];
+  const delivered = deliverNotifications(restoreInbox(null), ids, preferences, time);
+  const viewed = viewNotifications(delivered, [ids[1]], time);
+  const cleared = clearNotifications(viewed, [ids[1]], time);
+  expect(deliverNotifications(cleared, ids, preferences, "2026-10-15T00:00:00.000Z")).toBe(cleared);
+  expect(cleared.entries[ids[0]].clearedAt).toBeUndefined();
+  expect(cleared.entries[ids[1]].clearedAt).toBe(time);
+});

@@ -159,3 +159,47 @@ to the forecast view. The answer must state the forecast month, say it is a
 projection, and quote the band and the accuracy when `meetsTarget` is false.
 Map the assistant's metrics: `revenue` → `revenue`, `total_cost` → `cost`,
 `net_profit` → `profit`.
+
+### Anomaly review UI and evidence
+
+Home delivers anomaly notifications for the latest successfully scored month,
+using the existing per-account/browser notification preferences and history.
+Dashboard shows a three-alert preview below the KPIs for its reporting scope.
+Clearing Home notifications never removes dashboard findings. Department filters
+include matching business-unit alerts and Corporate expense-account alerts when
+`CP` is selected; customer alerts require company-wide scope. Branch anomaly
+attribution is unavailable.
+
+Expanding an alert lazily calls authenticated `GET /api/anomalies/:id`, with
+optional `reason` and positive `page` parameters (20 records per page). The
+stored alert owns the record scope; client-supplied financial filters cannot
+change it. Evidence version 1 stores reason codes, comparisons, source IDs and
+scoring-time record snapshots. Source existence is checked on read. Historical
+customer balances use only receipts posted by the flagged month end, never the
+current `outstanding` column. Related records are not individually classified
+anomalies. Older alerts without evidence keep their reasons and show a notice.
+
+Revenue and gross-margin findings link to the existing charts with `period`,
+`unit`, `anomaly`, `reason` and, for gross margin, `profitMode=gross`. Links clear
+branch selection. Charts highlight the flagged month and show the prior 12
+calendar months, extended for findings using older history. Net/Gross selection
+updates only the graph using the already loaded series and native browser history,
+without server navigation or dashboard queries. The mode persists in the URL
+and supports browser Back/Forward; switching to Net exits a gross anomaly comparison.
+The model includes other income in its revenue/gross-margin definition, so its
+additional series and comparison are explicitly labelled separately from the
+standard accounting figures. Missing chart months remain gaps. Expense,
+customer, reconciliation and new-account findings have no chart action.
+
+For an existing database, apply **only** `prisma/anomaly-evidence.sql` (an
+idempotent additive migration), then run `npm run db:pull` and
+`npm run db:generate`. The complete `finsight_schema.sql` is for fresh setup;
+its CREATE TABLE statements must not be rerun over an existing database.
+Deploy the updated scorer and web reader, then run `python -m app.anomaly.score`
+from ml-service to populate evidence. No training or model artifact update is
+required. Failed scoring runs preserve the previous results.
+
+Validation: `npm test`, `npm run typecheck`, `npm run lint`, and
+`npm run test:anomalies:browser`. The browser suite mounts production components
+with controlled router/auth/API fixtures; backend scope and authentication are
+covered separately in route and data tests.

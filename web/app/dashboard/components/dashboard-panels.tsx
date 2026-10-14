@@ -1,3 +1,6 @@
+import type { ChartAnomaly } from "../data/anomaly-evidence";
+import { getAnomalyAlerts, getAnomalyStatus } from "../data/anomalies";
+import { AnomalyPanel } from "./anomaly-panel";
 import { ExpenseCategoryChart } from "./expense-category-chart";
 import { ExpenseByBusinessTypeChart } from "./expense-by-business-type-chart";
 import { KpiCards } from "./kpi-cards";
@@ -69,7 +72,7 @@ export async function KpiPanel({ scope, userId }: { scope: DashboardScope; userI
   return <KpiCards data={data} error={error} userId={userId} />;
 }
 
-export async function RevenueExpensePanel({ scope }: { scope: DashboardScope }) {
+export async function RevenueExpensePanel({ scope, focus }: { scope: DashboardScope; focus?: ChartAnomaly | null }) {
   let data;
   let error;
   try {
@@ -77,10 +80,10 @@ export async function RevenueExpensePanel({ scope }: { scope: DashboardScope }) 
   } catch {
     error = "Financial data could not be loaded right now.";
   }
-  return <RevenueExpenseChart data={data} error={error} />;
+  return <RevenueExpenseChart data={data} error={error} focus={focus} />;
 }
 
-export async function ProfitMarginPanel({ scope }: { scope: DashboardScope }) {
+export async function ProfitMarginPanel({ scope, mode, focus }: { scope: DashboardScope; mode?: "net" | "gross"; focus?: ChartAnomaly | null }) {
   let data;
   let error;
   try {
@@ -89,7 +92,7 @@ export async function ProfitMarginPanel({ scope }: { scope: DashboardScope }) {
     error = "Profit data could not be loaded right now.";
   }
 
-  return <ProfitMarginChart data={data} error={error} />;
+  return <ProfitMarginChart data={data} error={error} mode={mode} focus={focus} />;
 }
 
 export async function ProfitYoyComparisonPanel({ scope }: { scope: DashboardScope }) {
@@ -159,4 +162,20 @@ export async function ProfitLossPanel({ scope }: { scope: DashboardScope }) {
     error = "Profit and loss data could not be loaded right now.";
   }
   return <ProfitLossTable data={data} error={error} />;
+}
+
+export async function AnomaliesPanel({ scope }: { scope: DashboardScope }) {
+  const branch = !!(scope.branchCode || scope.branchCodes?.length);
+  let alerts: Awaited<ReturnType<typeof getAnomalyAlerts>> = [];
+  let status: Awaited<ReturnType<typeof getAnomalyStatus>> = null;
+  let error: string | undefined;
+  try {
+    [alerts, status] = await Promise.all([
+      branch ? Promise.resolve([]) : getAnomalyAlerts({ periodStart: scope.periodStart ?? scope.period, periodEnd: scope.periodEnd ?? scope.period, departmentIds: scope.departmentIds }),
+      getAnomalyStatus(),
+    ]);
+  } catch {
+    error = "Anomaly checks are unavailable.";
+  }
+  return <AnomalyPanel alerts={alerts.sort((a, b) => b.score - a.score)} status={status} error={error} periodStart={scope.periodStart ?? scope.period} periodEnd={scope.periodEnd ?? scope.period} branch={branch} />;
 }

@@ -261,6 +261,7 @@ model anomaly_alert {
   model_version    String      @db.VarChar(20)
   first_flagged_at DateTime    @default(now()) @db.Timestamptz(6)
   run_id           BigInt
+  evidence         Json?
   anomaly_run      anomaly_run @relation(fields: [run_id], references: [run_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_anomaly_alert_run_id")
 
   @@id([unit_kind, unit_key, period_no], map: "pk_anomaly_alert")

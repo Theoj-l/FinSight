@@ -1,8 +1,11 @@
+import { getChartAnomaly } from "./data/anomalies";
+import { previousCalendarMonths } from "./data/anomaly-evidence";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { AppPage } from "@/app/components/app-page";
 import {
+  AnomaliesPanel,
   DashboardPanelLoading,
   ExpenseCategoryPanel,
   ExpenseByBusinessTypePanel,
@@ -30,8 +33,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const optionsResult = await getFilterOptions()
     .then(options => ({ options, error: undefined as string | undefined }))
     .catch(() => ({ options: { periods: [], units: [], branches: [] } as FilterOptions, error: "Reporting filters could not be loaded. Please refresh to retry." }));
-  const { selection, scope, error: selectionError } = parseDashboardFilters(await searchParams, optionsResult.options);
+  const params = await searchParams;
+  const { selection, scope, error: selectionError } = parseDashboardFilters(params, optionsResult.options);
   const filterError = optionsResult.error ?? selectionError;
+  const requested = typeof params.anomaly === "string" ? params.anomaly : undefined;
+  const target = requested && !filterError ? await getChartAnomaly(requested, typeof params.reason === "string" ? params.reason : undefined).catch(() => null) : null;
+  const focus = target && !scope.branchCodes?.length && scope.departmentIds?.length === 1 && scope.departmentIds[0] === target.alert.unitKey && scope.periodStart === target.alert.periodNo && scope.periodEnd === target.alert.periodNo ? target : null;
+  const chartScope = focus ? { ...scope, trendPeriodNumbers: [...new Set([...previousCalendarMonths(focus.alert.periodNo), ...focus.finding.comparison.periods])].sort((a, b) => a - b) } : scope;
+
 
   return (
     <AppPage email={user.email ?? "Finance user"}>
@@ -53,6 +62,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <KpiPanel scope={scope} userId={user.id} />
         </Suspense>}
 
+        {requested && !focus && <p role="status" className="mt-4 text-sm text-amber-900">This anomaly comparison is no longer available or does not match the selected reporting scope. Its chart highlight has been removed.</p>}
+        {!filterError && <Suspense fallback={<DashboardPanelLoading label="anomaly results" />}><AnomaliesPanel scope={scope} /></Suspense>}
+
         {!filterError && <div className="mt-8">
           <Suspense fallback={<DashboardPanelLoading label="profit comparison data" />}>
             <ProfitYoyComparisonPanel scope={scope} />
@@ -62,12 +74,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           <div className="h-full">
             {!filterError && <Suspense fallback={<DashboardPanelLoading label="financial data" />}>
-              <RevenueExpensePanel scope={scope} />
+              <RevenueExpensePanel scope={focus?.finding.chart === "revenue" ? chartScope : scope} focus={focus?.finding.chart === "revenue" ? focus : null} />
             </Suspense>}
           </div>
           <div className="h-full">
             {!filterError && <Suspense fallback={<DashboardPanelLoading label="profit data" />}>
-              <ProfitMarginPanel scope={scope} />
+              <ProfitMarginPanel scope={focus?.finding.chart === "gross" ? chartScope : scope} mode={focus?.finding.chart === "gross" || params.profitMode === "gross" ? "gross" : "net"} focus={focus?.finding.chart === "gross" ? focus : null} />
             </Suspense>}
           </div>
         </div>
