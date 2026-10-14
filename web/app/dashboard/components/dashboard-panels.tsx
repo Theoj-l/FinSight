@@ -19,9 +19,41 @@ import { getRevenueExpenseData } from "../data/revenue-expense";
 import { BRANCH_LEDGER_MESSAGE, type DashboardScope } from "../data/dashboard-scope";
 
 export function DashboardPanelLoading({ label }: { label: string }) {
+  if (label === "KPI data") {
+    return (
+      <section className="mt-8" role="status" aria-label="Loading KPI data">
+        <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+        <div className="mt-2 h-3 w-64 max-w-full animate-pulse rounded bg-slate-100" />
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map(item => (
+            <div key={item} className="h-36 animate-pulse rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="h-3 w-28 rounded bg-slate-100" />
+              <div className="mt-5 h-7 w-36 rounded bg-slate-200" />
+              <div className="mt-4 h-3 w-24 rounded bg-slate-100" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only">Loading KPI data</span>
+      </section>
+    );
+  }
+
   return (
-    <div className="flex min-h-32 items-center justify-center rounded-xl border border-black/10 bg-white p-6 text-sm text-muted" role="status">
-      Loading {label}...
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" role="status" aria-label={`Loading ${label}`}>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="h-5 w-44 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-3 w-64 max-w-full animate-pulse rounded bg-slate-100" />
+        </div>
+        <div className="h-8 w-20 animate-pulse rounded-lg bg-slate-100" />
+      </div>
+      <div className="mt-5 h-48 animate-pulse rounded-lg bg-gradient-to-br from-slate-50 via-blue-50/50 to-slate-50" />
+      <div className="mt-5 flex items-center gap-3">
+        <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
+        <div className="h-3 w-32 animate-pulse rounded bg-slate-100" />
+        <div className="h-3 w-20 animate-pulse rounded bg-slate-100" />
+      </div>
+      <span className="sr-only">Loading {label}</span>
     </div>
   );
 }

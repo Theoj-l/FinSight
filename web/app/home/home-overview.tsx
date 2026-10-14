@@ -14,7 +14,7 @@ import { NotificationPanel } from "./notification-panel";
 const features = [
   { title: "Dashboard", href: "/dashboard", icon: BarChart3, copy: "Explore financial trends, compare periods and drill into your accounts." },
   { title: "Assistant", href: "/assistant", icon: MessageSquare, copy: "Visit your conversational workspace. Financial questions and forecast answers are in development." },
-  { title: "Insights", href: "/insights", icon: Lightbulb, copy: "Explore the insights workspace for financial decision support." },
+  { title: "Forecast", href: "/forecast", icon: Lightbulb, copy: "Compare actual performance with forward-looking projections." },
   { title: "Reports", href: "/reports", icon: FileText, copy: "Visit the reporting workspace and explore available report types." },
   { title: "Settings", href: "/settings", icon: Settings, copy: "Manage your account, display preferences and reporting currency." },
 ];

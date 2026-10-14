@@ -7,7 +7,7 @@ scope is ready. Browser history and copied URLs retain the selection.
 
 - The reporting selector currently supports one month. The default is the latest
   valid PBalance month; a date range is not implemented.
-- Business units are accounting departments. All units omits the department
+- Product groups are accounting departments. All product groups omits the department
   predicate; selecting one applies it to balances, budgets and invoice lines.
 - Every monthly chart and KPI uses the selected month. KPI and expense-category
   comparisons use the preceding calendar month within the same unit. P&L YTD is
@@ -24,7 +24,7 @@ scope is ready. Browser history and copied URLs retain the selection.
   journals, timing or coverage differ.
 - Filter values are validated against database options on the server. Invalid
   selections do not run financial queries or silently fall back to all data.
-- Reset filters restores the latest month, All units and All Branches. Each
+- Reset filters restores the latest month, All product groups and All Branches. Each
   individual all option resets only its own dimension.
 
 ## Branch coverage and outstanding dependency
@@ -136,7 +136,7 @@ Each series has:
   above the 15% reliability target. Treat as indicative." Show the band too.
   `meetsTarget` is null when there is no backtest yet; say "accuracy not yet
   measured".
-- **Units filter.** Forecasts are stored per department. A selection of units
+- **Product groups filter.** Forecasts are stored per department. A selection of product groups
   is the sum of its departments, exactly like the actuals, so every filter adds
   up. **Branch filter:** forecasts come from the ledger, so a branch selection
   throws `BRANCH_LEDGER_MESSAGE`, like the other ledger panels.

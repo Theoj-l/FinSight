@@ -11,7 +11,7 @@ import { useChat } from "./use-chat";
 // Pages that render inside the signed-in app shell. Keep in sync with
 // PROTECTED_PREFIXES in lib/supabase/proxy.ts. The chat API itself does not
 // check auth, so the widget must never appear on public pages.
-const APP_ROUTES = ["/home", "/dashboard", "/assistant", "/insights", "/reports", "/settings"];
+const APP_ROUTES = ["/home", "/dashboard", "/assistant", "/forecast", "/reports", "/settings"];
 
 const SUGGESTIONS = [
   "Which customer has the highest sales?",

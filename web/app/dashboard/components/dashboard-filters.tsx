@@ -6,7 +6,7 @@ import { PageLoading } from "@/app/components/page-loading";
 import { BRANCH_LEDGER_MESSAGE, type FilterOptions, type FilterSelection } from "../data/dashboard-scope";
 import { formatPeriod } from "../data/revenue-expense-utils";
 
-export function DashboardFilters({ options, selection, error, children }: { options: FilterOptions; selection: FilterSelection; error?: string; children: ReactNode }) {
+export function DashboardFilters({ options, selection, error, destination = "/dashboard", hidePeriod = false, children }: { options: FilterOptions; selection: FilterSelection; error?: string; destination?: string; hidePeriod?: boolean; children: ReactNode }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(selection);
@@ -16,15 +16,15 @@ export function DashboardFilters({ options, selection, error, children }: { opti
 
   function applyFilters() {
     const query = new URLSearchParams();
-    if (draft.periodStart) query.set("periodStart", draft.periodStart);
-    if (draft.periodEnd) query.set("periodEnd", periodMode === "range" ? draft.periodEnd : draft.periodStart);
+    if (!hidePeriod && draft.periodStart) query.set("periodStart", draft.periodStart);
+    if (!hidePeriod && draft.periodEnd) query.set("periodEnd", periodMode === "range" ? draft.periodEnd : draft.periodStart);
     draft.units.forEach(unit => query.append("unit", unit));
     draft.branches.forEach(branch => query.append("branch", branch));
-    startTransition(() => router.push(`/dashboard?${query}`, { scroll: false }));
+    startTransition(() => router.push(`${destination}?${query}`, { scroll: false }));
   }
   function resetDraft() {
     const defaultPeriod = String(options.periods[0] ?? "");
-    setDraft({ periodStart: defaultPeriod, periodEnd: defaultPeriod, units: [], branches: [] });
+    setDraft(current => ({ periodStart: hidePeriod ? current.periodStart : defaultPeriod, periodEnd: hidePeriod ? current.periodEnd : defaultPeriod, units: [], branches: [] }));
     setPeriodMode("month");
     setOpenMenu(null);
   }
@@ -47,9 +47,9 @@ export function DashboardFilters({ options, selection, error, children }: { opti
         </div>
         <button type="button" onClick={resetDraft} className="rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-sm font-medium text-brand-navy" disabled={pending}>Clear</button>
       </div>
-      <fieldset disabled={pending} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 disabled:opacity-60">
+      <fieldset disabled={pending} className={`grid gap-4 md:grid-cols-2 ${hidePeriod ? "xl:grid-cols-2" : "xl:grid-cols-4"} disabled:opacity-60`}>
         <legend className="sr-only">Reporting scope</legend>
-        <div className="md:col-span-2">
+        {!hidePeriod && <div className="md:col-span-2">
           <div className="mb-1 flex items-center justify-between"><span className="text-sm font-medium text-brand-navy">Period</span><span className="text-xs text-muted">{periodMode === "month" ? "Specific month" : "Date range"}</span></div>
           <div className="flex rounded-lg border border-brand-navy/20 bg-white p-1" role="group" aria-label="Period selection mode">
             <button type="button" onClick={() => { setPeriodMode("month"); setDraft(current => ({ ...current, periodEnd: current.periodStart })); }} className={`flex-1 rounded px-3 py-1.5 text-sm font-medium ${periodMode === "month" ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-brand-blue-light"}`}>Specific month</button>
@@ -64,13 +64,13 @@ export function DashboardFilters({ options, selection, error, children }: { opti
               {options.periods.map(period => <option key={period} value={period}>{formatPeriod(period)}</option>)}
             </select></>}
           </div>
-        </div>
-        <MultiSelect label="Business units" values={draft.units} options={options.units} open={openMenu === "units"} onToggle={() => setOpenMenu(openMenu === "units" ? null : "units")} onChange={value => toggleValue("units", value)} buttonLabel={selectedLabel(draft.units, "All business units")} />
+        </div>}
+        <MultiSelect label="Product groups" values={draft.units} options={options.units} open={openMenu === "units"} onToggle={() => setOpenMenu(openMenu === "units" ? null : "units")} onChange={value => toggleValue("units", value)} buttonLabel={selectedLabel(draft.units, "All product groups")} />
         <MultiSelect label="Branches" values={draft.branches} options={options.branches} open={openMenu === "branches"} onToggle={() => setOpenMenu(openMenu === "branches" ? null : "branches")} onChange={value => toggleValue("branches", value)} buttonLabel={selectedLabel(draft.branches, "All branches")} />
       </fieldset>
-      <p id="branch-coverage" className="mt-3 text-xs text-muted">Business units use the accounting department codes. Branch filtering currently applies to invoice revenue; ledger and budget branch attribution is not available.</p>
+      <p id="branch-coverage" className="mt-3 text-xs text-muted">Product groups use the accounting department codes. Branch filtering currently applies to invoice revenue; ledger and budget branch attribution is not available.</p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-brand-navy/10 pt-4">
-        <p role="status" className="text-sm text-brand-navy">Applied: {periodLabel} · {selection.units.length || "All"} unit{selection.units.length === 1 ? "" : "s"} · {selection.branches.length || "All"} branche{selection.branches.length === 1 ? "" : "s"}</p>
+        <p role="status" className="text-sm text-brand-navy">{hidePeriod ? "Using latest closed actuals and the current forecast run" : `Applied: ${periodLabel}`} · {selection.units.length || "All"} unit{selection.units.length === 1 ? "" : "s"} · {selection.branches.length || "All"} branche{selection.branches.length === 1 ? "" : "s"}</p>
         <button type="button" onClick={applyFilters} disabled={pending || !isDirty} className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-50">Apply Filters</button>
       </div>
       {error && <p role="alert" className="mt-3 text-sm font-medium text-brand-red">{error}</p>}

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("route protection", () => {
-  for (const route of ["home", "dashboard", "assistant", "insights", "reports", "settings"]) {
+  for (const route of ["home", "dashboard", "assistant", "forecast", "reports", "settings"]) {
     test(`signed-out requests to /${route} redirect before rendering the application`, async ({ page }) => {
       await page.goto(`/${route}`);
       await expect(page).toHaveURL(new RegExp(`/login\\?next=(%2F|/)${route}$`));
