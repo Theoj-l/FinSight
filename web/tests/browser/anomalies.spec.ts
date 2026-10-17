@@ -60,8 +60,28 @@ test("loads records on expansion, paginates, and opens gross comparison with sco
   await row.locator("summary").focus(); await page.keyboard.press("Enter");
   await expect(row.getByRole("table")).toBeVisible();
   await expect(row.getByRole("button",{name:"Previous"})).toBeDisabled();
-  await row.getByRole("button",{name:"Next",exact:true}).click();
+  // Hold the next response so we can observe pagination without a remount.
+  let release!: () => void;
+  const nextPage = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/anomalies/**", async route => {
+    if (new URL(route.request().url()).searchParams.get("page") === "2") await nextPage;
+    await route.fallback();
+  });
+  const explanation = await row.getByRole("link",{name:/View comparison/}).elementHandle();
+  const table = await row.getByRole("table").elementHandle();
+  const next = row.getByRole("button",{name:"Next",exact:true});
+  await next.click();
+  try {
+    await expect(row.getByText("Loading page 2…", {exact:true})).toBeVisible();
+    await expect(next).toBeDisabled();
+    await expect(row.getByText("POST-1", {exact:true})).toBeVisible();
+    expect(await explanation?.evaluate(node => node.isConnected)).toBe(true);
+    expect(await table?.evaluate(node => node.isConnected)).toBe(true);
+    await expect(row.getByText("Loading evidence…", {exact:true})).toHaveCount(0);
+  } finally { release(); }
   await expect(row.getByText("Page 2 of 2")).toBeVisible();
+  expect(await explanation?.evaluate(node => node.isConnected)).toBe(true);
+  expect(await table?.evaluate(node => node.isConnected)).toBe(true);
   await expect(row.getByText("POST-21",{exact:true})).toBeVisible();
   await row.getByRole("link",{name:/View comparison/}).click();
   await expect(page).toHaveURL(/profitMode=gross/);
@@ -126,4 +146,31 @@ test("switches only the graph without dashboard navigation or new requests", asy
   await expect(measure).toHaveValue("net");
   await page.goForward();
   await expect(measure).toHaveValue("gross");
+});
+
+
+test("keeps evidence visible and retries a failed table page in Home notifications", async ({page}) => {
+  await page.goto("/");
+  const notifications = page.getByRole("region", {name:/Notifications/});
+  const row = notifications.locator("details").filter({has:page.locator("summary").filter({hasText:"Heavy Lift"})});
+  await row.locator("summary").click();
+  await expect(row.getByText("Page 1 of 2")).toBeVisible();
+  const explanation = await row.getByRole("link", {name:/View comparison/}).elementHandle();
+  let fail = true;
+  await page.route("**/api/anomalies/**", async route => {
+    if (new URL(route.request().url()).searchParams.get("page") === "2" && fail) {
+      fail = false;
+      return route.fulfill({status:503,json:{message:"Evidence could not be loaded. Try again."}});
+    }
+    return route.fallback();
+  });
+  await row.getByRole("button", {name:"Next",exact:true}).click();
+  await expect(row.getByRole("alert")).toContainText("Showing the previously loaded page");
+  await expect(row.getByText("POST-1", {exact:true})).toBeVisible();
+  expect(await explanation?.evaluate(node => node.isConnected)).toBe(true);
+  await row.getByRole("button", {name:"Retry",exact:true}).click();
+  await expect(row.getByText("Page 2 of 2")).toBeVisible();
+  await expect(row.getByRole("alert")).toHaveCount(0);
+  await expect(row.getByText("POST-21", {exact:true})).toBeVisible();
+  expect(await explanation?.evaluate(node => node.isConnected)).toBe(true);
 });

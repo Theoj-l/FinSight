@@ -1,11 +1,10 @@
 "use client";
 
-import { AnomalyStatusText } from "@/app/components/anomalies/anomaly-status";
 import type { AnomalyAlert, AnomalyStatus } from "@/app/dashboard/data/anomalies-utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, MessageSquare, RefreshCw, Settings, ShieldCheck } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, MessageSquare, RefreshCw, Settings } from "lucide-react";
 import { PageHeading } from "@/app/components/app-page";
 import { formatAmount, formatPercentage, outcome, type KpiData } from "@/app/dashboard/data/kpi-presentation";
 import { useCurrency } from "@/lib/currency-context";
@@ -35,7 +34,7 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
     ? currency : { currency: "SGD" as const, rates: null };
   const financialData = error ? null : data;
   const notifications = useHomeAlerts(userId, financialData, anomalyResult?.alerts);
-  const { thresholds, ready } = notifications;
+  const { thresholds } = notifications;
   const period = financialData ? reportingMonth(financialData.period) : null;
   const dashboardHref = financialData ? `/dashboard?period=${financialData.period.replace("-", "")}` : "/dashboard";
   const evaluable = financialData?.metrics.filter(metric => metric.value !== null && thresholds[metric.id].enabled && Number.isFinite(metric.id === "budgetVariance" ? metric.budgetComparison?.percentage ?? NaN : metric.change?.percentage ?? NaN)).length ?? 0;
@@ -88,33 +87,16 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
           </div>
           <p className="mt-5 text-xs leading-5 text-muted">Loaded <time dateTime={loadedAt}>{timestamp(loadedAt)}</time> · Load time is when this overview was retrieved; it is not a ledger sync date. pp = percentage points.{fx.currency !== "SGD" && currency.date ? ` Exchange rates dated ${currency.date}.` : ""}{fx.currency !== currency.currency ? " Showing SGD while exchange rates are unavailable." : ""}</p>
         </>}
+        {financialData && financialData.notices.length > 0 && (
+          <details className="mt-6 border-t border-slate-100 pt-5">
+            <summary className="cursor-pointer text-sm font-medium text-brand-navy"><CircleAlert aria-hidden="true" className="mr-2 inline h-4 w-4 text-amber-600" />Data availability</summary>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">{financialData.notices.map(notice => <li key={notice}>{notice}</li>)}</ul>
+            <p className="mt-4 text-xs text-muted">Reporting month: {period}</p>
+          </details>
+        )}
       </section>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-8">
-        <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} anomalyAvailable={!!anomalyResult?.status && !anomalyResult.error} />
-
-        <section className={`${panel} min-w-0 p-6 sm:p-7`} aria-labelledby="monitoring-heading">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-blue-light text-brand-blue"><ShieldCheck aria-hidden="true" className="h-5 w-5" /></span>
-            <div><h2 id="monitoring-heading" className="font-semibold text-brand-navy">Monitoring coverage</h2><p className="mt-1 text-xs text-muted">Status of your financial checks</p></div>
-          </div>
-          <div className="mt-7 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Threshold monitoring</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{!ready ? "Loading" : financialData && evaluable ? "Available" : "Unavailable"}</span></div>
-            <div className="border-t border-slate-100 pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Anomaly detection</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{anomalyResult?.error ? "Unavailable" : anomalyResult?.status ? "Available" : "Not yet checked"}</span></div>
-              <div className="mt-3"><AnomalyStatusText status={anomalyResult?.status} error={anomalyResult?.error} /></div>
-            </div>
-          </div>
-          <p className="mt-6 text-xs text-muted">As of <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p>
-          {financialData && financialData.notices.length > 0 && (
-            <details className="mt-6 border-t border-slate-100 pt-5">
-              <summary className="cursor-pointer text-sm font-medium text-brand-navy"><CircleAlert aria-hidden="true" className="mr-2 inline h-4 w-4 text-amber-600" />Data availability</summary>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">{financialData.notices.map(notice => <li key={notice}>{notice}</li>)}</ul>
-              <p className="mt-4 text-xs text-muted">Reporting month: {period}</p>
-            </details>
-          )}
-        </section>
-      </div>
+      <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} anomalyAvailable={!!anomalyResult?.status && !anomalyResult.error} anomalyStatus={anomalyResult?.status} anomalyError={anomalyResult?.error} />
 
       <section aria-labelledby="explore-heading">
         <h2 id="explore-heading" className="text-lg font-semibold text-brand-navy">Explore FinSight</h2>

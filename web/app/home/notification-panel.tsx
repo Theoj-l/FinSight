@@ -1,5 +1,7 @@
 "use client";
 
+import { AnomalyStatusText } from "@/app/components/anomalies/anomaly-status";
+import type { AnomalyStatus } from "@/app/dashboard/data/anomalies-utils";
 import { AnomalyAlert } from "@/app/components/anomalies/anomaly-alert";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -52,9 +54,9 @@ function NotificationRow({ alert, entry, markViewed, clear, period, priorPeriod,
   );
 }
 
-export function NotificationPanel({ notifications, period, priorPeriod, dashboardHref, evaluable, loadedAt, anomalyAvailable = false }: {
+export function NotificationPanel({ notifications, period, priorPeriod, dashboardHref, evaluable, loadedAt, anomalyAvailable = false, anomalyStatus, anomalyError }: {
   notifications: Notifications; period?: string; priorPeriod?: string;
-  dashboardHref: string; evaluable: number; loadedAt: string; anomalyAvailable?: boolean;
+  dashboardHref: string; evaluable: number; loadedAt: string; anomalyAvailable?: boolean; anomalyStatus?: AnomalyStatus | null; anomalyError?: string;
 }) {
   const { alerts, inbox, ready, preferences, unreadCount, viewedCount, pendingCount, nextDelivery } = notifications;
   const visible = inbox.collapsed ? alerts.slice(0, PREVIEW_SIZE) : alerts;
@@ -90,6 +92,7 @@ export function NotificationPanel({ notifications, period, priorPeriod, dashboar
         <div className="space-y-3 border-t border-slate-100 px-6 py-5 sm:px-7">
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-brand-navy"><Link href="/settings#notifications" className="hover:text-brand-red">Notification settings</Link><Link href={`${dashboardHref}#kpi-settings`} className="hover:text-brand-red">Threshold settings</Link></div>
           <p className="text-xs text-muted">Data checked <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p>
+          {(anomalyStatus !== undefined || anomalyError) && <div className="space-y-1"><p className="text-xs font-medium text-muted">Anomaly results</p><AnomalyStatusText status={anomalyStatus} error={anomalyError} /></div>}
           <details className="text-xs leading-5 text-muted"><summary className="cursor-pointer">About notification history</summary><p className="mt-2">Clearing a notification does not resolve the underlying issue. {notifications.sessionOnly ? "Browser storage is unavailable; changes last for this visit." : "Notification history is saved for this account in this browser."}</p></details>
         </div>
       </div>

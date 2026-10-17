@@ -137,7 +137,10 @@ item return to the overview.
 Home reads the latest company-wide ledger KPIs and uses the same per-account,
 browser-local thresholds as the dashboard. Each KPI shows its reporting month
 and comparison month. Only unfavorable threshold breaches create notifications.
-Notifications and monitoring sit side by side on desktop and stack on mobile.
+Notifications occupy the full width below the financial snapshot on Home; there
+is no separate monitoring coverage card. Anomaly freshness and availability
+appear in the notification footer, while financial coverage notices sit with the
+snapshot.
 The notification panel previews two items, with View all / Show fewer controls
 and a bounded scroll area. Items are marked viewed when visible; users can clear
 one or all viewed items without clearing unread items outside the preview. Notification,
@@ -152,8 +155,8 @@ while open and on return, using its loaded KPI data; refresh Home for updated
 financial data. These preferences do not schedule email or push notifications.
 
 The overview's load time is separate from the reporting period
-and does not represent a ledger sync time. Anomaly monitoring is shown as not
-connected until an anomaly results feed is available.
+and does not represent a ledger sync time. Anomaly notifications use the latest
+successfully scored month and expand to show reasons and supporting records.
 
 Assistant is accessible from the sidebar and Home shortcuts. Its page currently
 shows the planned conversational experience; the existing question classifier

@@ -17,7 +17,7 @@ export function AnomalyAlert({ alert }: { alert: Alert }) {
     </summary>
     {open && <div className="mt-4 space-y-3">
       <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">{alert.reasons.length ? alert.reasons.map((r, i) => <li key={i}>{r}</li>) : <li>Unusual combination of model signals; review related records.</li>}</ul>
-      <EvidenceRequest key={`${alert.id}:${reason}:${page}`} alert={alert} reason={reason} page={page} onReason={value => { setReason(value); setPage(1); }} onPage={setPage} />
+      <EvidenceRequest key={`${alert.id}:${reason}`} alert={alert} reason={reason} page={page} onReason={value => { setReason(value); setPage(1); }} onPage={setPage} />
     </div>}
   </details>;
 }
@@ -26,6 +26,9 @@ function EvidenceRequest({ alert, reason, page, onReason, onPage }: { alert: Ale
   const [result, setResult] = useState<AlertDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [completedRequest, setCompletedRequest] = useState<string | null>(null);
+  const requestKey = `${page}:${attempt}`;
+  const pending = completedRequest !== requestKey;
   useEffect(() => {
     const controller = new AbortController();
     const query = new URLSearchParams({ page: String(page) });
@@ -33,11 +36,11 @@ function EvidenceRequest({ alert, reason, page, onReason, onPage }: { alert: Ale
     fetch(`/api/anomalies/${encodeURIComponent(alert.id)}?${query}`, { signal: controller.signal, cache: "no-store" }).then(async response => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? "Evidence could not be loaded.");
-      if (!controller.signal.aborted) { setResult(data); setError(null); }
-    }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
+      if (!controller.signal.aborted) { setResult(data); setError(null); setCompletedRequest(requestKey); }
+    }).catch(error => { if (!controller.signal.aborted) { setError(error.message); setCompletedRequest(requestKey); } });
     return () => controller.abort();
-  }, [alert.id, reason, page, attempt]);
-  if (error) return <div role="alert" className="text-sm text-red-700">{error}<button className="ml-3 underline" onClick={() => setAttempt(n => n + 1)}>Retry</button></div>;
+  }, [alert.id, reason, page, attempt, requestKey]);
+  if (error && !result && !pending) return <div role="alert" className="text-sm text-red-700">{error}<button className="ml-3 underline" onClick={() => setAttempt(n => n + 1)}>Retry</button></div>;
   if (!result) return <p role="status" className="text-sm text-muted">Loading evidence…</p>;
   const finding = result.finding;
   const href = finding && anomalyChartHref(alert, finding);
@@ -50,12 +53,16 @@ function EvidenceRequest({ alert, reason, page, onReason, onPage }: { alert: Ale
       {href && <Link className="inline-block text-sm font-semibold text-brand-blue underline" href={href}>View comparison in chart →</Link>}
       <h4 className="text-sm font-semibold text-brand-navy">{finding.recordLabel} ({result.total})</h4>
       <p className="text-xs text-muted">Evidence as of {result.asOf}. {finding.recordLabel === "Related records" && "These records contribute to the pattern; they were not individually flagged."} Amounts in SGD.</p>
-      {result.missing > 0 && <p role="status" className="text-sm text-amber-900">{result.missing} source records on this page are no longer available.</p>}
-      <RecordsTable records={result.records} />
+      {pending && <p role="status" className="text-xs text-muted">Loading page {page}…</p>}
+      {error && !pending && <div role="alert" className="text-sm text-red-700">{error} Showing the previously loaded page.<button className="ml-3 underline" onClick={() => setAttempt(n => n + 1)}>Retry</button></div>}
+      <div aria-busy={pending} aria-label="Evidence records" role="region" className={pending ? "opacity-60" : undefined}>
+        {result.missing > 0 && <p role="status" className="text-sm text-amber-900">{result.missing} source records on this page are no longer available.</p>}
+        <RecordsTable records={result.records} />
+      </div>
       <nav aria-label="Evidence pagination" className="flex flex-wrap items-center gap-3 text-sm">
-        <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={result.page <= 1} onClick={() => onPage(result.page - 1)}>Previous</button>
+        <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={pending || !!error || result.page <= 1} onClick={() => onPage(result.page - 1)}>Previous</button>
         <span aria-live="polite">Page {result.page} of {result.pages}</span>
-        <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={result.page >= result.pages} onClick={() => onPage(result.page + 1)}>Next</button>
+        <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={pending || !!error || result.page >= result.pages} onClick={() => onPage(result.page + 1)}>Next</button>
       </nav>
     </>}
   </div>;
