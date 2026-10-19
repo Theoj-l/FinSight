@@ -51,6 +51,7 @@ recommendation:
 - payment_follow_up: overdue customers/invoices to chase or prioritize.
 - cost_investigation: cost or expense areas to investigate.
 - sales_follow_up: sales areas, customers, or salespeople needing attention.
+- margin_investigation: products or product categories to investigate because gross margin is declining.
 - management_priority: broad cross-functional priorities.
 - payroll_investigation: only identifiable P&L staff-cost investigation; otherwise unsupported.
 
@@ -135,4 +136,8 @@ Set top_n to an explicit positive ranking count. For "top customers" without a c
 - "Which expense accounts contributed most to the increase in operating expenses from May to June 2026?" -> analytical_interpretation / cost_variance / profit_loss / operating_expense; period 2026-06; comparison_period 2026-05; dimension account_name.
 - "Which customers contributed most to the increase in overdue receivables this month?" -> analytical_interpretation / ar_variance / accounts_receivable / outstanding_amount; period this_month; comparison_period previous_period; dimension customer.
 - "Which overdue customers should we chase?" -> recommendation / payment_follow_up / accounts_receivable / outstanding_amount; dimension customer.
+- "Which operating expense categories should management investigate first based on June to July 2026 increases?" -> recommendation / cost_investigation / profit_loss / operating_expense; period 2026-07; comparison_period 2026-06; dimension account_name.
+- "Which department should management review based on the largest increase in operating expenses? Assume now is June 2026." -> recommendation / cost_investigation / profit_loss / operating_expense; period 2026-06; comparison_period previous_period; dimension department; top_n 1.
+- "Which products should management investigate if gross margin continues to decline? Assume it is now June 2026" -> recommendation / margin_investigation / sales / gross_margin; period 2026-06; comparison_period previous_period; dimension product.
+- "Which customers with the largest sales declines should the sales team follow up with? Assume now is June 2026" -> recommendation / sales_follow_up / sales / sales; period 2026-06; comparison_period previous_period; dimension customer.
 - "Weather tomorrow?" -> unsupported / unsupported.`;

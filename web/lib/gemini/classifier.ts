@@ -171,5 +171,33 @@ export async function classifyIntent(
     parsed.question_type = "overdue_customers";
   }
 
+  // Product gross-margin action questions require invoice-line profitability,
+  // not the broad cross-functional management-priority route.
+  if (
+    parsed.intent === "recommendation" &&
+    parsed.metric === "gross_margin" &&
+    (parsed.dimensions.includes("product") ||
+      parsed.dimensions.includes("product_category"))
+  ) {
+    parsed.question_type = "margin_investigation";
+  }
+
+  // Treat an explicit "assume now is <month> <year>" as the current analysis
+  // period. This prevents relative defaults from using the actual system month.
+  const assumedMonth = userMessage.match(
+    /assume\s+(?:it\s+is|it'?s|now\s+is)\s+([a-z]+)\s+(\d{4})/i
+  );
+  if (assumedMonth) {
+    const monthNames = [
+      "january", "february", "march", "april", "may", "june",
+      "july", "august", "september", "october", "november", "december",
+    ];
+    const month = monthNames.indexOf(assumedMonth[1].toLowerCase()) + 1;
+    if (month > 0) {
+      parsed.period = `${assumedMonth[2]}-${String(month).padStart(2, "0")}`;
+      parsed.comparison_period = "previous_period";
+    }
+  }
+
   return parsed;
 }

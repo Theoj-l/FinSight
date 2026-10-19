@@ -50,6 +50,7 @@ export const QUESTION_TYPES_BY_INTENT: Record<Intent, Set<string>> = {
     "payment_follow_up",
     "cost_investigation",
     "sales_follow_up",
+    "margin_investigation",
     "payroll_investigation",
     "management_priority",
   ]),

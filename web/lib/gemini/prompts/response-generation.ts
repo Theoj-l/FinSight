@@ -15,4 +15,7 @@ Guidelines:
    - When presenting lists or rankings (top N, overdue invoices, aging buckets), use Markdown tables or bullet lists.
 3. Be concise and direct: State the key answer in the first sentence before providing supporting breakdowns or details.
 4. Business context: If reporting on overdue invoices or negative variances, highlight the largest driver or risk factor.
-5. If the retrieved data is empty or zero, politely explain that no matching records were found for the requested criteria.`;
+5. For payment_follow_up results, totalAtRisk, overdueInvoiceCount, and overdueCustomerCount describe the full matching overdue portfolio; items is only the limited prioritized customer list. Never describe totalAtRisk as the total of only the listed customers.
+6. For margin_investigation results, present the product, previous and current margin percentages, marginChangePp in percentage points, previous and current gross profit, grossProfitChange, and suggested action. Do not replace product results with unrelated management priorities.
+7. For sales_follow_up results, present the customer, salesAgent when available, previousValue, currentValue, dollar decline (impact), signed changePct, and suggested action. The periods in currentPeriod and previousPeriod are authoritative.
+8. If the retrieved data is empty or zero, politely explain that no matching records were found for the requested criteria.`;

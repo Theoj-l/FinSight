@@ -292,6 +292,8 @@ export interface PaymentFollowUpResult {
   questionType: "payment_follow_up";
   items: FollowUpItem[];
   totalAtRisk: number;
+  overdueInvoiceCount: number;
+  overdueCustomerCount: number;
   filters: AppliedFilters;
 }
 
@@ -301,6 +303,16 @@ export interface PriorityItem {
   area: string;
   finding: string;
   impact: number;
+  previousValue?: number;
+  currentValue?: number;
+  changePct?: number;
+  previousMarginPct?: number;
+  currentMarginPct?: number;
+  marginChangePp?: number;
+  previousGrossProfit?: number;
+  currentGrossProfit?: number;
+  grossProfitChange?: number;
+  salesAgent?: string;
   suggestedAction: string;
   priority: "high" | "medium" | "low";
 }
@@ -309,6 +321,7 @@ export interface ManagementPrioritiesResult {
   questionType:
     | "cost_investigation"
     | "sales_follow_up"
+    | "margin_investigation"
     | "payroll_investigation"
     | "management_priority";
   focusArea: string;

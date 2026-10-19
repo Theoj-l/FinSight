@@ -66,6 +66,7 @@ const QUESTION_TYPE_HANDLERS: Record<string, Handler> = {
   payment_follow_up:     getPaymentFollowUp,
   cost_investigation:    getManagementPriorities,
   sales_follow_up:       getManagementPriorities,
+  margin_investigation:  getManagementPriorities,
   payroll_investigation: getManagementPriorities,
   management_priority:   getManagementPriorities,
 };

@@ -41,6 +41,7 @@ export const QUESTION_TYPES = [
   "payment_follow_up",
   "cost_investigation",
   "sales_follow_up",
+  "margin_investigation",
   "payroll_investigation",
   "management_priority",
   // Fallback
