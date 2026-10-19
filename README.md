@@ -134,9 +134,11 @@ Protected routes are listed in `web/lib/supabase/proxy.ts`: `/home`, `/dashboard
 an explicit local return path is preserved. The FinSight logo and Home navigation
 item return to the overview.
 
-Home reads the latest company-wide ledger KPIs and uses the same per-account,
-browser-local thresholds as the dashboard. Each KPI shows its reporting month
-and comparison month. Only unfavorable threshold breaches create notifications.
+Home reads the latest company-wide ledger KPIs and the shared financial rules
+stored in the database. Its financial notification source is saved in Settings;
+a temporary dashboard source selection does not change that policy. Each KPI
+shows its reporting month and comparison basis. Only unfavorable deviations
+exceeding an enabled metric's tolerance create financial notifications.
 Notifications occupy the full width below the financial snapshot on Home; there
 is no separate monitoring coverage card. Anomaly freshness and availability
 appear in the notification footer, while financial coverage notices sit with the
@@ -160,8 +162,37 @@ successfully scored month and expand to show reasons and supporting records.
 
 Assistant is accessible from the sidebar and Home shortcuts. Its page currently
 shows the planned conversational experience; the existing question classifier
-does not yet provide financial answers. Forecasting will run in the backend and
-can supply dated predictions to the assistant and financial views once connected.
+does not yet provide financial answers. The dashboard now reads stored forecast
+estimates; opening a page never trains or scores a model.
+
+### Financial comparisons and shared settings
+
+The dashboard's **Compare against** selector applies **Default — Previous month**,
+**Budget**, **Auto forecast**, or **Manual forecast** to the KPI cards, compatible
+charts, and P&L. Source and Net/Gross switches use preloaded data and native URL
+history, without a server navigation. Actual ledger amounts stay unchanged.
+Planned future months can be selected; missing actuals and variances remain
+unavailable. The initial dashboard month remains the latest actual month.
+
+Settings adds **Threshold Settings** and **Budgets & Forecasts**. Rules are shared
+company-wide; notification frequency and inbox history remain browser-local.
+Budgets reuse `budget` / `budget_pbalance`; manual revenue/profit estimates are
+stored separately. Blank means unavailable, while `0` is an explicit value.
+Budget subtotals require their component groups to be populated, including
+explicit zeros. Multiple scenarios are never added together; choose a scenario
+on the dashboard and separately save Home's scenario when using Budget alerts.
+
+Auto comparisons support operating revenue and final profit only. Historical
+references prefer archived forecasts issued before the target month, otherwise
+use clearly labelled causal rolling backtests. Missing department coverage is
+unavailable. Forecast origin and limitations are expandable; accuracy/ranges
+remain available on Forecast. Branch-attributed ledger comparisons remain
+unsupported. Invoice/category breakdowns show actuals with coverage notes.
+
+See the [implementation and test report](docs/financial-comparison-implementation-report.md)
+for the before/after comparison, calculation examples, edge cases, and results.
+Run `npm run build --prefix web -- --webpack` before the focused browser command;
+it uses the compiled CSS. Run these sequentially, since a build replaces those assets.
 
 ### Database
 
@@ -175,11 +206,29 @@ Workflow when the schema changes:
 
 ```bash
 cd web
-# 1. edit prisma/finsight_schema.sql
-npm run db:apply      # runs the SQL against Supabase (via DIRECT_URL)
+# Fresh database only: create the full schema
+npm run db:apply
 npm run db:pull       # regenerate schema.prisma from the DB
 npm run db:generate   # regenerate the typed client
 ```
+
+For an existing database, use an additive upgrade instead of replaying the
+full schema. The financial comparison upgrade has been applied to the configured
+database. Apply it separately in another environment before running
+the updated web app:
+
+```bash
+cd web
+npm run db:apply -- prisma/financial-comparison.sql
+npm run db:pull
+npm run db:generate
+```
+
+`financial-comparison.sql` is idempotent and only adds the shared settings/manual
+forecast structures, constraints and RLS. Prisma models are introspected, not
+hand-maintained. Existing ledger, budgets and model outputs are retained.
+`npm run verify:financial:db --prefix web` performs real reads/writes inside a
+deliberately rolled-back transaction and checks table fingerprints afterwards.
 
 `npm run db:studio` opens a browser DB viewer. `db:pull` keeps the `generator`
 block, so the `binaryTargets` the Docker / Vercel images need survives
@@ -369,6 +418,8 @@ curl -X POST -H "x-ml-service-token: <token>" https://<ml-service-domain>/anomal
 | `npm run lint --prefix web`         | Lint the web app                          |
 | `npm test --prefix web`             | Web unit tests (Vitest)                   |
 | `npm run test:e2e --prefix web`     | Web end-to-end tests (Playwright)         |
+| `npm run test:anomalies:browser --prefix web` | Comparison, Settings and anomaly browser checks (controlled auth/API) |
+| `npm run verify:financial:db --prefix web` | Real financial save/read checks; rolls back all verification writes |
 | `pytest` (in `ml-service/`)         | Run ML service tests                      |
 | `ruff check .` (in `ml-service/`)   | Lint the ML service                       |
 

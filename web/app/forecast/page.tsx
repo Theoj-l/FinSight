@@ -22,7 +22,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
 
   const optionsResult = await getFilterOptions()
     .then(options => ({ options, error: undefined as string | undefined }))
-    .catch(() => ({ options: { periods: [], units: [], branches: [] } as FilterOptions, error: "Reporting filters could not be loaded. Please refresh to retry." }));
+    .catch((cause: unknown) => { console.error("Reporting filter load failed", { name: cause instanceof Error ? cause.name : "UnknownError" }); return { options: { periods: [], units: [], branches: [] } as FilterOptions, error: "Reporting filters could not be loaded. Please retry." }; });
   const { selection, scope: parsedScope, error: selectionError } = parseDashboardFilters(await searchParams, optionsResult.options);
   const scope = {
     ...parsedScope,
@@ -37,7 +37,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
   return (
     <AppPage email={user.email ?? "Finance user"}>
       <PageHeading eyebrow="Decision support" title="Forecast" description="Compare closed-month performance with forward-looking projections for the selected reporting scope." />
-      <DashboardFilters destination="/forecast" hidePeriod options={optionsResult.options} selection={selection} error={filterError}>
+      <DashboardFilters key={JSON.stringify(selection)} destination="/forecast" hidePeriod options={optionsResult.options} selection={selection} error={filterError}>
         {filterError ? null : <Suspense fallback={<ForecastLoading />}><ForecastPanel scope={scope} /></Suspense>}
       </DashboardFilters>
     </AppPage>
@@ -56,7 +56,7 @@ async function ForecastPanel({ scope }: { scope: Parameters<typeof getForecast>[
   }
   if (error) return <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-brand-red" role="alert">{error}</div>;
   if (!data) return <EmptyForecast />;
-  return <ForecastView data={data} />;
+  return <>{data.coverageWarning && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">{data.coverageWarning}</p>}<ForecastView data={data} /></>;
 }
 
 function EmptyForecast() {

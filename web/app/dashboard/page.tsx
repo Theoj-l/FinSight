@@ -1,3 +1,5 @@
+import { FinancialComparisonBoundary } from "@/app/components/financial/comparison-boundary";
+import { ComparisonSelector } from "@/app/components/financial/comparison-context";
 import { getChartAnomaly } from "./data/anomalies";
 import { previousCalendarMonths } from "./data/anomaly-evidence";
 import { redirect } from "next/navigation";
@@ -30,9 +32,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // proxy.ts already guards this route; this is defence in depth.
   if (!user) redirect("/login?next=/dashboard");
 
-  const optionsResult = await getFilterOptions()
+  const optionsResult = await getFilterOptions(true)
     .then(options => ({ options, error: undefined as string | undefined }))
-    .catch(() => ({ options: { periods: [], units: [], branches: [] } as FilterOptions, error: "Reporting filters could not be loaded. Please refresh to retry." }));
+    .catch((cause: unknown) => { console.error("Reporting filter load failed", { name: cause instanceof Error ? cause.name : "UnknownError" }); return { options: { periods: [], units: [], branches: [] } as FilterOptions, error: "Reporting filters could not be loaded. Please retry." }; });
   const params = await searchParams;
   const { selection, scope, error: selectionError } = parseDashboardFilters(params, optionsResult.options);
   const filterError = optionsResult.error ?? selectionError;
@@ -50,14 +52,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-brand-navy sm:text-3xl">Dashboard</h1>
             <p className="mt-1.5 text-sm text-muted">A live view of performance across TSH Group.</p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800">
+          {!filterError && <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800">
             <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
-            Data refreshed today
-          </div>
+            Reporting filters loaded
+          </div>}
         </div>
 
 
+        <FinancialComparisonBoundary scope={filterError ? null : chartScope}>
         <DashboardFilters key={JSON.stringify(selection)} options={optionsResult.options} selection={selection} error={filterError}>
+        {!filterError && <ComparisonSelector />}
         {filterError ? null : <Suspense fallback={<DashboardPanelLoading label="KPI data" />}>
           <KpiPanel scope={scope} userId={user.id} />
         </Suspense>}
@@ -116,6 +120,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Suspense>}
         </div>
         </DashboardFilters>
+        </FinancialComparisonBoundary>
     </AppPage>
   );
 }

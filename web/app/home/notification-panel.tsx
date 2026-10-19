@@ -5,7 +5,7 @@ import type { AnomalyStatus } from "@/app/dashboard/data/anomalies-utils";
 import { AnomalyAlert } from "@/app/components/anomalies/anomaly-alert";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { ArrowRight, Bell, CheckCheck, ChevronDown, X } from "lucide-react";
+import { Bell, CheckCheck, ChevronDown, X } from "lucide-react";
 import { formatPercentage } from "@/app/dashboard/data/kpi-presentation";
 import type { NotificationEntry } from "@/lib/notifications";
 import { reportingMonth, timestamp } from "./overview-data";
@@ -14,7 +14,7 @@ import type { useHomeAlerts } from "./use-home-alerts";
 type Notifications = ReturnType<typeof useHomeAlerts>;
 const PREVIEW_SIZE = 2;
 
-function NotificationRow({ alert, entry, markViewed, clear, period, priorPeriod, dashboardHref }: {
+function NotificationRow({ alert, entry, markViewed, clear, period, dashboardHref }: {
   alert: Notifications["alerts"][number]; entry: NotificationEntry;
   markViewed: Notifications["markViewed"]; clear: () => void;
   period: string; priorPeriod: string; dashboardHref: string;
@@ -37,21 +37,15 @@ function NotificationRow({ alert, entry, markViewed, clear, period, priorPeriod,
     <AnomalyAlert alert={alert.anomaly} />
   </li>;
 
-  return (
-    <li ref={row} className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">{entry.viewedAt ? "Viewed" : "New"} · Threshold alert</p>
-          <h3 className="mt-1 text-sm font-semibold text-slate-900">{alert.metric.label} {alert.side} your configured range</h3>
-        </div>
-        <button type="button" onClick={clear} aria-label={`Clear ${alert.metric.label} notification`} title="Clear notification" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand-blue"><X aria-hidden="true" className="h-4 w-4" /></button>
-      </div>
-      <p className="mt-2 text-sm leading-5 text-slate-600">{formatPercentage(alert.value)} {alert.metric.id === "budgetVariance" ? "actual net profit vs budget" : `change vs ${reportingMonth(priorPeriod)}`}. Range: {alert.threshold.min}% to {alert.threshold.max}%.</p>
-      <p className="mt-2 text-xs text-muted">Reporting month: {reportingMonth(period)}</p>
-      <p className="mt-1 text-xs text-muted">Notified <time dateTime={entry.notifiedAt}>{timestamp(entry.notifiedAt)}</time></p>
-      <Link href={`${dashboardHref}#kpi-heading`} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-navy hover:text-brand-red">Review KPI <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></Link>
-    </li>
-  );
+  if (alert.type === "financial") return <li ref={row} className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
+    <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase text-amber-800">{entry.viewedAt ? "Viewed" : "New"} · Financial deviation</p><h3 className="mt-1 text-sm font-semibold text-slate-900">{alert.metric.label} · Unfavorable deviation</h3></div><button type="button" onClick={clear} aria-label={`Clear ${alert.metric.label} notification`} className="rounded p-2 hover:bg-white"><X aria-hidden="true" className="h-4 w-4" /></button></div>
+    <p className="mt-2 text-sm text-slate-600">{formatPercentage(alert.value)} vs {alert.label}. Allowed unfavorable deviation: {alert.comparison.tolerance}%.</p>
+    <p className="mt-2 text-xs text-muted">Reporting month: {reportingMonth(period)} · Notified {timestamp(entry.notifiedAt)}</p>
+    {alert.comparison.note && <details className="mt-2 text-xs text-muted"><summary className="cursor-pointer">Reference origin</summary>{alert.comparison.note}</details>}
+    <Link href={`${dashboardHref}${dashboardHref.includes("?") ? "&" : "?"}comparison=${alert.source}${alert.budgetId ? `&budgetId=${encodeURIComponent(alert.budgetId)}` : ""}#kpi-heading`} className="mt-3 inline-block text-xs font-semibold text-brand-navy underline">Review financial comparison →</Link>
+  </li>;
+
+  return null;
 }
 
 export function NotificationPanel({ notifications, period, priorPeriod, dashboardHref, evaluable, loadedAt, anomalyAvailable = false, anomalyStatus, anomalyError }: {
@@ -90,7 +84,7 @@ export function NotificationPanel({ notifications, period, priorPeriod, dashboar
         </div>}
         {pendingCount > 0 && nextDelivery !== null && <p className="px-6 pb-4 text-xs leading-5 text-muted sm:px-7">{pendingCount} new {pendingCount === 1 ? "alert" : "alerts"} scheduled for <time dateTime={new Date(nextDelivery).toISOString()}>{timestamp(new Date(nextDelivery).toISOString())}</time>, or when you next open Home.</p>}
         <div className="space-y-3 border-t border-slate-100 px-6 py-5 sm:px-7">
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-brand-navy"><Link href="/settings#notifications" className="hover:text-brand-red">Notification settings</Link><Link href={`${dashboardHref}#kpi-settings`} className="hover:text-brand-red">Threshold settings</Link></div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-brand-navy"><Link href="/settings#notifications" className="hover:text-brand-red">Notification settings</Link><Link href={"/settings#thresholds"} className="hover:text-brand-red">Threshold settings</Link></div>
           <p className="text-xs text-muted">Data checked <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p>
           {(anomalyStatus !== undefined || anomalyError) && <div className="space-y-1"><p className="text-xs font-medium text-muted">Anomaly results</p><AnomalyStatusText status={anomalyStatus} error={anomalyError} /></div>}
           <details className="text-xs leading-5 text-muted"><summary className="cursor-pointer">About notification history</summary><p className="mt-2">Clearing a notification does not resolve the underlying issue. {notifications.sessionOnly ? "Browser storage is unavailable; changes last for this visit." : "Notification history is saved for this account in this browser."}</p></details>

@@ -10,11 +10,19 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const cached = globalForPrisma.prisma;
+const compatible = cached && cached.financial_settings && cached.financial_manual_forecast;
+if (cached && !compatible) void cached.$disconnect().catch(() => undefined);
+
 export const prisma =
-  globalForPrisma.prisma ??
+  (compatible ? cached : undefined) ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
+
+if (!prisma.financial_settings || !prisma.financial_manual_forecast) {
+  throw new Error("Prisma client is outdated. Run npm run db:generate in web, then restart the development server.");
+}
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

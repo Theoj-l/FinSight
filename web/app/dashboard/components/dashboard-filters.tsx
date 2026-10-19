@@ -17,15 +17,17 @@ export function DashboardFilters({ options, selection, error, destination = "/da
 
   function applyFilters() {
     const query = new URLSearchParams();
+    for (const key of ["comparison", "budgetId"]) { const value = searchParams.get(key); if (value) query.set(key, value); }
     if (destination === "/dashboard" && searchParams.get("profitMode") === "gross") query.set("profitMode", "gross");
     if (!hidePeriod && draft.periodStart) query.set("periodStart", draft.periodStart);
     if (!hidePeriod && draft.periodEnd) query.set("periodEnd", periodMode === "range" ? draft.periodEnd : draft.periodStart);
+    if (draft.businessType) query.set("businessType", draft.businessType);
     draft.units.forEach(unit => query.append("unit", unit));
     draft.branches.forEach(branch => query.append("branch", branch));
     startTransition(() => router.push(`${destination}?${query}`, { scroll: false }));
   }
   function resetDraft() {
-    const defaultPeriod = String(options.periods[0] ?? "");
+    const defaultPeriod = String(options.defaultPeriod ?? options.periods[0] ?? "");
     setDraft(current => ({ periodStart: hidePeriod ? current.periodStart : defaultPeriod, periodEnd: hidePeriod ? current.periodEnd : defaultPeriod, units: [], branches: [] }));
     setPeriodMode("month");
     setOpenMenu(null);
@@ -39,7 +41,7 @@ export function DashboardFilters({ options, selection, error, destination = "/da
     return `${values.length} selected`;
   }
   const style = "mt-1 w-full rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-sm text-foreground focus:outline-2 focus:outline-brand-blue";
-  const periodLabel = selection.periodStart === selection.periodEnd ? formatPeriod(Number(selection.periodStart)) : `${formatPeriod(Number(selection.periodStart))} to ${formatPeriod(Number(selection.periodEnd))}`;
+  const periodLabel = !selection.periodStart || error ? "Unavailable" : selection.periodStart === selection.periodEnd ? formatPeriod(Number(selection.periodStart)) : `${formatPeriod(Number(selection.periodStart))} to ${formatPeriod(Number(selection.periodEnd))}`;
   return <>
     <section aria-label="Dashboard filters" className="mt-6 rounded-xl border border-brand-navy/15 bg-brand-blue-light/60 p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -67,15 +69,16 @@ export function DashboardFilters({ options, selection, error, destination = "/da
             </select></>}
           </div>
         </div>}
-        <MultiSelect label="Product groups" values={draft.units} options={options.units} open={openMenu === "units"} onToggle={() => setOpenMenu(openMenu === "units" ? null : "units")} onChange={value => toggleValue("units", value)} buttonLabel={selectedLabel(draft.units, "All product groups")} />
+        <label className="text-sm font-medium text-brand-navy">Business type<select className={style} value={draft.businessType ?? ""} onChange={event => { const businessType = event.target.value; setDraft(current => ({ ...current, businessType, units: current.units.filter(code => !businessType || options.units.some(u => u.code === code && u.businessType === businessType)) })); }}><option value="">All business types</option><option>Machining</option><option>Bulk</option></select></label>
+        <MultiSelect label="Business units" values={draft.units} options={options.units.filter(u => !draft.businessType || u.businessType === draft.businessType)} open={openMenu === "units"} onToggle={() => setOpenMenu(openMenu === "units" ? null : "units")} onChange={value => toggleValue("units", value)} buttonLabel={selectedLabel(draft.units, "All business units")} />
         <MultiSelect label="Branches" values={draft.branches} options={options.branches} open={openMenu === "branches"} onToggle={() => setOpenMenu(openMenu === "branches" ? null : "branches")} onChange={value => toggleValue("branches", value)} buttonLabel={selectedLabel(draft.branches, "All branches")} />
       </fieldset>
-      <p id="branch-coverage" className="mt-3 text-xs text-muted">Product groups use the accounting department codes. Branch filtering currently applies to invoice revenue; ledger and budget branch attribution is not available.</p>
+      <p id="branch-coverage" className="mt-3 text-xs text-muted">Business units use the accounting unit codes. Branch filtering currently applies to invoice revenue; ledger and budget branch attribution is not available.</p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-brand-navy/10 pt-4">
-        <p role="status" className="text-sm text-brand-navy">{hidePeriod ? "Using latest closed actuals and the current forecast run" : `Applied: ${periodLabel}`} · {selection.units.length || "All"} unit{selection.units.length === 1 ? "" : "s"} · {selection.branches.length || "All"} branche{selection.branches.length === 1 ? "" : "s"}</p>
+        <p role="status" className="text-sm text-brand-navy">{hidePeriod ? "Using latest closed actuals and the current forecast run" : `Applied: ${periodLabel}`} · {selection.businessType || "All business types"} · {selection.units.length || "All"} unit{selection.units.length === 1 ? "" : "s"} · {selection.branches.length || "All"} branche{selection.branches.length === 1 ? "" : "s"}</p>
         <button type="button" onClick={applyFilters} disabled={pending || !isDirty} className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-50">Apply Filters</button>
       </div>
-      {error && <p role="alert" className="mt-3 text-sm font-medium text-brand-red">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm font-medium text-brand-red">{error} <button className="underline" onClick={() => startTransition(() => router.refresh())}>Retry</button></p>}
       {!error && selection.branches.length > 0 && <p role="status" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{BRANCH_LEDGER_MESSAGE}</p>}
     </section>
     <div aria-busy={pending} className="relative">

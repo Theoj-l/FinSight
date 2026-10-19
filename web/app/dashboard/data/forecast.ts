@@ -1,4 +1,6 @@
 import "server-only";
+import { activeBusinessUnits } from "@/lib/financial/business-units";
+import { aggregateForecastRows } from "./forecast-coverage";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ledgerDepartment, type DashboardScope } from "./dashboard-scope";
@@ -27,6 +29,7 @@ export type ForecastStatus = {
 };
 
 export type ForecastData = {
+  coverageWarning?: string;
   status: ForecastStatus;
   /** The dept_no values summed; empty means all units. */
   units: string[];
@@ -87,6 +90,8 @@ export async function getForecast(scope: DashboardScope = {}, options: ForecastO
   const department = ledgerDepartment(scope);
   const run = await latestRun();
   if (!run || run.history_through === null) return null;
+  const active = await activeBusinessUnits();
+  const units = scope.departmentIds?.length ? scope.departmentIds.filter(d => active.includes(d)) : active;
   const status = toStatus({ ...run, history_through: run.history_through });
   const through = status.historyThrough;
 
@@ -98,10 +103,9 @@ export async function getForecast(scope: DashboardScope = {}, options: ForecastO
     ? Prisma.sql`AND p.dept_no IN (${Prisma.join(scope.departmentIds)})`
     : Prisma.empty;
   const [values, balances] = await Promise.all([
-    prisma.forecast_value.groupBy({
-      by: ["kind", "metric", "origin", "period_no", "horizon"],
+    prisma.forecast_value.findMany({
       where: { run_id: run.run_id, ...department },
-      _sum: { yhat: true, actual: true },
+
     }),
     prisma.$queryRaw<BalanceRow[]>(Prisma.sql`
       SELECT p.period_no, g.acc_type, SUM(p.home_cr - p.home_dr)::double precision AS net_cr
@@ -114,14 +118,17 @@ export async function getForecast(scope: DashboardScope = {}, options: ForecastO
     `),
   ]);
 
-  const rows: ForecastRow[] = values.map(row => ({
+  const aggregated = aggregateForecastRows(values.map(row => ({
+    dept_no: row.dept_no,
     kind: row.kind, metric: row.metric, origin: row.origin, period_no: row.period_no, horizon: row.horizon,
-    yhat: row._sum.yhat ?? 0, actual: row._sum.actual,
-  }));
+    yhat: Number(row.yhat), actual: row.actual == null ? null : Number(row.actual),
+  })), units);
+  const rows: ForecastRow[] = aggregated.rows;
   const history = historyFromBalances(balances);
   return {
     status,
-    units: scope.departmentIds ?? [],
+    units,
+    coverageWarning: aggregated.missing.length ? `Incomplete forecast or backtest coverage for ${aggregated.missing.join(", ")}. Incomplete group points are omitted; accuracy and ranges use only aligned, complete backtests.` : undefined,
     series: Object.fromEntries(FORECAST_METRICS.map(metric => [
       metric, buildSeries(metric, rows, history[metric], through, status.targetMape),
     ])) as Record<ForecastMetric, ForecastSeries>,

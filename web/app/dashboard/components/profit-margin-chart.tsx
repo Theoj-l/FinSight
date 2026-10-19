@@ -1,4 +1,6 @@
 "use client";
+import { comparisonStyle, ComparisonLegend } from "./comparison-style";
+import { SOURCES } from "@/lib/financial/types";
 
 import {
   Bar,
@@ -17,11 +19,13 @@ import {
   formatCurrencyExact,
   type ProfitMarginPoint,
 } from "../data/profit-margin-utils";
+import { useFinancialComparison, ComparisonNote } from "@/app/components/financial/comparison-context";
 import { useSearchParams } from "next/navigation";
 import { ChartAnomalyNote } from "./chart-anomaly";
 import { previousCalendarMonths, type ChartAnomaly } from "../data/anomaly-evidence";
 import { formatPeriod } from "../data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
+import { chartValues } from "@/lib/financial/chart-values";
 
 type ProfitMarginChartProps = {
   data?: ProfitMarginPoint[];
@@ -33,6 +37,7 @@ type ProfitMarginChartProps = {
 
 export function ProfitMarginChart({ data = [], error, loading = false, mode = "net", focus }: ProfitMarginChartProps) {
   const fx = useCurrency();
+  const financial = useFinancialComparison();
   const params = useSearchParams();
   const selectedMode = params.get("profitMode") ?? mode;
   const gross = selectedMode === "gross";
@@ -40,10 +45,15 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
   // shown while its gross comparison is selected in the current URL.
   const activeFocus = gross && params.get("anomaly") === focus?.alert.id && params.get("reason") === focus?.finding.code ? focus : null;
   const name = gross ? "Gross" : "Net";
-  const periods = activeFocus ? [...new Set([...previousCalendarMonths(activeFocus.alert.periodNo), ...activeFocus.finding.comparison.periods])].sort((a, b) => a - b) : data.map(p => p.periodNo);
+  const periods = activeFocus ? [...new Set([...previousCalendarMonths(activeFocus.alert.periodNo), ...activeFocus.finding.comparison.periods])].sort((a, b) => a - b) : financial?.series ? Object.keys(financial.series).map(Number).sort((a, b) => a - b) : data.map(p => p.periodNo);
   const chartData = periods.map(periodNo => {
     const modelValue = activeFocus?.finding.history.find(h => h.periodNo === periodNo)?.value;
-    return { ...(data.find(p => p.periodNo === periodNo) ?? { periodNo, period: formatPeriod(periodNo), netProfit: null, grossProfit: null, netMarginPct: null, grossMarginPct: null }), modelMargin: modelValue == null ? null : modelValue * 100 };
+    const point = financial?.series?.[periodNo];
+    const values = point ? chartValues(point) : null;
+    return { ...(data.find(p => p.periodNo === periodNo) ?? { periodNo, period: formatPeriod(periodNo), netProfit: null, grossProfit: null, netMarginPct: null, grossMarginPct: null }), ...values,
+      referenceProfit: values ? gross ? values.referenceGrossProfit : values.referenceNetProfit : null,
+      referenceMargin: values ? gross ? values.referenceGrossMargin : values.referenceNetMargin : null,
+      modelMargin: modelValue == null ? null : modelValue * 100 };
   });
   function selectMode(value: string) {
     const query = new URLSearchParams(params.toString());
@@ -63,6 +73,8 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
         <p className="w-full mt-1 text-sm text-muted">Selected reporting month · Selected business unit</p>
       </div>
 
+      <ComparisonNote metric={gross ? "grossProfit" : "netProfit"} />
+      <ComparisonNote metric={gross ? "grossMargin" : "netMargin"} />
       <ChartAnomalyNote focus={activeFocus} target="profit-margin-title" ready={!loading && !error && data.length > 0} />
       {loading ? (
         <div className="mt-6 flex h-80 items-center justify-center text-sm text-muted" role="status">
@@ -72,7 +84,7 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
         <div className="mt-6 flex h-80 items-center justify-center text-sm text-brand-red" role="alert">
           {error}
         </div>
-      ) : data.length === 0 ? (
+      ) : chartData.length === 0 ? (
         <div className="mt-6 flex h-80 items-center justify-center text-sm text-muted">
           No profit or margin data is available for the selected periods.
         </div>
@@ -90,7 +102,9 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
                   name,
                 ]}
               />
-              <Legend />
+              <Legend content={<ComparisonLegend />} />
+              {financial && <Line yAxisId="currency" dataKey="referenceProfit" name={`${name} Profit comparison · ${SOURCES[financial.source]}`} {...comparisonStyle("monetary")} />}
+              {financial && <Line yAxisId="percentage" dataKey="referenceMargin" name={`${name} Margin comparison % · ${SOURCES[financial.source]}`} {...comparisonStyle("secondary")} />}
               {activeFocus && <ReferenceLine yAxisId="currency" x={formatPeriod(activeFocus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label="Anomaly" />}
               {activeFocus && <Line yAxisId="percentage" dataKey="modelMargin" name="Model Gross Margin % (includes other income)" stroke="#b45309" strokeDasharray="4 4" connectNulls={false} />}
               <Bar yAxisId="currency" dataKey={gross ? "grossProfit" : "netProfit"} name={`${name} Profit`} fill="#1f2a79" radius={[3, 3, 0, 0]} />

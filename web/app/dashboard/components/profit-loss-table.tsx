@@ -1,5 +1,7 @@
 "use client";
 
+import { useFinancialComparison } from "@/app/components/financial/comparison-context";
+import { FinancialProfitLoss } from "@/app/components/financial/financial-pnl";
 import { formatCurrencyExact, type ProfitLossStatement } from "../data/profit-loss-utils";
 import { formatPercentage } from "../data/kpi-presentation";
 import { useCurrency } from "@/lib/currency-context";
@@ -22,6 +24,8 @@ function valueStyle(value: number | null | undefined, higherIsBetter = true) {
 
 export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
   const fx = useCurrency();
+  const financial = useFinancialComparison();
+  if (financial) return <FinancialProfitLoss />;
   return (
     <section aria-labelledby="profit-loss-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">

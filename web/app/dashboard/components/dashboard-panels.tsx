@@ -12,14 +12,13 @@ import { RevenueByBusinessTypeChart } from "./revenue-by-business-type-chart";
 import { RevenueExpenseChart } from "./revenue-expense-chart";
 import { getExpenseCategoryData } from "../data/expense-category";
 import { getExpenseByBusinessTypeData } from "../data/expense-by-business-type";
-import { getKpiData } from "../data/kpi";
-import { getProfitLossData } from "../data/profit-loss";
 import { getProfitMarginData } from "../data/profit-margin";
 import { getProfitYoyComparisonData } from "../data/profit-yoy-comparison";
 import { getRevenueByGroupData } from "../data/revenue-by-group";
 import { getRevenueByBusinessTypeData } from "../data/revenue-by-business-type";
 import { getRevenueExpenseData } from "../data/revenue-expense";
 import { BRANCH_LEDGER_MESSAGE, type DashboardScope } from "../data/dashboard-scope";
+import { ActualOnlyComparisonNote } from "@/app/components/financial/comparison-context";
 
 export function DashboardPanelLoading({ label }: { label: string }) {
   if (label === "KPI data") {
@@ -61,15 +60,8 @@ export function DashboardPanelLoading({ label }: { label: string }) {
   );
 }
 
-export async function KpiPanel({ scope, userId }: { scope: DashboardScope; userId: string }) {
-  let data;
-  let error;
-  try {
-    data = await getKpiData(scope);
-  } catch {
-    error = "KPI data could not be loaded right now. Please refresh to retry.";
-  }
-  return <KpiCards data={data} error={error} userId={userId} />;
+export function KpiPanel({ userId }: { scope: DashboardScope; userId: string }) {
+  return <KpiCards userId={userId} />;
 }
 
 export async function RevenueExpensePanel({ scope, focus }: { scope: DashboardScope; focus?: ChartAnomaly | null }) {
@@ -105,7 +97,7 @@ export async function ProfitYoyComparisonPanel({ scope }: { scope: DashboardScop
       ? BRANCH_LEDGER_MESSAGE
       : "Profit comparison data could not be loaded right now. Please refresh to retry.";
   }
-  return <ProfitYoyComparisonChart data={data} error={error} />;
+  return <div><ProfitYoyComparisonChart data={data} error={error} /><ActualOnlyComparisonNote>This view retains its actual year-over-year comparison. The selected reference appears in the profit-and-margin chart.</ActualOnlyComparisonNote></div>;
 }
 
 export async function RevenueByGroupPanel({ scope }: { scope: DashboardScope }) {
@@ -116,7 +108,7 @@ export async function RevenueByGroupPanel({ scope }: { scope: DashboardScope }) 
   } catch {
     error = "Product group revenue could not be loaded right now.";
   }
-  return <RevenueByGroupChart data={data} error={error} />;
+  return <div><RevenueByGroupChart data={data} error={error} /><ActualOnlyComparisonNote>Actual invoice breakdown only. Ledger plans and forecasts do not provide matching product-group estimates.</ActualOnlyComparisonNote></div>;
 }
 
 export async function RevenueByBusinessTypePanel({ scope }: { scope: DashboardScope }) {
@@ -127,7 +119,7 @@ export async function RevenueByBusinessTypePanel({ scope }: { scope: DashboardSc
   } catch {
     error = "Business type revenue could not be loaded right now.";
   }
-  return <RevenueByBusinessTypeChart data={data} error={error} />;
+  return <div><RevenueByBusinessTypeChart data={data} error={error} /><ActualOnlyComparisonNote>Actual invoice breakdown only. Use the Business type filter to compare group revenue in the main chart.</ActualOnlyComparisonNote></div>;
 }
 
 export async function ExpenseCategoryPanel({ scope }: { scope: DashboardScope }) {
@@ -139,7 +131,7 @@ export async function ExpenseCategoryPanel({ scope }: { scope: DashboardScope })
     error = "Expense category data could not be loaded right now.";
   }
 
-  return <ExpenseCategoryChart data={data} error={error} />;
+  return <div><ExpenseCategoryChart data={data} error={error} /><ActualOnlyComparisonNote>Actual account breakdown only. Shared comparisons use aggregate operating expenses; no category forecast is inferred.</ActualOnlyComparisonNote></div>;
 }
 
 export async function ExpenseByBusinessTypePanel({ scope }: { scope: DashboardScope }) {
@@ -150,18 +142,11 @@ export async function ExpenseByBusinessTypePanel({ scope }: { scope: DashboardSc
   } catch {
     error = "Expense business type data could not be loaded right now.";
   }
-  return <ExpenseByBusinessTypeChart data={data} error={error} />;
+  return <div><ExpenseByBusinessTypeChart data={data} error={error} /><ActualOnlyComparisonNote>Actual expense breakdown only. Use the Business type filter for group comparisons. Operating-expense forecasts are unavailable.</ActualOnlyComparisonNote></div>;
 }
 
-export async function ProfitLossPanel({ scope }: { scope: DashboardScope }) {
-  let data;
-  let error;
-  try {
-    data = await getProfitLossData(scope);
-  } catch {
-    error = "Profit and loss data could not be loaded right now.";
-  }
-  return <ProfitLossTable data={data} error={error} />;
+export function ProfitLossPanel({ scope }: { scope: DashboardScope }) {
+  return <ProfitLossTable error={scope.branchCodes?.length ? BRANCH_LEDGER_MESSAGE : undefined} />;
 }
 
 export async function AnomaliesPanel({ scope }: { scope: DashboardScope }) {

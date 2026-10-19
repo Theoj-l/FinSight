@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { AppPage } from "@/app/components/app-page";
 import { requireUser } from "@/lib/auth/require-user";
 import { getAnomalyAlerts, getAnomalyStatus } from "@/app/dashboard/data/anomalies";
-import { getKpiData } from "@/app/dashboard/data/kpi";
+import { getFinancialBundle } from "@/lib/financial/data";
+import { comparisonKpis } from "@/lib/financial/presentation";
 import { HomeOverview } from "./home-overview";
 
 export const metadata: Metadata = {
@@ -12,8 +13,8 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const user = await requireUser("/home");
-  const [result, anomalyResult] = await Promise.all([getKpiData()
-    .then(data => ({ data, error: undefined }))
+  const [result, anomalyResult] = await Promise.all([getFinancialBundle()
+    .then(bundle => ({ data: bundle ? comparisonKpis(bundle, bundle.notificationSource, bundle.notificationSource === "budget" && bundle.notificationBudgetId ? bundle.budgetSources[bundle.notificationBudgetId] : undefined) : null, error: undefined }))
     .catch(() => ({ data: null, error: "Financial data could not be loaded. Refresh to try again." })),
     (async () => {
       const status = await getAnomalyStatus();

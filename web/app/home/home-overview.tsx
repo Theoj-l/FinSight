@@ -37,7 +37,7 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
   const { thresholds } = notifications;
   const period = financialData ? reportingMonth(financialData.period) : null;
   const dashboardHref = financialData ? `/dashboard?period=${financialData.period.replace("-", "")}` : "/dashboard";
-  const evaluable = financialData?.metrics.filter(metric => metric.value !== null && thresholds[metric.id].enabled && Number.isFinite(metric.id === "budgetVariance" ? metric.budgetComparison?.percentage ?? NaN : metric.change?.percentage ?? NaN)).length ?? 0;
+  const evaluable = financialData?.financialComparisons ? Object.values(financialData.financialComparisons).filter(c => c.enabled && c.percentage !== null).length : financialData?.metrics.filter(metric => metric.value !== null && thresholds[metric.id].enabled && Number.isFinite(metric.id === "budgetVariance" ? metric.budgetComparison?.percentage ?? NaN : metric.change?.percentage ?? NaN)).length ?? 0;
 
   return (
     <div className="flex flex-col gap-10 pb-4 lg:gap-14">
@@ -64,7 +64,7 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
 
       <section aria-labelledby="home-kpis">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div><h2 id="home-kpis" className="text-lg font-semibold text-brand-navy">Financial snapshot</h2><p className="mt-1 text-sm text-muted">{period ? `${period} · All business units · ${fx.currency}` : "Your key financial measures at a glance."}</p></div>
+          <div><h2 id="home-kpis" className="text-lg font-semibold text-brand-navy">Financial snapshot</h2><p className="mt-1 text-sm text-muted">{period ? `${period} · All business units · ${fx.currency} · ${financialData?.comparisonLabel ?? "Previous month"}` : "Your key financial measures at a glance."}</p></div>
           <Link href={dashboardHref} className={linkStyle}>View all KPIs <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
         </div>
         {!financialData ? <div role="status" className={`${panel} p-6`}><p className="font-medium text-brand-navy">{error ? "Financial snapshot unavailable" : "No financial data yet"}</p><p className="mt-2 text-sm text-muted">{error ?? "No ledger balances are available. Your KPIs and threshold alerts will appear when data is available."}</p><p className="mt-3 text-xs text-muted">Checked <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p></div> : <>
@@ -78,14 +78,14 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
                 <p className="mt-2 text-xs font-medium text-muted">Reporting month: <time dateTime={financialData.period}>{period}</time></p>
                 <div className={`mt-4 flex items-start gap-1 text-sm font-medium ${tones[tone]}`}>
                   {change && change.direction !== 0 && (change.direction > 0 ? <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" /> : <ArrowDownRight aria-hidden="true" className="h-4 w-4 shrink-0" />)}
-                  <span>{!change ? "Comparison unavailable" : metric.unit === "ratio" ? `${Number(change.absolute) > 0 ? "+" : ""}${change.absolute} pp` : change.percentage === null ? "Percentage unavailable · zero baseline" : formatPercentage(change.percentage)}{change && <span className="sr-only"> · {tone}</span>}</span>
+                  <span>{!change ? "Comparison unavailable" : change.percentage === null ? "Percentage unavailable · zero baseline" : formatPercentage(change.percentage)}{change && <span className="sr-only"> · {tone}</span>}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted">vs {reportingMonth(financialData.priorPeriod)}{metric.prior !== null ? ` · ${formatAmount(metric.prior, metric.unit, fx)}` : ""}</p>
+                <p className="mt-1 text-xs text-muted">vs {financialData.comparisonLabel ?? reportingMonth(financialData.priorPeriod)}{metric.prior !== null ? ` · ${formatAmount(metric.prior, metric.unit, fx)}` : ""}</p>
                 <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-muted">{metric.description}</p>
               </article>;
             })}
           </div>
-          <p className="mt-5 text-xs leading-5 text-muted">Loaded <time dateTime={loadedAt}>{timestamp(loadedAt)}</time> · Load time is when this overview was retrieved; it is not a ledger sync date. pp = percentage points.{fx.currency !== "SGD" && currency.date ? ` Exchange rates dated ${currency.date}.` : ""}{fx.currency !== currency.currency ? " Showing SGD while exchange rates are unavailable." : ""}</p>
+          <p className="mt-5 text-xs leading-5 text-muted">Loaded <time dateTime={loadedAt}>{timestamp(loadedAt)}</time> · Load time is when this overview was retrieved; it is not a ledger sync date. Margin and ratio changes are relative percentages, not percentage points.{fx.currency !== "SGD" && currency.date ? ` Exchange rates dated ${currency.date}.` : ""}{fx.currency !== currency.currency ? " Showing SGD while exchange rates are unavailable." : ""}</p>
         </>}
         {financialData && financialData.notices.length > 0 && (
           <details className="mt-6 border-t border-slate-100 pt-5">

@@ -1,25 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { restoreThresholds, type KpiData } from "@/app/dashboard/data/kpi-presentation";
+import { type Thresholds, type KpiData } from "@/app/dashboard/data/kpi-presentation";
 import { clearNotifications, deliverNotifications, nextDeliveryAt, restoreInbox, viewNotifications, type NotificationInbox } from "@/lib/notifications";
 import { notificationInboxKey, notificationStorageIsTemporary, readNotificationStorage as read, subscribeNotifications as subscribe, useNotificationPreferences, writeNotificationStorage as write } from "@/lib/notification-store";
 import type { AnomalyAlert } from "@/app/dashboard/data/anomalies-utils";
-import { thresholdAlerts } from "./overview-data";
+import { financialAlerts } from "@/lib/financial/alerts";
+import { defaultRules } from "@/lib/financial/types";
 
 export function useHomeAlerts(userId: string, data?: KpiData | null, anomalies: AnomalyAlert[] = []) {
-  const settingsKey = `finsight:kpi-thresholds:v1:${userId}`;
   const legacyKey = `finsight:home-alerts:v1:${userId}`;
   const inboxKey = notificationInboxKey(userId);
-  const rawSettings = useSyncExternalStore(subscribe, () => read(settingsKey), () => null);
   const rawInbox = useSyncExternalStore(subscribe, () => read(inboxKey), () => null);
   const rawLegacy = useSyncExternalStore(subscribe, () => read(legacyKey), () => null);
   const ready = useSyncExternalStore(subscribe, () => true, () => false);
   const { preferences, sessionOnly } = useNotificationPreferences(userId);
   const { enabled, frequency } = preferences;
-  const thresholds = restoreThresholds(rawSettings);
+  const thresholds = Object.fromEntries(Object.entries(data?.financialRules ?? defaultRules()).map(([id, rule]) => [id, { enabled: rule.enabled, min: -rule.tolerance, max: rule.tolerance }])) as Thresholds;
   const candidates = ready ? [
-    ...(data ? thresholdAlerts(data, thresholds).map(alert => ({ ...alert, type: "threshold" as const })) : []),
+    ...(data ? financialAlerts(data) : []),
     ...anomalies.map(alert => ({ id: alert.id, type: "anomaly" as const, anomaly: alert })),
   ] : [];
   const inbox = restoreInbox(rawInbox, rawLegacy);
