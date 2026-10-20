@@ -1,6 +1,6 @@
 "use client";
 import { comparisonStyle, ComparisonLegend } from "./comparison-style";
-import { SOURCES } from "@/lib/financial/types";
+import { ComparisonHover, ComparisonSource } from "./comparison-hover";
 
 import {
   Bar,
@@ -10,13 +10,11 @@ import {
   ReferenceLine,
   Line,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import {
   formatCurrencyCompact,
-  formatCurrencyExact,
   type ProfitMarginPoint,
 } from "../data/profit-margin-utils";
 import { useFinancialComparison, ComparisonNote } from "@/app/components/financial/comparison-context";
@@ -73,9 +71,10 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
         <p className="w-full mt-1 text-sm text-muted">Selected reporting month · Selected business unit</p>
       </div>
 
-      <ComparisonNote metric={gross ? "grossProfit" : "netProfit"} />
-      <ComparisonNote metric={gross ? "grossMargin" : "netMargin"} />
+      <ComparisonNote showSource={false} metric={gross ? "grossProfit" : "netProfit"} />
+      <ComparisonNote showSource={false} metric={gross ? "grossMargin" : "netMargin"} />
       <ChartAnomalyNote focus={activeFocus} target="profit-margin-title" ready={!loading && !error && data.length > 0} />
+      <ComparisonSource source={financial?.source} />
       {loading ? (
         <div className="mt-6 flex h-80 items-center justify-center text-sm text-muted" role="status">
           Loading profit data...
@@ -89,22 +88,20 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
           No profit or margin data is available for the selected periods.
         </div>
       ) : (
-        <div className="mt-6 h-80 w-full" role="img" aria-label={`Combined chart showing ${name.toLowerCase()} profit and ${name.toLowerCase()} margin percentage by accounting period`}>
+        <div className="mt-6 h-80 w-full" role="group" aria-label={`Combined chart showing ${name.toLowerCase()} profit and ${name.toLowerCase()} margin percentage by accounting period`}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+            <ComposedChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
               <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
               <YAxis yAxisId="currency" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <YAxis yAxisId="percentage" orientation="right" tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
-              <Tooltip
-                formatter={(value, name) => [
-                  String(name).includes("Margin") ? `${Number(value).toFixed(2)}%` : formatCurrencyExact(Number(value), fx),
-                  name,
-                ]}
-              />
+              <ComparisonHover source={financial?.source} measures={[
+                { label: `${name} profit`, actualKey: gross ? "grossProfit" : "netProfit", comparisonKey: "referenceProfit" },
+                { label: `${name} margin`, actualKey: gross ? "grossMarginPct" : "netMarginPct", comparisonKey: "referenceMargin", percentage: true },
+              ]} model={activeFocus ? {label: "Model gross margin (includes other income)", key: "modelMargin", percentage: true} : undefined} />
               <Legend content={<ComparisonLegend />} />
-              {financial && <Line yAxisId="currency" dataKey="referenceProfit" name={`${name} Profit comparison · ${SOURCES[financial.source]}`} {...comparisonStyle("monetary")} />}
-              {financial && <Line yAxisId="percentage" dataKey="referenceMargin" name={`${name} Margin comparison % · ${SOURCES[financial.source]}`} {...comparisonStyle("secondary")} />}
+              {financial && <Line yAxisId="currency" dataKey="referenceProfit" name={`${name} profit comparison`} {...comparisonStyle("monetary")} />}
+              {financial && <Line yAxisId="percentage" dataKey="referenceMargin" name={`${name} margin comparison`} {...comparisonStyle("secondary")} />}
               {activeFocus && <ReferenceLine yAxisId="currency" x={formatPeriod(activeFocus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label="Anomaly" />}
               {activeFocus && <Line yAxisId="percentage" dataKey="modelMargin" name="Model Gross Margin % (includes other income)" stroke="#b45309" strokeDasharray="4 4" connectNulls={false} />}
               <Bar yAxisId="currency" dataKey={gross ? "grossProfit" : "netProfit"} name={`${name} Profit`} fill="#1f2a79" radius={[3, 3, 0, 0]} />

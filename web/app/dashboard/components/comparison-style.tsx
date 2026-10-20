@@ -1,22 +1,14 @@
 "use client";
-import { Curve } from "recharts";
-import type { ComponentProps } from "react";
-import type { LineDrawShapeProps } from "recharts/types/cartesian/LineDrawShape";
-
 export const COMPARISON_STYLES = {
-  monetary: { stroke: "#0891B2", strokeDasharray: "10 5" },
-  secondary: { stroke: "#A855F7", strokeDasharray: "4 4" },
+  monetary: { stroke: "#6B83B5", strokeDasharray: "10 5" },
+  secondary: { stroke: "#B46A60", strokeDasharray: "4 4" },
 };
-function OutlinedCurve({ points, type, layout, connectNulls, stroke, strokeDasharray }: LineDrawShapeProps) {
-  const geometry = { points, type, layout, connectNulls, fill: "none" } satisfies ComponentProps<typeof Curve>;
-  return <g><Curve {...geometry} stroke="white" strokeWidth={5} strokeDasharray={strokeDasharray} /><Curve {...geometry} stroke={stroke} strokeWidth={3} strokeDasharray={strokeDasharray} /></g>;
-}
 function Diamond({ cx, cy, stroke }: { cx?: number; cy?: number; stroke?: string }) {
   if (!Number.isFinite(cx) || !Number.isFinite(cy)) return <g />;
   return <path d={`M ${cx} ${cy! - 4} l 4 4 -4 4 -4 -4 Z`} fill="white" stroke={stroke} strokeWidth={2} />;
 }
 export function comparisonStyle(kind: keyof typeof COMPARISON_STYLES) {
-  return { ...COMPARISON_STYLES[kind], strokeWidth: 3, connectNulls: false, zIndex: 500, isAnimationActive: false, shape: OutlinedCurve, dot: kind === "secondary" ? <Diamond /> : { r: 4, fill: "white", strokeWidth: 2 } };
+  return { ...COMPARISON_STYLES[kind], strokeWidth: 3, connectNulls: false, zIndex: 500, isAnimationActive: false, dot: kind === "secondary" ? <Diamond /> : { r: 3, fill: "white", strokeWidth: 2 } };
 }
 // Use the same shapes in the legend, without adding duplicate chart series.
 export function ComparisonLegend({ payload }: { payload?: readonly { value?: string; color?: string; dataKey?: string | number; type?: string }[] }) {

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator } from "@playwright/test";
 import { build } from "esbuild";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -25,6 +25,11 @@ homeData.financialComparisons = undefined;
 homeData.metrics = homeData.metrics.filter(m => m.id === "revenue");
 const metadata = { rules: financial.rules, notificationSource: "previous", latestPeriod: 202608, departments: [{dept_no:"HL",description:"Heavy Lift",segment:"Bulk"},{dept_no:"TR",description:"Transport",segment:"Bulk"}], accounts: [{acc_no:"4000",description:"Operating revenue",acc_type:"RE"},{acc_no:"5000",description:"Cost of sales",acc_type:"CS"}], budgets:financial.budgets, entries:{"4000":"120","5000":"20"},manual:{revenue:"150",netProfit:"85"},automatic:financial.sources.auto[202608] };
 
+async function selectMenuOption(control: Locator, value: string) {
+  await control.click();
+  await control.page().getByRole("listbox").locator(`[role="option"][data-value="${value}"]`).click();
+}
+
 const root = resolve(__dirname, "../..");
 let bundle: string;
 let css = "body{font-family:Arial;margin:24px} main{max-width:1200px;margin:auto} section{margin-block:20px} summary{cursor:pointer} table{border-collapse:collapse} th,td{padding:8px}";
@@ -45,17 +50,27 @@ test.beforeAll(async () => {
       import {SettingsPanel} from '@/app/settings/settings-panel';
       import {DashboardFilters} from '@/app/dashboard/components/dashboard-filters';
       import {parseDashboardFilters} from '@/app/dashboard/data/dashboard-scope';
+      const chartBundle = ${JSON.stringify(financial)};
       const alert = ${JSON.stringify(alert)}; const finding = ${JSON.stringify(finding)};
       const status={scoredAt:'2026-09-01T00:00:00Z',scoredThrough:202608,dataThrough:202608,modelVersion:'v1',alertCount:4};
       const alerts=[alert,...['acc','cust','dept'].map((kind,i)=>({...alert,id:kind+':TEST'+i+':202608',kind,unitKey:'TEST'+i,unitLabel:'Finding '+i}))];
       const subscribe=cb=>{window.addEventListener('popstate',cb);return()=>window.removeEventListener('popstate',cb)};
       function App(){const search=useSyncExternalStore(subscribe,()=>window.location.search);const q=new URLSearchParams(search);const mode=q.get('profitMode')==='gross'?'gross':'net';
-        const filterOptions={periods:[202608],units:[{code:"HL",label:"Heavy Lift",businessType:"Bulk"},{code:"CP",label:"Corporate",businessType:"Bulk"},{code:"EN",label:"Engineering",businessType:"Machining"}],branches:[]};
-        const selection=parseDashboardFilters({businessType:q.get("businessType")||undefined,unit:q.getAll("unit")},filterOptions).selection;
+        const filterOptions={periods:[202608,202601,202512,202501],units:[{code:"HL",label:"Heavy Lift",businessType:"Bulk"},{code:"CP",label:"Corporate",businessType:"Bulk"},{code:"EN",label:"Engineering",businessType:"Machining"}],branches:[]};
+        const selection=parseDashboardFilters({period:q.get("period")||undefined,periodStart:q.get("periodStart")||undefined,periodEnd:q.get("periodEnd")||undefined,businessType:q.get("businessType")||undefined,unit:q.getAll("unit")},filterOptions).selection;
         const notifications=useHomeAlerts('browser-test', ${JSON.stringify(homeData)}, alerts);
         if(location.pathname === "/filters") return <DashboardFilters key={JSON.stringify(selection)} destination="/filters" options={filterOptions} selection={selection}><p>Reporting data</p></DashboardFilters>;
         if(location.pathname === "/settings") return <main><SettingsPanel email="test@example.com" userId="browser-test"/></main>;
-        return <FinancialProvider bundle={${JSON.stringify(financial)}}><main><h1>Financial dashboard</h1><ComparisonSelector/><KpiCards/><FinancialProfitLoss/><RevenueExpenseChart data={[{period:"2026-08",periodNo:202608,revenue:100,expenses:10}]}/><AnomalyPanel alerts={alerts} status={status} periodEnd={202608}/>
+        const scopedBundle = q.has('stress') ? structuredClone(chartBundle) : chartBundle;
+        if(q.has('stress')) {
+          const metrics=scopedBundle.sources.previous[202608].metrics;
+          metrics.revenue.actual='6029162.38'; metrics.revenue.reference='5622514.86';
+          metrics.operatingExpenses.actual='849850.72'; metrics.operatingExpenses.reference=null;
+          metrics.netProfit.actual='-912102.66'; metrics.netProfit.reference='-849295.20';
+          metrics.netMargin.actual='-15.1276'; metrics.netMargin.reference=null;
+          scopedBundle.sources.previous[202605].metrics.revenue.reference=null;
+        }
+        return <FinancialProvider bundle={scopedBundle}><main><h1>Financial dashboard</h1><ComparisonSelector/><KpiCards/><FinancialProfitLoss/><RevenueExpenseChart data={[{period:"2026-08",periodNo:202608,revenue:100,expenses:10}]}/><AnomalyPanel alerts={alerts} status={status} periodEnd={202608}/>
         <ProfitMarginChart mode={mode} focus={q.has('anomaly')?{alert,finding}:null} data={[{period:'2025-08',periodNo:202508,grossProfit:300,grossMarginPct:30,netProfit:200,netMarginPct:20},{period:'2026-08',periodNo:202608,grossProfit:100,grossMarginPct:10,netProfit:50,netMarginPct:5}]}/>
         <NotificationPanel notifications={notifications} period='2026-08' priorPeriod='2026-07' dashboardHref='/dashboard?period=202608' evaluable={1} loadedAt='2026-09-01T00:00:00Z' anomalyAvailable/></main></FinancialProvider>};createRoot(document.getElementById('root')).render(<App/>);`, loader: "tsx", resolveDir: root },
     bundle: true, write: false, jsx: "automatic", platform: "browser", alias: { "@": root }, define: { "process.env.NODE_ENV": '"production"' },
@@ -222,8 +237,8 @@ test("shares all four sources across cards and P&L without requests, with URL hi
   const shell = await page.locator("h1").elementHandle();
   const requests: string[] = []; page.on("request", r => requests.push(r.url()));
   for (const [source, reference, header] of [["budget","120.00","Month Budget"],["auto","180.00","Auto Forecast"],["manual","150.00","Manual Forecast"],["previous","200.00","Previous Month Actual"]]) {
-    await selector.selectOption(source);
-    if (source === "budget") await page.getByRole("combobox",{name:"Budget scenario",exact:true}).selectOption("2026");
+    await selectMenuOption(selector, source);
+    if (source === "budget") await selectMenuOption(page.getByRole("combobox",{name:"Budget scenario",exact:true}), "2026");
     await expect(revenueCard).toContainText(`Reference: S$${reference}`);
     await expect(pnl.getByRole("columnheader",{name:header,exact:true})).toBeVisible();
     await expect(revenueRow.locator("td").nth(2)).toContainText(reference);
@@ -239,9 +254,9 @@ test("shares all four sources across cards and P&L without requests, with URL hi
   expect(requests).toEqual([]);
   expect(await shell?.evaluate(n=>n.isConnected)).toBe(true);
   expect(await page.evaluate(()=>(window as Window & {__routerNavigations?:number}).__routerNavigations ?? 0)).toBe(0);
-  await page.goBack(); await expect(selector).toHaveValue("manual");
-  await page.goForward(); await expect(selector).toHaveValue("previous");
-  await page.reload(); await expect(selector).toHaveValue("previous");
+  await page.goBack(); await expect(selector).toHaveAttribute("data-value", "manual");
+  await page.goForward(); await expect(selector).toHaveAttribute("data-value", "previous");
+  await page.reload(); await expect(selector).toHaveAttribute("data-value", "previous");
 });
 
 test("retains the chosen budget on refresh and exposes invalid URL values", async ({page}) => {
@@ -249,7 +264,7 @@ test("retains the chosen budget on refresh and exposes invalid URL values", asyn
   const pnl=page.getByRole("region",{name:"P&L comparison table"});
   await expect(pnl.locator('tr[data-metric="revenue"]').locator("td").nth(2)).toContainText("200.00");
   await page.reload();
-  await expect(page.getByRole("combobox",{name:"Budget scenario",exact:true})).toHaveValue("2027");
+  await expect(page.getByRole("combobox",{name:"Budget scenario",exact:true})).toHaveAttribute("data-value", "2027");
   await page.goto("/dashboard?comparison=unknown");
   await expect(page.getByRole("alert").first()).toContainText("comparison source is invalid");
   await page.goto("/dashboard?comparison=budget&budgetId=deleted");
@@ -320,13 +335,13 @@ test("retries failed settings loading and fits comparison/settings controls on m
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:test.info().outputPath("financial-settings-mobile.png"),fullPage:true});
   await page.goto("/dashboard?comparison=auto");
-  await expect(page.getByRole("combobox",{name:"Comparison source",exact:true})).toHaveValue("auto");
+  await expect(page.getByRole("combobox",{name:"Comparison source",exact:true})).toHaveAttribute("data-value", "auto");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test("business type prunes incompatible units, persists on refresh and supports history", async ({page}) => {
   await page.goto("/filters?unit=HL");
-  await page.getByRole("combobox",{name:"Business type",exact:true}).selectOption("Machining");
+  await selectMenuOption(page.getByRole("combobox",{name:"Business type",exact:true}), "Machining");
   await page.getByRole("button",{name:"All business units",exact:true}).click();
   await expect(page.getByText("Engineering",{exact:true})).toBeVisible();
   await expect(page.getByText("Heavy Lift",{exact:true})).toHaveCount(0);
@@ -334,11 +349,11 @@ test("business type prunes incompatible units, persists on refresh and supports 
   await page.getByRole("button",{name:"Apply Filters"}).click();
   await expect(page).toHaveURL(/businessType=Machining&unit=EN/);
   await page.reload();
-  await expect(page.getByRole("combobox",{name:"Business type",exact:true})).toHaveValue("Machining");
+  await expect(page.getByRole("combobox",{name:"Business type",exact:true})).toHaveAttribute("data-value", "Machining");
   await page.goBack();
-  await expect(page.getByRole("combobox",{name:"Business type",exact:true})).toHaveValue("");
+  await expect(page.getByRole("combobox",{name:"Business type",exact:true})).toHaveAttribute("data-value", "");
   await page.goForward();
-  await expect(page.getByRole("combobox",{name:"Business type",exact:true})).toHaveValue("Machining");
+  await expect(page.getByRole("combobox",{name:"Business type",exact:true})).toHaveAttribute("data-value", "Machining");
 });
 
 for (const width of [1280,390]) test(`comparison styles remain visible at ${width}px with local Net/Gross switching`, async ({page}) => {
@@ -346,15 +361,248 @@ for (const width of [1280,390]) test(`comparison styles remain visible at ${widt
   await page.goto("/dashboard");
   const profit = page.getByRole("region",{name:"Net Profit and Margin",exact:true});
   // Both the plotted curves and legend use the contrasting colours and dash patterns.
-  await expect(profit.locator('.recharts-curve[stroke="#0891B2"][stroke-width="3"]').first()).toBeAttached();
-  await expect(profit.locator('.recharts-curve[stroke="#A855F7"][stroke-width="3"]').first()).toBeAttached();
-  await expect(profit.locator('.recharts-curve[stroke="white"][stroke-width="5"]').first()).toBeAttached();
+  await expect(profit.locator('.recharts-curve[stroke="#6B83B5"][stroke-width="3"]').first()).toBeAttached();
+  await expect(profit.locator('.recharts-curve[stroke="#B46A60"][stroke-width="3"]').first()).toBeAttached();
+  await expect(profit.locator('.recharts-curve[stroke="white"]')).toHaveCount(0);
   const revenue=page.getByRole("region",{name:"Revenue vs Operating Expenses",exact:true});
-  await expect(revenue.locator('.recharts-curve[stroke="#0891B2"][stroke-dasharray="10 5"]').first()).toBeAttached();
+  await expect(revenue.locator('.recharts-curve[stroke="#6B83B5"][stroke-dasharray="10 5"]').first()).toBeAttached();
   await page.getByRole("combobox",{name:"Profit and margin measure"}).selectOption("gross");
   await expect(page.getByRole("heading",{name:"Gross Profit and Margin"})).toBeVisible();
   // Recharts animates the actual bars for 1.5 seconds after changing measure.
   await page.waitForTimeout(1600);
   await page.getByRole("region",{name:"Gross Profit and Margin",exact:true}).screenshot({path:test.info().outputPath(`comparisons-${width}.png`)});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1)).toBe(true);
+});
+
+for (const width of [1280, 390, 320]) test(`compact hover values stay inside both charts at ${width}px`, async ({page}) => {
+  await page.setViewportSize({width,height:1000});
+  await page.goto("/dashboard");
+  const requests: string[]=[];
+  page.on("request",r=>requests.push(r.url()));
+  for (const title of ["Revenue vs Operating Expenses", "Net Profit and Margin"]) {
+    const chart=page.getByRole("region",{name:title,exact:true});
+    const markers=chart.locator('.recharts-line-dots circle[stroke="#6B83B5"]');
+    for (const index of [0,2,5]) {
+      await markers.nth(index).hover();
+      const tooltip=chart.getByRole("tooltip");
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip.getByRole("table")).toBeVisible();
+      await expect(tooltip.getByText("Default — Previous month",{exact:true})).toHaveCount(1);
+      await expect(tooltip.getByRole("columnheader",{name:"Actual",exact:true})).toBeVisible();
+      await expect(tooltip.getByRole("columnheader",{name:"Comparison",exact:true})).toBeVisible();
+      const bounds=await chart.locator('.recharts-wrapper').boundingBox();
+      const box=await tooltip.boundingBox();
+      expect(box!.width).toBeLessThanOrEqual(bounds!.width-15);
+      expect(box!.x).toBeGreaterThanOrEqual(bounds!.x);
+      expect(box!.x+box!.width).toBeLessThanOrEqual(bounds!.x+bounds!.width+1);
+      expect(box!.y).toBeGreaterThanOrEqual(bounds!.y);
+      expect(box!.y+box!.height).toBeLessThanOrEqual(bounds!.y+bounds!.height+1);
+      const marker=await markers.nth(index).boundingBox();
+      if (width===1280 && index===0) expect(box!.x).toBeGreaterThan(marker!.x+marker!.width);
+      if (width===1280 && index===5) expect(box!.x+box!.width).toBeLessThan(marker!.x);
+    }
+    await chart.screenshot({path:test.info().outputPath(`hover-${title.startsWith("Net")?"profit":"revenue"}-${width}.png`)});
+    await page.mouse.move(0,0);
+    await expect(chart.getByRole("tooltip")).toHaveCount(0);
+  }
+  expect(requests).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test("hover values follow sources, Gross mode and unavailable metrics without requests", async ({page}) => {
+  await page.goto('/dashboard');
+  const requests: string[]=[]; page.on("request",r=>requests.push(r.url()));
+  const source=page.getByRole("combobox",{name:"Comparison source"});
+  const revenue=page.getByRole("region",{name:"Revenue vs Operating Expenses",exact:true});
+  for (const [id,label] of [["previous","Default — Previous month"],["budget","Budget"],["auto","Auto forecast"],["manual","Manual forecast"]]) {
+    await selectMenuOption(source, id);
+    await revenue.locator('.recharts-line-dots circle[stroke="#6B83B5"]').last().hover();
+    const card=revenue.getByRole("tooltip");
+    await expect(card.getByText(label,{exact:true})).toHaveCount(1);
+    if (id==='auto'||id==='manual') await expect(card.getByRole('row',{name:/Expenses/})).toContainText('Unavailable');
+  }
+  await selectMenuOption(source, 'previous');
+  await page.getByRole('combobox',{name:'Profit and margin measure'}).selectOption('gross');
+  const profit=page.getByRole('region',{name:'Gross Profit and Margin',exact:true});
+  await profit.locator('.recharts-line-dots circle[stroke="#6B83B5"]').last().hover();
+  const card=profit.getByRole('tooltip');
+  await expect(card.getByRole('row',{name:/Gross profit/})).toContainText('$80.00');
+  await expect(card.getByRole('row',{name:/Gross margin/})).toContainText('80.00%');
+  expect(requests).toEqual([]);
+});
+
+test("keyboard arrows inspect months and Escape dismisses the compact card", async ({page}) => {
+  await page.goto('/dashboard');
+  const chart=page.getByRole('region',{name:'Revenue vs Operating Expenses',exact:true});
+  await chart.locator('svg[role="application"]').focus();
+  await page.keyboard.press('ArrowRight');
+  const tooltip=chart.getByRole('tooltip');
+  await expect(tooltip).toBeVisible();
+  const first=await tooltip.getByRole('paragraph').first().textContent();
+  await page.keyboard.press('ArrowRight');
+  await expect(tooltip.getByRole('paragraph').first()).not.toHaveText(first!);
+  await page.keyboard.press('Escape');
+  await expect(tooltip).toBeHidden();
+});
+
+test("tapping a month on a touch screen shows compact values", async ({browser}) => {
+  const context=await browser.newContext({viewport:{width:390,height:900},hasTouch:true});
+  const page=await context.newPage();
+  // Reuse the controlled production-component document and API routes.
+  await page.route('**/*',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/__bundle.js') return route.fulfill({contentType:'text/javascript',body:bundle});
+    return route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><style>${css}</style></head><body><div id="root"></div><script src="/__bundle.js"></script></body></html>`});
+  });
+  await page.goto('http://localhost:4174/dashboard');
+  const chart=page.getByRole('region',{name:'Revenue vs Operating Expenses',exact:true});
+  await chart.locator('.recharts-line-dots circle[stroke="#6B83B5"]').last().tap();
+  await expect(chart.getByRole('tooltip')).toBeVisible();
+  await expect(chart.getByRole('tooltip')).toContainText('2026-08');
+  await context.close();
+});
+
+
+test("hover cards preserve large amounts, negatives and missing values on narrow screens", async ({page}) => {
+  await page.setViewportSize({width:320,height:1000});
+  await page.goto('/dashboard?stress=1');
+  for (const [title, expected] of [['Revenue vs Operating Expenses','$6,029,162.38'],['Net Profit and Margin','-$912,102.66']]) {
+    const chart=page.getByRole('region',{name:title,exact:true});
+    await chart.locator('.recharts-line-dots circle[stroke="#6B83B5"]').last().hover();
+    const card=chart.getByRole('tooltip');
+    await expect(card).toContainText(expected);
+    await expect(card).toContainText('Unavailable');
+    for (const amount of await card.locator('[data-hover-value]').all()) {
+      expect(await amount.evaluate(e => { const range=document.createRange(); range.selectNodeContents(e); return range.getClientRects().length; })).toBe(1);
+    }
+    expect(await card.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+  }
+  const reference=page.getByRole('region',{name:'Revenue vs Operating Expenses',exact:true}).locator('.recharts-line .recharts-curve[stroke="#6B83B5"]');
+  // Stock Recharts curves must keep two segments across the missing month.
+  await expect(reference).toHaveAttribute('d',/M.*M/);
+});
+
+test("anomaly hover values retain their separate model definition", async ({page}) => {
+  await page.goto('/dashboard?profitMode=gross&anomaly=dept:HL:202608&reason=gross_margin_outlier');
+  const chart=page.getByRole('region',{name:'Gross Profit and Margin',exact:true});
+  await chart.locator('.recharts-line-dots circle[stroke="#6B83B5"]').last().hover();
+  const card=chart.getByRole('tooltip');
+  await expect(card).toContainText('Model gross margin (includes other income): 10.00%');
+  await expect(card.getByRole('row',{name:/Gross margin/})).toContainText('80.00%');
+});
+
+for (const viewport of [1280,390]) test(`filter controls align and month popups stay compact at ${viewport}px`, async ({page}) => {
+  await page.setViewportSize({width:viewport,height:1000});
+  await page.goto('/filters');
+  const month=page.getByRole('button',{name:/^Month Aug 2026/});
+  const controls=[month,page.getByRole('combobox',{name:'Business type',exact:true}),page.getByRole('button',{name:'All business units',exact:true}),page.getByRole('button',{name:'All branches',exact:true})];
+  const boxes=[];
+  for(const control of controls) {const box=await control.boundingBox(); expect(box!.height).toBe(44); boxes.push(box!);}
+  if(viewport===1280) expect(Math.max(...boxes.map(b=>b.y))-Math.min(...boxes.map(b=>b.y))).toBeLessThanOrEqual(1);
+  await month.click();
+  const picker=page.getByRole('dialog',{name:'Choose month',exact:true});
+  await expect(picker.getByRole('button',{name:'August 2026',exact:true})).toBeFocused();
+  await expect(picker.getByRole('button',{name:'February 2026',exact:true})).toBeDisabled();
+  expect(await picker.evaluate(e=>e.scrollHeight<=e.clientHeight)).toBe(true);
+  const popup=await picker.boundingBox(); expect(popup!.x+popup!.width).toBeLessThanOrEqual(viewport);
+  await picker.screenshot({path:test.info().outputPath(`month-picker-${viewport}.png`)});
+  await page.keyboard.press('ArrowLeft');
+  await expect(picker.getByRole('button',{name:'January 2026',exact:true})).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(month).toBeFocused();
+  await month.click();
+  await picker.getByRole('button',{name:'Previous year',exact:true}).click();
+  await picker.getByRole('button',{name:'December 2025',exact:true}).click();
+  await expect(page.getByRole('button',{name:/^Month Dec 2025/})).toBeFocused();
+  await page.getByRole('button',{name:'Apply Filters',exact:true}).click();
+  await expect(page).toHaveURL(/periodStart=202512&periodEnd=202512/);
+  await page.getByRole('button',{name:'Date range',exact:true}).click();
+  await expect(page.getByRole('button',{name:/^Range start Dec 2025/})).toBeVisible();
+  await page.getByRole('button',{name:/^Range end Dec 2025/}).click();
+  const end=page.getByRole('dialog',{name:'Choose range end',exact:true});
+  await end.getByRole('combobox',{name:'Reporting year',exact:true}).selectOption('2026');
+  await end.getByRole('button',{name:'January 2026',exact:true}).click();
+  await page.getByRole('button',{name:'Apply Filters',exact:true}).click();
+  await expect(page).toHaveURL(/periodStart=202512&periodEnd=202601/);
+  await page.reload();
+  await expect(page.getByRole('button',{name:/^Range end Jan 2026/})).toBeVisible();
+  await page.getByRole('button',{name:/^Range start Dec 2025/}).click();
+  await page.getByRole('heading',{name:'Reporting scope',exact:true}).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.getByRole('region',{name:'Dashboard filters',exact:true}).screenshot({path:test.info().outputPath(`filters-${viewport}.png`)});
+});
+
+test('comparison and budget selectors use the same control height',async ({page})=>{
+  await page.goto('/dashboard');
+  const source=page.getByRole('combobox',{name:'Comparison source',exact:true});
+  expect((await source.boundingBox())!.height).toBe(44);
+  await selectMenuOption(source, 'budget');
+  expect((await page.getByRole('combobox',{name:'Budget scenario',exact:true}).boundingBox())!.height).toBe(44);
+});
+
+test('large hover values grow the card on desktop and remain on one line',async ({page})=>{
+  await page.goto('/dashboard?stress=1');
+  const chart=page.getByRole('region',{name:'Revenue vs Operating Expenses',exact:true});
+  await chart.locator('.recharts-line-dots circle[stroke="#6B83B5"]').last().hover();
+  const card=chart.getByRole('tooltip');
+  await expect(card).toBeVisible();
+  expect((await card.boundingBox())!.width).toBeGreaterThan(240);
+  for(const amount of await card.locator('[data-hover-value]').all()) {
+    expect(await amount.evaluate(e=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length;})).toBe(1);
+  }
+  await chart.screenshot({path:test.info().outputPath('hover-dynamic-width.png')});
+});
+
+for(const width of [1280,390]) test(`app-styled dropdowns match the white branch menus at ${width}px`,async ({page})=>{
+  await page.setViewportSize({width,height:1000});
+  await page.goto('/filters');
+  const type=page.getByRole('combobox',{name:'Business type',exact:true});
+  expect(await type.evaluate(e=>e.tagName)).toBe('BUTTON');
+  await type.click();
+  let menu=page.getByRole('listbox',{name:'Business type',exact:true});
+  await expect(menu).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await expect(menu.getByRole('option',{name:'All business types',exact:true})).toHaveAttribute('aria-selected','true');
+  expect((await menu.boundingBox())!.width).toBeCloseTo((await type.boundingBox())!.width,0);
+  await menu.screenshot({path:test.info().outputPath(`business-type-menu-${width}.png`)});
+  await menu.getByRole('option',{name:'Bulk',exact:true}).click();
+  await expect(type).toContainText('Bulk');
+  await expect(type).toBeFocused();
+  await expect(menu).toHaveCount(0);
+  await page.goto('/dashboard');
+  const source=page.getByRole('combobox',{name:'Comparison source',exact:true});
+  await source.click();
+  menu=page.getByRole('listbox',{name:'Comparison source',exact:true});
+  await expect(menu).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await menu.screenshot({path:test.info().outputPath(`comparison-menu-${width}.png`)});
+  await menu.getByRole('option',{name:'Budget',exact:true}).click();
+  await expect(source).toContainText('Budget');
+  const budget=page.getByRole('combobox',{name:'Budget scenario',exact:true});
+  await budget.click();
+  await expect(page.getByRole('listbox',{name:'Budget scenario',exact:true})).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await page.getByRole('heading',{name:'Financial dashboard',exact:true}).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('custom dropdown keyboard navigation, typing and dismissal preserve selection',async ({page})=>{
+  await page.goto('/filters');
+  const type=page.getByRole('combobox',{name:'Business type',exact:true});
+  await type.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(type).toHaveAttribute('aria-expanded','true');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await expect(type).toHaveAttribute('data-value','Bulk');
+  await type.click();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Escape');
+  await expect(type).toHaveAttribute('data-value','Bulk');
+  await expect(type).toBeFocused();
+  await page.keyboard.type('mach');
+  await page.keyboard.press('Enter');
+  await expect(type).toHaveAttribute('data-value','Machining');
+  await type.click();
+  await page.keyboard.press('Tab');
+  await expect(type).toHaveAttribute('aria-expanded','false');
 });

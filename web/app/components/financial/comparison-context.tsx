@@ -1,4 +1,5 @@
 "use client";
+import { SingleSelect } from "@/app/dashboard/components/single-select";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -70,39 +71,15 @@ export function ComparisonSelector() {
       className="mt-5 rounded-xl border border-brand-navy/15 bg-white p-4"
     >
       <div className="flex flex-wrap items-end gap-4">
-        <label className="text-sm font-medium text-brand-navy">
-          Compare against
-          <select
-            aria-label="Comparison source"
-            disabled={!context.bundle}
-            value={context.source}
-            onChange={(e) => update("comparison", e.target.value)}
-            className="ml-3 rounded-lg border border-slate-300 bg-white px-3 py-2"
-          >
-            {Object.entries(SOURCES).map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 text-sm font-medium text-brand-navy">
+          <span>Compare against</span>
+          <SingleSelect label="Comparison source" hideLabel disabled={!context.bundle} value={context.source} onChange={value => update("comparison", value)} options={Object.entries(SOURCES).map(([value,label]) => ({value,label}))} className="w-full sm:w-64" />
+        </div>
         {context.source === "budget" && context.bundle && (
-          <label className="text-sm">
-            Budget scenario
-            <select
-              aria-label="Budget scenario"
-              value={params.get("budgetId") ?? ""}
-              onChange={(e) => update("budgetId", e.target.value)}
-              className="ml-2 rounded border p-2"
-            >
-              <option value="">Unique monthly scenario, if available</option>
-              {context.bundle.budgets.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 text-sm text-brand-navy">
+            <span>Budget scenario</span>
+            <SingleSelect label="Budget scenario" hideLabel value={params.get("budgetId") ?? ""} onChange={value => update("budgetId", value)} options={[{value:"",label:"Unique monthly scenario, if available"},...context.bundle.budgets.map(b => ({value:b.id,label:b.name}))]} className="w-full sm:w-72" />
+          </div>
         )}
         <a
           href="/settings#budgets-forecasts"
@@ -135,11 +112,13 @@ export function ComparisonSelector() {
   );
 }
 export function ComparisonNote({
+  showSource = true,
   metric,
   period,
 }: {
   metric: import("@/lib/financial/types").Metric;
   period?: number;
+  showSource?: boolean;
 }) {
   const context = useFinancialComparison();
   if (!context?.bundle || !context.series) return null;
@@ -148,7 +127,7 @@ export function ComparisonNote({
   return (
     <div className="mt-3 text-xs text-muted">
       <p>
-        {METRICS[metric].label} · {SOURCES[context.source]} ·{" "}
+        {METRICS[metric].label} · {showSource && <>{SOURCES[context.source]} · </>}{" "}
         {c?.reference === null || !c
           ? "Comparison unavailable for this metric and scope."
           : c.actual === null
