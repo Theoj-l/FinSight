@@ -111,6 +111,23 @@ export interface InvoiceStatusResult {
   filters: AppliedFilters;
 }
 
+export interface OverdueCustomerRow {
+  customer: string;
+  debtorCode: string;
+  outstanding: number;
+  daysOverdue: number;
+  invoiceCount: number;
+}
+
+export interface OverdueCustomersResult {
+  questionType: "overdue_customers";
+  customers: OverdueCustomerRow[];
+  totalCustomers: number;
+  totalInvoices: number;
+  totalOutstanding: number;
+  filters: AppliedFilters;
+}
+
 // ── ar_summary ──────────────────────────────────────────────────────────────
 
 export interface AgingBucket {
@@ -146,6 +163,62 @@ export interface PLSummaryResult {
   questionType: "pl_summary";
   rows: PLRow[];
   period: PeriodInfo;
+  filters: AppliedFilters;
+}
+
+export interface ModelRunInfo {
+  runId: string;
+  modelVersion: string;
+  finishedAt: string | null;
+  dataThrough: number | null;
+}
+
+export interface AnomalyResultItem {
+  kind: "dept" | "acc" | "cust";
+  unitKey: string;
+  unitLabel: string;
+  periodNo: number;
+  score: number;
+  reasons: string[];
+  observedAmount: number | null;
+  firstFlaggedAt: string;
+  suggestedAction?: string;
+}
+
+export interface AnomalyAnalysisResult {
+  questionType:
+    | "anomaly_retrieval"
+    | "anomaly_explanation"
+    | "anomaly_impact"
+    | "anomaly_investigation";
+  anomalies: AnomalyResultItem[];
+  period: PeriodInfo;
+  run: ModelRunInfo | null;
+  rankingBasis: "score" | "observed_amount";
+  caveat: string;
+  filters: AppliedFilters;
+}
+
+export interface ForecastResultItem {
+  kind: string;
+  departmentCode: string | null;
+  department: string | null;
+  metric: string;
+  origin: number;
+  periodNo: number;
+  horizon: number;
+  forecast: number;
+  actual: number | null;
+  method: string | null;
+  suggestedAction?: string;
+}
+
+export interface ForecastAnalysisResult {
+  questionType: "forecast_retrieval" | "forecast_action";
+  forecasts: ForecastResultItem[];
+  period: PeriodInfo;
+  run: ModelRunInfo | null;
+  caveat: string;
   filters: AppliedFilters;
 }
 
@@ -275,6 +348,8 @@ export interface PaymentFollowUpResult {
   questionType: "payment_follow_up";
   items: FollowUpItem[];
   totalAtRisk: number;
+  overdueInvoiceCount: number;
+  overdueCustomerCount: number;
   filters: AppliedFilters;
 }
 
@@ -284,6 +359,16 @@ export interface PriorityItem {
   area: string;
   finding: string;
   impact: number;
+  previousValue?: number;
+  currentValue?: number;
+  changePct?: number;
+  previousMarginPct?: number;
+  currentMarginPct?: number;
+  marginChangePp?: number;
+  previousGrossProfit?: number;
+  currentGrossProfit?: number;
+  grossProfitChange?: number;
+  salesAgent?: string;
   suggestedAction: string;
   priority: "high" | "medium" | "low";
 }
@@ -292,6 +377,7 @@ export interface ManagementPrioritiesResult {
   questionType:
     | "cost_investigation"
     | "sales_follow_up"
+    | "margin_investigation"
     | "payroll_investigation"
     | "management_priority";
   focusArea: string;
@@ -312,8 +398,11 @@ export type RetrievalResult =
   | TopNResult
   | TrendResult
   | InvoiceStatusResult
+  | OverdueCustomersResult
   | ARSummaryResult
   | PLSummaryResult
+  | AnomalyAnalysisResult
+  | ForecastAnalysisResult
   // Analytical Interpretation
   | VarianceBreakdownResult
   | MarginAnalysisResult

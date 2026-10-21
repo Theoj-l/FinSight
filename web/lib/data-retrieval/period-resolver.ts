@@ -74,6 +74,8 @@ export interface ResolvedPeriod {
   label: string;
   dateFrom: Date;
   dateTo: Date;
+  /** Midnight immediately after the period; use with `<` for timestamp columns. */
+  dateToExclusive: Date;
 }
 
 /**
@@ -138,6 +140,11 @@ export async function resolvePeriod(
     return buildResult(periodNos);
   }
 
+  if (token === "next_month") {
+    periodNos = [addMonths(now, 1)];
+    return buildResult(periodNos);
+  }
+
   if (token === "last_month") {
     periodNos = [addMonths(now, -1)];
     return buildResult(periodNos);
@@ -153,8 +160,11 @@ export async function resolvePeriod(
   const pastN = token.match(/^past_(\d+)_months$/);
   if (pastN) {
     const n = parseInt(pastN[1]);
+    // Anchor at the last COMPLETED month — the current month is always partial
+    // and pbalance data may not be posted yet. Window: (now-n) ... (now-1).
+    const lastCompleted = addMonths(now, -1);
     periodNos = Array.from({ length: n }, (_, i) =>
-      addMonths(now, -(n - 1 - i))
+      addMonths(lastCompleted, -(n - 1 - i))
     );
     return buildResult(periodNos);
   }
@@ -193,11 +203,13 @@ export async function resolvePeriod(
 
 function buildResult(periodNos: number[]): ResolvedPeriod {
   const { from, to } = periodNosToDateRange(periodNos);
+  const last = parseYyyymm(Math.max(...periodNos));
   return {
     periodNos,
     label: periodLabels(periodNos),
     dateFrom: from,
     dateTo: to,
+    dateToExclusive: new Date(last.year, last.month, 1),
   };
 }
 
