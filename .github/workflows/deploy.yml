@@ -2,7 +2,8 @@ name: Deploy
 
 # Manual only — Vercel's and Railway's own git-triggered auto-deploy are both
 # disabled (web/vercel.json git.deploymentEnabled: false, and Railway's Auto
-# Deploy toggle is off). This is the only thing that ships a deployment.
+# Deploy toggle is off). This is the only thing that ships a deployment, and
+# it only ships once checks.yml (the same checks ci.yml runs) passes.
 on:
   workflow_dispatch:
     inputs:
@@ -13,8 +14,15 @@ on:
         default: both
 
 jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
   web:
-    if: ${{ inputs.target == 'both' || inputs.target == 'web' }}
+    needs: checks
+    # `success()` is required here: once a job has a custom `if:`, that
+    # expression replaces (not adds to) the default "needs job succeeded"
+    # check, so without it this would still run after checks fails.
+    if: ${{ success() && (inputs.target == 'both' || inputs.target == 'web') }}
     runs-on: ubuntu-latest
     # No working-directory: the Vercel project's Root Directory is "web", so the
     # CLI must run from the repo root or it looks for web/web/package.json.
@@ -34,7 +42,8 @@ jobs:
       - run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
 
   ml-service:
-    if: ${{ inputs.target == 'both' || inputs.target == 'ml-service' }}
+    needs: checks
+    if: ${{ success() && (inputs.target == 'both' || inputs.target == 'ml-service') }}
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
     env:
