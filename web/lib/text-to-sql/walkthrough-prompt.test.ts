@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import { TOUR_LABELS } from "../../app/components/tour/tour-labels";
+import { RESPONSE_GENERATION_PROMPT } from "../gemini/prompts/response-generation";
+import { buildWalkthroughSystemPrompt, WALKTHROUGH_LABELS } from "./walkthrough-prompt";
+
+const context = { page: "dashboard" as const, periodStart: "202606", periodEnd: "202606", units: [], branches: [] };
+
+describe("buildWalkthroughSystemPrompt", () => {
+  const prompt = buildWalkthroughSystemPrompt(context);
+
+  it("starts from the same answer guidelines as the plain pipeline", () => {
+    expect(prompt.startsWith(RESPONSE_GENERATION_PROMPT)).toBe(true);
+  });
+
+  it("names every labelled panel by its id, exactly the ids the page uses", () => {
+    expect(WALKTHROUGH_LABELS).toEqual(Object.keys(TOUR_LABELS));
+    for (const label of WALKTHROUGH_LABELS) expect(prompt).toContain(`- ${label} (badge ${TOUR_LABELS[label].number})`);
+  });
+
+  it("tells the model which period is on screen", () => {
+    expect(prompt).toContain("showing period 2026-06");
+  });
+
+  it("says when not to point at a panel", () => {
+    expect(prompt).toContain("NO panel for receivables");
+    expect(prompt).toMatch(/Set it to null when no panel helps/);
+    expect(prompt).toMatch(/Check the period first/);
+  });
+});

@@ -7,7 +7,7 @@ import { claimFirstVisit, useTour } from "../tour/tour-context";
 import { WalkthroughCard } from "../tour/walkthrough-card";
 import { readChatContext } from "./chat-context";
 import type { ChatMessage } from "./chat-state";
-import { CHAT_MOCK_ENABLED } from "./chat-transport";
+import { CHAT_ENDPOINT, CHAT_MOCK_ENABLED, DEFAULT_CHAT_ENDPOINT } from "./chat-transport";
 import { Markdown } from "./markdown-view";
 import { useChat } from "./use-chat";
 
@@ -25,11 +25,11 @@ const SUGGESTIONS = [
 // Offered on the dashboard, where the assistant can point at the charts and tables.
 const WALKTHROUGH_QUESTION = "Walk me through this dashboard";
 
-// First time on the dashboard, ask for the walkthrough automatically. Demo mode
-// only for now: the real backend does not return a `walkthrough` yet, and the
-// question would otherwise go to Gemini as an ordinary (unsupported) question.
-// Flip to `true` once /api/chat returns walkthroughs.
-const WALKTHROUGH_ON_FIRST_VISIT = CHAT_MOCK_ENABLED;
+// First time on the dashboard, ask for the walkthrough automatically. Only where
+// the answer can actually come with one: demo mode, or a backend that returns
+// walkthroughs (/api/chat-sql). The original /api/chat does not, and would treat
+// the question as an ordinary one.
+const WALKTHROUGH_ON_FIRST_VISIT = CHAT_MOCK_ENABLED || CHAT_ENDPOINT !== DEFAULT_CHAT_ENDPOINT;
 
 const MAX_INPUT_HEIGHT = 112;
 

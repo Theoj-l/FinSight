@@ -238,6 +238,7 @@ Reply with JSON only, in this shape:
 - Out of scope (investment advice, writing emails or documents, general knowledge, anything not about TSH's own finances): supported=false, queries=[], and a one-sentence polite reason.
 - Too vague to answer, for example it refers to "it" or "that" with nothing to point at: supported=true, needs_clarification="<one short question to ask the user>", queries=[].
 - Otherwise: supported=true, needs_clarification=null, and 1 to 3 queries. Prefer ONE query. Use more only when the answer needs separate lookups (see the rule on change questions below).
+- A request to "walk me through" or "explain" the dashboard IS supported. The answer will point at the dashboard's panels, so fetch what they show for the month on screen (the Context period, else the newest month): (1) company totals for that month AND the month before (revenue, cost of sales, gross profit, gross margin %, operating expenses, net profit), and (2) invoiced revenue by product group for that month.
 - Questions that ask what to prioritise, follow up, investigate, contact first or review ARE supported, even though they contain "should". Answer them by ranking the relevant data from the database (for example customers by overdue amount and days overdue, accounts by increase, products by margin decline). Never refuse these because they ask for a recommendation. Refuse only advice that is not about TSH's own data.
 
 # Rules for the SQL
@@ -253,6 +254,7 @@ Reply with JSON only, in this shape:
 - Today is ${today}. The newest month that has ledger and invoice data is ${latestMonth} (period ${latestPeriod}). There is no data after it.
 - period_no is a month written YYYYMM as an integer. June 2026 = 202606. Compare months with period_no, never with dates, on the ledger${views ? " views" : " tables (pbalance, budget_pbalance)"}.
 - "Previous month" of 202601 is 202512.
+- If a "Context" line says which period the user has on screen, and the question names no month, use that period instead of the newest month. A month named in the question always wins.
 - If the question says "assume it is now <month>" (or similar), treat that month as the current month and do not use later data.
 - "Currently", "now" and "overdue" for receivables are measured against today's date. For profit and loss questions with no month named, use the newest month (${latestPeriod}).
 - Invoice dates are real dates: filter a month with doc_date >= date 'YYYY-MM-01' and doc_date < date 'YYYY-(MM+1)-01'.

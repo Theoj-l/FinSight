@@ -5,6 +5,7 @@
 import { Type, type Schema } from "@google/genai";
 import { genai } from "../gemini/client";
 import { GEMINI_MODEL, MAX_QUERIES } from "./config";
+import { describeContext, type ChatContext } from "./context";
 import { buildSystemPrompt } from "./prompt";
 
 export interface PlannedQuery {
@@ -44,10 +45,15 @@ export interface GenerateOptions {
   latestPeriod: number;
   /** Why the previous attempt failed, so the model can correct it. */
   feedback?: string;
+  /** The dashboard the user has open, if any: used to resolve "this month" and similar. */
+  context?: ChatContext | null;
 }
 
-export async function generateSql(question: string, { today, latestPeriod, feedback }: GenerateOptions): Promise<SqlPlan> {
-  const contents = feedback ? `${question}\n\n${feedback}` : question;
+export async function generateSql(question: string, { today, latestPeriod, feedback, context }: GenerateOptions): Promise<SqlPlan> {
+  const parts = [question];
+  if (context) parts.push(`Context (not part of the question): ${describeContext(context)}`);
+  if (feedback) parts.push(feedback);
+  const contents = parts.join("\n\n");
 
   const response = await genai.models.generateContent({
     model: GEMINI_MODEL,

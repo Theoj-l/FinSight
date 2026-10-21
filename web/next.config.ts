@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+
+  // The SQL parser used by the text-to-SQL chat loads a WebAssembly file at
+  // runtime. Keep it out of the bundle so the standalone image traces and ships it.
+  serverExternalPackages: ["libpg-query"],
   outputFileTracingRoot: path.join(__dirname),
 };
 

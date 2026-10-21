@@ -26,7 +26,13 @@ import type { ChatContext } from "./chat-context";
 import { mockReplyFor, mockWalkthroughFor } from "./mock-replies";
 import { StreamError, parseSseStream, readTextStream } from "./stream-parser";
 
-export const CHAT_ENDPOINT = "/api/chat";
+/**
+ * Where questions go. Defaults to /api/chat. Set NEXT_PUBLIC_CHAT_ENDPOINT=/api/chat-sql
+ * in web/.env (and restart the dev server) to use the text-to-SQL backend, which also
+ * returns walkthroughs. The property access must stay literal for Next to inline it.
+ */
+export const DEFAULT_CHAT_ENDPOINT = "/api/chat";
+export const CHAT_ENDPOINT = process.env.NEXT_PUBLIC_CHAT_ENDPOINT || DEFAULT_CHAT_ENDPOINT;
 
 /**
  * Demo mode: answer with canned, streamed replies and never call the API.
