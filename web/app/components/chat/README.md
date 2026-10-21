@@ -29,6 +29,40 @@ backend starts streaming:
 | `text/plain` | True streaming of raw text chunks |
 | non-2xx JSON (`{ error, details }`) | Friendly message + "Try again". `details` is never shown, only `console.warn`ed |
 
+## Pointing at charts and tables (walkthrough)
+
+On the dashboard the assistant can explain an answer *using* the charts and
+tables on the page: each one is highlighted while its explanation is shown, as a
+step-by-step card under the answer. The labelled parts and their ids live in
+`../tour/tour-labels.ts` (badges 1–6 on the page).
+
+**Request** — when the user is on the dashboard the widget adds `context`
+(read from the page address, see `chat-context.ts`):
+
+```json
+{ "message": "…", "context": { "page": "dashboard", "periodStart": "202608",
+  "periodEnd": "202608", "units": [], "branches": [] } }
+```
+
+**Response** — the JSON reply may carry an optional `walkthrough`:
+
+```json
+{ "reply": "…", "walkthrough": { "opening": "…",
+  "steps": [ { "label": "profit-margin", "explanation": "…" } ] } }
+```
+
+It is validated (`parseTourScript`): unknown labels, empty text and duplicates
+are dropped, and a walkthrough with nothing left is ignored, so a bad reply can't
+break the page. It starts once the answer text has finished, and only if those
+parts are on screen; on other pages the answer is shown as plain text. Only JSON
+replies carry it so far (not SSE / plain-text streams). The wording the AI should
+follow is in `docs/ai-context/finsight-data-guide.md`, section 7.
+
+Demo mode produces walkthroughs too: try "Walk me through this dashboard" or the
+net-profit question. In demo mode the first visit to the dashboard asks for the
+walkthrough by itself (`WALKTHROUGH_ON_FIRST_VISIT` in `chat-widget.tsx`; flip it
+on for everyone once the backend returns walkthroughs).
+
 ## Demo mode (fake answers)
 
 Set `NEXT_PUBLIC_CHAT_MOCK="true"` in `web/.env` and **restart `npm run dev`**

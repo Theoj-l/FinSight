@@ -2,6 +2,8 @@
 // chat-state.ts — conversation state as a pure reducer (no React, no I/O).
 // ---------------------------------------------------------------------------
 
+import type { TourScript } from "../tour/tour-script";
+
 export type MessageStatus = "streaming" | "done" | "stopped" | "error";
 
 export interface ChatMessage {
@@ -11,6 +13,8 @@ export interface ChatMessage {
   status: MessageStatus;
   /** Set when status is "error". Partial `content` is kept. */
   error?: string;
+  /** Charts and tables on the page that help explain this answer. */
+  walkthrough?: TourScript;
 }
 
 export interface ChatState {
@@ -21,6 +25,7 @@ export type ChatAction =
   | { type: "send"; text: string; userId: string; assistantId: string }
   | { type: "retry"; failedId: string; assistantId: string }
   | { type: "delta"; id: string; text: string }
+  | { type: "walkthrough"; id: string; script: TourScript }
   | { type: "finish"; id: string }
   | { type: "stop"; id: string }
   | { type: "fail"; id: string; error: string }
@@ -60,6 +65,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return update(state, action.id, (message) =>
         message.status === "streaming" ? { ...message, content: message.content + action.text } : message,
       );
+
+    case "walkthrough":
+      return update(state, action.id, (message) => ({ ...message, walkthrough: action.script }));
 
     case "finish":
       return update(state, action.id, (message) => ({ ...message, status: "done" }));

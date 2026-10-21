@@ -44,6 +44,26 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Guided tour (app/components/tour): highlight of the part being explained */
+[data-tour-id] {
+  scroll-margin-block: 3rem;
+}
+
+[data-tour-active="true"] {
+  border-radius: 0.75rem;
+  outline: 3px solid var(--color-brand-blue);
+  outline-offset: 6px;
+  box-shadow: 0 0 0 12px rgba(76, 111, 187, 0.14);
+  transition:
+    outline-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+[data-tour-active="true"] > .tour-badge {
+  background: var(--color-brand-red);
+  transform: scale(1.15);
+}
+
 /* Chat widget (app/components/chat) */
 @keyframes chat-pop {
   from {

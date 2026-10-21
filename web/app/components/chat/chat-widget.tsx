@@ -3,6 +3,9 @@
 import { ArrowUp, MessageCircle, RotateCcw, Square, SquarePen, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { memo, useEffect, useRef, useState } from "react";
+import { claimFirstVisit, useTour } from "../tour/tour-context";
+import { WalkthroughCard } from "../tour/walkthrough-card";
+import { readChatContext } from "./chat-context";
 import type { ChatMessage } from "./chat-state";
 import { CHAT_MOCK_ENABLED } from "./chat-transport";
 import { Markdown } from "./markdown-view";
@@ -18,6 +21,15 @@ const SUGGESTIONS = [
   "What are our outstanding receivables?",
   "How did net profit change versus last month?",
 ];
+
+// Offered on the dashboard, where the assistant can point at the charts and tables.
+const WALKTHROUGH_QUESTION = "Walk me through this dashboard";
+
+// First time on the dashboard, ask for the walkthrough automatically. Demo mode
+// only for now: the real backend does not return a `walkthrough` yet, and the
+// question would otherwise go to Gemini as an ordinary (unsupported) question.
+// Flip to `true` once /api/chat returns walkthroughs.
+const WALKTHROUGH_ON_FIRST_VISIT = CHAT_MOCK_ENABLED;
 
 const MAX_INPUT_HEIGHT = 112;
 
@@ -52,7 +64,7 @@ const MessageBubble = memo(function MessageBubble({
   }
 
   return (
-    <div className="flex justify-start">
+    <div className="flex flex-col items-start">
       <div className="min-w-0 max-w-[92%] break-words rounded-2xl rounded-bl-md bg-slate-100 px-3.5 py-2.5 text-sm leading-6 text-foreground">
         <span className="sr-only">Assistant: </span>
         {message.content && <Markdown text={message.content} />}
@@ -75,12 +87,25 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         )}
       </div>
+      {message.walkthrough && message.status === "done" && (
+        <div className="w-full">
+          <WalkthroughCard messageId={message.id} script={message.walkthrough} />
+        </div>
+      )}
     </div>
   );
 });
 
 function ChatDock() {
-  const { messages, streaming, send, retry, stop, reset } = useChat();
+  const tour = useTour();
+  const { messages, streaming, send, retry, stop, reset } = useChat({
+    // Read when a question is sent, so the answer matches what is on screen.
+    getContext: () => readChatContext(window.location.pathname, window.location.search),
+    // The answer is complete: start pointing at the charts and tables it mentions.
+    onWalkthrough: (messageId, script) => {
+      tour.begin(messageId, script);
+    },
+  });
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -97,11 +122,25 @@ function ChatDock() {
     pinnedRef.current = true;
   }, [open]);
 
-  // Follow the stream unless the reader has scrolled up.
+  // Follow the stream (and the walkthrough card as it changes) unless the reader has scrolled up.
+  const { status: tourStatus, stepIndex: tourStep } = tour.state;
   useEffect(() => {
     const log = logRef.current;
     if (open && log && pinnedRef.current) log.scrollTop = log.scrollHeight;
-  }, [messages, open]);
+  }, [messages, open, tourStatus, tourStep]);
+
+  // First visit to the dashboard: open the panel and ask for the walkthrough.
+  // The timer (not a direct call) keeps this to one question under React's
+  // dev-mode double effect, which would otherwise abort the first request.
+  useEffect(() => {
+    if (!WALKTHROUGH_ON_FIRST_VISIT || !tour.page) return;
+    const timer = window.setTimeout(() => {
+      if (!claimFirstVisit()) return;
+      setOpen(true);
+      send(WALKTHROUGH_QUESTION);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [tour.page, send]);
 
   function close() {
     setOpen(false);
@@ -195,7 +234,7 @@ function ChatDock() {
                 <p className="mt-3 text-sm font-semibold text-brand-navy">How can I help?</p>
                 <p className="mt-1 text-xs leading-5 text-muted">Ask about profit &amp; loss, sales, or receivables.</p>
                 <div className="mt-4 flex w-full flex-col gap-2">
-                  {SUGGESTIONS.map((question) => (
+                  {(tour.page ? [WALKTHROUGH_QUESTION, ...SUGGESTIONS] : SUGGESTIONS).map((question) => (
                     <button
                       key={question}
                       type="button"

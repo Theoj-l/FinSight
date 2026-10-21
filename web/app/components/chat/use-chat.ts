@@ -1,8 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { TourScript } from "../tour/tour-script";
+import type { ChatContext } from "./chat-context";
 import { EMPTY_REPLY_MESSAGE, ChatRequestError, describeChatError, streamChatReply } from "./chat-transport";
 import { chatReducer, initialChatState, isStreaming, promptFor } from "./chat-state";
+
+export interface UseChatOptions {
+  /** What the user is looking at right now; read when a question is sent. */
+  getContext?: () => ChatContext | null;
+  /** An answer finished and came with charts/tables to point at. */
+  onWalkthrough?: (messageId: string, script: TourScript) => void;
+}
 
 let sequence = 0;
 // Only called from event handlers (never during render), so it can be impure.
@@ -11,8 +20,10 @@ let sequence = 0;
 const nextId = () => `m${Date.now().toString(36)}-${++sequence}`;
 
 /** Conversation state plus the actions that drive a streamed reply. */
-export function useChat() {
+export function useChat(options: UseChatOptions = {}) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
+  // Latest callbacks, so `run` can stay stable while the caller's closures change.
+  const optionsRef = useRef(options);
   // The request that is currently in flight. Also the synchronous source of
   // truth for "is a reply streaming?" between renders.
   const abortRef = useRef<AbortController | null>(null);
@@ -21,7 +32,8 @@ export function useChat() {
 
   useEffect(() => {
     stateRef.current = state;
-  }, [state]);
+    optionsRef.current = options;
+  });
 
   // Cancel any in-flight request if the widget unmounts (e.g. on sign-out).
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -30,15 +42,27 @@ export function useChat() {
     const controller = new AbortController();
     abortRef.current = controller;
     let received = false;
+    // A holder, not a plain variable: the callback below assigns it, and TypeScript
+    // would otherwise narrow a `let` to `null` after the loop.
+    const walkthrough: { script: TourScript | null } = { script: null };
 
     try {
-      for await (const delta of streamChatReply(prompt, { signal: controller.signal })) {
+      for await (const delta of streamChatReply(prompt, {
+        signal: controller.signal,
+        context: optionsRef.current.getContext?.() ?? null,
+        onWalkthrough: (script) => {
+          walkthrough.script = script;
+          dispatch({ type: "walkthrough", id: assistantId, script });
+        },
+      })) {
         if (!delta) continue;
         received = true;
         dispatch({ type: "delta", id: assistantId, text: delta });
       }
       if (!received) throw new ChatRequestError(EMPTY_REPLY_MESSAGE);
       dispatch({ type: "finish", id: assistantId });
+      // The whole answer is on screen: start pointing at the page while it is read.
+      if (walkthrough.script) optionsRef.current.onWalkthrough?.(assistantId, walkthrough.script);
     } catch (error) {
       if (controller.signal.aborted) dispatch({ type: "stop", id: assistantId });
       else dispatch({ type: "fail", id: assistantId, error: describeChatError(error) });

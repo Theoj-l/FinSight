@@ -11,9 +11,19 @@
 //                      The whole reply is already here, so it is revealed
 //                      progressively on the client (simulateStream) to keep the
 //                      same streaming UX until the server streams for real.
+//
+// Optional extras (JSON replies and demo mode only for now):
+//   request  `context`      which dashboard period/filters the user is looking at
+//   response `walkthrough`  { opening, steps: [{ label, explanation }] } — which
+//                           charts/tables to point at while explaining. It is
+//                           validated, and handed to `onWalkthrough` once the
+//                           text has finished.
 // ---------------------------------------------------------------------------
 
-import { mockReplyFor } from "./mock-replies";
+import type { TourScript } from "../tour/tour-script";
+import { parseTourScript } from "../tour/tour-script";
+import type { ChatContext } from "./chat-context";
+import { mockReplyFor, mockWalkthroughFor } from "./mock-replies";
 import { StreamError, parseSseStream, readTextStream } from "./stream-parser";
 
 export const CHAT_ENDPOINT = "/api/chat";
@@ -120,6 +130,10 @@ export interface StreamChatOptions {
   /** Use canned replies instead of the API. Defaults to CHAT_MOCK_ENABLED. */
   mock?: boolean;
   mockLatencyMs?: number;
+  /** What the user is looking at; sent to the server when present. */
+  context?: ChatContext | null;
+  /** Called once, after the reply text, if the answer comes with a valid walkthrough. */
+  onWalkthrough?: (script: TourScript) => void;
 }
 
 async function errorFromResponse(response: Response): Promise<ChatRequestError> {
@@ -146,10 +160,14 @@ export async function* streamChatReply(
     timeoutMs = REQUEST_TIMEOUT_MS,
     mock = CHAT_MOCK_ENABLED,
     mockLatencyMs = MOCK_LATENCY_MS,
+    context,
+    onWalkthrough,
   }: StreamChatOptions = {},
 ): AsyncGenerator<string> {
   if (mock) {
     yield* streamMockReply(message, signal, mockLatencyMs);
+    const walkthrough = mockWalkthroughFor(message);
+    if (walkthrough) onWalkthrough?.(walkthrough);
     return;
   }
 
@@ -165,7 +183,7 @@ export async function* streamChatReply(
           "Content-Type": "application/json",
           Accept: "text/event-stream, text/plain;q=0.9, application/json;q=0.8",
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify(context ? { message, context } : { message }),
         signal: combined,
       });
     } catch (error) {
@@ -196,6 +214,9 @@ export async function* streamChatReply(
 
     if (simulate) yield* simulateStream(reply, { signal: combined });
     else yield reply;
+
+    const walkthrough = parseTourScript((data as { walkthrough?: unknown }).walkthrough);
+    if (walkthrough) onWalkthrough?.(walkthrough);
   } catch (error) {
     if (signal?.aborted) throw error; // the caller cancelled — pass it through untouched
     if (error instanceof ChatRequestError) throw error;

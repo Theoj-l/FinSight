@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppPage } from "@/app/components/app-page";
+import { TourTarget } from "@/app/components/tour/tour-target";
 import { RevenueExpenseChart } from "./components/revenue-expense-chart";
 import { ProfitMarginChart } from "./components/profit-margin-chart";
 import { RevenueByGroupChart } from "./components/revenue-by-group-chart";
@@ -74,25 +75,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
 
         <DashboardFilters key={JSON.stringify(selection)} options={optionsResult.options} selection={selection} error={filterError}>
-        <KpiCards data={kpiResult.data} error={kpiResult.error} userId={user.id} />
+        <TourTarget id="kpi-cards">
+          <KpiCards data={kpiResult.data} error={kpiResult.error} userId={user.id} />
+        </TourTarget>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-          <div className="h-full">
+          <TourTarget id="revenue-vs-expenses" className="h-full">
             <RevenueExpenseChart data={chartData} error={chartError} />
-          </div>
-          <div className="h-full">
+          </TourTarget>
+          <TourTarget id="profit-margin" className="h-full">
             <ProfitMarginChart data={profitMarginData} error={profitMarginError} />
-          </div>
+          </TourTarget>
         </div>
 
         <div className="mt-8">
-          <div className="h-full">
+          <TourTarget id="revenue-by-group" className="h-full">
             <RevenueByGroupChart data={revenueByGroupData} error={revenueByGroupError} />
-          </div>
+          </TourTarget>
         </div>
 
         <div className="mt-8">
-          <ProfitLossTable data={profitLossData} error={profitLossError} />
+          <TourTarget id="profit-loss">
+            <ProfitLossTable data={profitLossData} error={profitLossError} />
+          </TourTarget>
         </div>
         </DashboardFilters>
     </AppPage>

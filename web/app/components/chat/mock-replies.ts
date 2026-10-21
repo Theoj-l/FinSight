@@ -1,11 +1,13 @@
 // ---------------------------------------------------------------------------
 // mock-replies.ts — canned answers for the chat widget's demo mode
-// (NEXT_PUBLIC_CHAT_MOCK=true). Pure: no imports, no I/O.
+// (NEXT_PUBLIC_CHAT_MOCK=true). Pure: no I/O (only a type import).
 //
 // Every figure here is invented. The widget shows a "Demo mode" banner, and
 // each numeric answer ends with a sample-data note, so fake numbers can't be
 // mistaken for real ledger data even if someone copies the text out.
 // ---------------------------------------------------------------------------
+
+import type { TourScript } from "../tour/tour-script";
 
 /** Send this as a message in demo mode to see the error state and "Try again". */
 export const MOCK_ERROR_COMMAND = "/error";
@@ -60,16 +62,86 @@ Try one of the suggested questions, or ask in your own words.
 const UNSUPPORTED =
   "I can only answer questions related to Profit & Loss, Sales, and Accounts Receivable.\n\n*Demo mode: answers are samples, not real data.*";
 
+const DASHBOARD_TOUR = `Here's your dashboard, one part at a time. I'll highlight each chart and table as I explain it, so you can see exactly what I mean.
+
+*Demo mode: answers are samples, not real data.*`;
+
+// Walkthrough text deliberately quotes no figures: unlike the replies above it
+// has no sample-data note, so it must not contain anything that looks real.
+const PROFIT_WALKTHROUGH: TourScript = {
+  opening: "I've lined up the parts of your dashboard that show this. Follow along as I point to each one.",
+  steps: [
+    {
+      label: "kpi-cards",
+      explanation:
+        "Start with the Net profit and Net margin cards. Each shows this month's value and how it moved compared with last month.",
+    },
+    {
+      label: "profit-margin",
+      explanation:
+        "The bars are net profit month by month, and the red line is net margin. Compare the most recent bar with the one before it.",
+    },
+    {
+      label: "profit-loss",
+      explanation:
+        "The Profit and Loss table spells out where the change came from: revenue, cost of sales and operating expenses, each set against budget. Green means better than plan.",
+    },
+  ],
+};
+
+const DASHBOARD_WALKTHROUGH: TourScript = {
+  opening: "I'll walk you through the dashboard from top to bottom.",
+  steps: [
+    {
+      label: "filters",
+      explanation:
+        "Start here. Pick a single month or a date range, and optionally narrow to specific business units. Everything below refreshes when you press Apply Filters.",
+    },
+    {
+      label: "kpi-cards",
+      explanation:
+        "Your headline numbers for the selected month, each compared with the month before: revenue, profit, margins and budget variance.",
+    },
+    {
+      label: "revenue-vs-expenses",
+      explanation:
+        "Navy bars are revenue and red bars are operating expenses, month by month. Operating expenses here do not include cost of sales.",
+    },
+    {
+      label: "profit-margin",
+      explanation:
+        "The bars show net profit, and the red line is net margin: profit as a percentage of revenue, read on the right-hand axis.",
+    },
+    {
+      label: "revenue-by-group",
+      explanation:
+        "How invoiced revenue splits across product groups. It comes from invoices rather than the ledger, so its total can differ from the revenue above.",
+    },
+    {
+      label: "profit-loss",
+      explanation:
+        "The full statement: this month's actual, the year to date, and the month's budget, with a variance percentage. Green is favorable and red is unfavorable.",
+    },
+  ],
+};
+
 interface Rule {
   pattern: RegExp;
   reply: string;
+  /** Charts and tables to point at while explaining the reply. */
+  walkthrough?: TourScript;
 }
 
 // Order matters: the first match wins ("outstanding receivables by customer"
 // must hit receivables, not sales).
 const RULES: Rule[] = [
+  {
+    pattern: /walk me through|walkthrough|(explain|show me|tour).*(dashboard|page|screen)|how (do i|to) read/i,
+    reply: DASHBOARD_TOUR,
+    walkthrough: DASHBOARD_WALKTHROUGH,
+  },
   { pattern: /receivable|outstanding|overdue|owe|collect|debtor|aging|ageing/i, reply: RECEIVABLES },
-  { pattern: /profit|margin|net income|p&l|loss|expense|cost/i, reply: PROFIT },
+  { pattern: /profit|margin|net income|p&l|loss|expense|cost/i, reply: PROFIT, walkthrough: PROFIT_WALKTHROUGH },
   { pattern: /customer|sales|revenue|sold|best|top|highest/i, reply: SALES },
   { pattern: /^\s*(hi|hello|hey|help)\b|what can you|how do you work/i, reply: HELP },
 ];
@@ -78,4 +150,10 @@ const RULES: Rule[] = [
 export function mockReplyFor(message: string): string | null {
   if (message.trim().toLowerCase() === MOCK_ERROR_COMMAND) return null;
   return RULES.find(({ pattern }) => pattern.test(message))?.reply ?? UNSUPPORTED;
+}
+
+/** The charts and tables to point at for that message's canned answer, if any. */
+export function mockWalkthroughFor(message: string): TourScript | null {
+  if (message.trim().toLowerCase() === MOCK_ERROR_COMMAND) return null;
+  return RULES.find(({ pattern }) => pattern.test(message))?.walkthrough ?? null;
 }

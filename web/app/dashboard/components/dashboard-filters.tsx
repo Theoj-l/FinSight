@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PageLoading } from "@/app/components/page-loading";
+import { TourBadge } from "@/app/components/tour/tour-target";
 import { BRANCH_LEDGER_MESSAGE, type FilterOptions, type FilterSelection } from "../data/dashboard-scope";
 import { formatPeriod } from "../data/revenue-expense-utils";
 
@@ -39,7 +40,8 @@ export function DashboardFilters({ options, selection, error, children }: { opti
   const style = "mt-1 w-full rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-sm text-foreground focus:outline-2 focus:outline-brand-blue";
   const periodLabel = selection.periodStart === selection.periodEnd ? formatPeriod(Number(selection.periodStart)) : `${formatPeriod(Number(selection.periodStart))} to ${formatPeriod(Number(selection.periodEnd))}`;
   return <>
-    <section aria-label="Dashboard filters" className="mt-6 rounded-xl border border-brand-navy/15 bg-brand-blue-light/60 p-5">
+    <section aria-label="Dashboard filters" data-tour-id="filters" className="relative mt-6 rounded-xl border border-brand-navy/15 bg-brand-blue-light/60 p-5">
+      <TourBadge id="filters" />
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-brand-navy">Reporting scope</h2>
