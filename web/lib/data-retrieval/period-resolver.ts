@@ -140,6 +140,11 @@ export async function resolvePeriod(
     return buildResult(periodNos);
   }
 
+  if (token === "next_month") {
+    periodNos = [addMonths(now, 1)];
+    return buildResult(periodNos);
+  }
+
   if (token === "last_month") {
     periodNos = [addMonths(now, -1)];
     return buildResult(periodNos);

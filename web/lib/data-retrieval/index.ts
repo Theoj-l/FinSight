@@ -31,6 +31,7 @@ import {
 } from "./services/ar-service";
 
 import { getPerformanceSummary } from "./services/performance-service";
+import { getAnomalyAnalysis, getForecastAnalysis } from "./services/anomaly-forecast-service";
 
 import {
   getPaymentFollowUp,
@@ -51,6 +52,8 @@ const QUESTION_TYPE_HANDLERS: Record<string, Handler> = {
   overdue_customers: getOverdueCustomers,
   ar_summary:        getARSummary,
   pl_summary:        getPLSummary,
+  anomaly_retrieval: getAnomalyAnalysis,
+  forecast_retrieval: getForecastAnalysis,
 
   // Analytical Interpretation
   revenue_variance:    getVarianceBreakdown,
@@ -61,6 +64,8 @@ const QUESTION_TYPE_HANDLERS: Record<string, Handler> = {
   ar_variance:         getVarianceBreakdown,
   margin_variance:     getMarginAnalysis,
   performance_summary: getPerformanceSummary,
+  anomaly_explanation: getAnomalyAnalysis,
+  anomaly_impact:      getAnomalyAnalysis,
 
   // Recommendation
   payment_follow_up:     getPaymentFollowUp,
@@ -69,6 +74,8 @@ const QUESTION_TYPE_HANDLERS: Record<string, Handler> = {
   margin_investigation:  getManagementPriorities,
   payroll_investigation: getManagementPriorities,
   management_priority:   getManagementPriorities,
+  anomaly_investigation: getAnomalyAnalysis,
+  forecast_action:       getForecastAnalysis,
 };
 
 // ── Dispatcher ──────────────────────────────────────────────────────────────
@@ -100,4 +107,5 @@ export { getMetricValue, getMetricComparison, getMetricTrend, getTopN } from "./
 export { getPLSummary, getVarianceBreakdown, getMarginAnalysis } from "./services/pl-service";
 export { getInvoiceStatus, getOverdueCustomers, getARSummary } from "./services/ar-service";
 export { getPerformanceSummary } from "./services/performance-service";
+export { getAnomalyAnalysis, getForecastAnalysis } from "./services/anomaly-forecast-service";
 export { getPaymentFollowUp, getManagementPriorities } from "./services/recommendation-service";

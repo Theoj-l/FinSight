@@ -28,6 +28,8 @@ export const QUESTION_TYPES = [
   "overdue_customers",
   "ar_summary",
   "pl_summary",
+  "anomaly_retrieval",
+  "forecast_retrieval",
   // Analytical Interpretation
   "revenue_variance",
   "cost_variance",
@@ -37,6 +39,8 @@ export const QUESTION_TYPES = [
   "payroll_variance",
   "ar_variance",
   "performance_summary",
+  "anomaly_explanation",
+  "anomaly_impact",
   // Recommendation
   "payment_follow_up",
   "cost_investigation",
@@ -44,6 +48,8 @@ export const QUESTION_TYPES = [
   "margin_investigation",
   "payroll_investigation",
   "management_priority",
+  "anomaly_investigation",
+  "forecast_action",
   // Fallback
   "unsupported",
 ] as const;
@@ -96,6 +102,8 @@ export const DATASETS = [
   "sales",
   "payroll",
   "accounts_receivable",
+  "anomaly_detection",
+  "forecasting",
 ] as const;
 
 export type Dataset = (typeof DATASETS)[number];

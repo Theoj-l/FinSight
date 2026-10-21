@@ -35,6 +35,8 @@ export const QUESTION_TYPES_BY_INTENT: Record<Intent, Set<string>> = {
     "overdue_customers",
     "ar_summary",
     "pl_summary",
+    "anomaly_retrieval",
+    "forecast_retrieval",
   ]),
   analytical_interpretation: new Set([
     "revenue_variance",
@@ -45,6 +47,8 @@ export const QUESTION_TYPES_BY_INTENT: Record<Intent, Set<string>> = {
     "payroll_variance",
     "ar_variance",
     "performance_summary",
+    "anomaly_explanation",
+    "anomaly_impact",
   ]),
   recommendation: new Set([
     "payment_follow_up",
@@ -53,6 +57,8 @@ export const QUESTION_TYPES_BY_INTENT: Record<Intent, Set<string>> = {
     "margin_investigation",
     "payroll_investigation",
     "management_priority",
+    "anomaly_investigation",
+    "forecast_action",
   ]),
   unsupported: new Set(["unsupported"]),
 };

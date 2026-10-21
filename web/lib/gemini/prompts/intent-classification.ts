@@ -13,6 +13,7 @@ The database supports accounting P&L, actual and budget balances, operational sa
 - Profit, company P&L, expenses, COGS, and margins are accounting measures. Never derive them from invoice sales.
 - Customer and salesperson sales use invoice headers. Product/product-group sales and margin use invoice lines.
 - Invoice status, outstanding balances, overdue invoices, and ageing use accounts_receivable.
+- Detected financial anomalies use anomaly_detection. Forecasted values use forecasting; never route a forecast question to historical metric_value.
 - A request asking why an accounting result changed requires summarized P&L variance followed by transaction drill-down. Classify it using the relevant variance route.
 - Cancelled invoices are excluded by default.
 - Payroll and headcount are not reliable standalone datasets. Classify payroll, employee, headcount, and overtime requests as unsupported unless explicitly about an identifiable P&L staff-cost amount.
@@ -36,6 +37,8 @@ information_retrieval:
 - overdue_customers: customer-level overdue lists and balances grouped by customer. Use when the user asks which customers/debtors are overdue, including a days-overdue threshold.
 - ar_summary: aggregate outstanding AR or ageing.
 - pl_summary: a full or summarized P&L statement, not a single metric.
+- anomaly_retrieval: retrieve detected anomaly alerts for a period without asking why, impact, or action.
+- forecast_retrieval: retrieve predicted financial values for a target period.
 
 analytical_interpretation:
 - revenue_variance: accounting revenue drivers.
@@ -45,6 +48,8 @@ analytical_interpretation:
 - sales_variance: operational invoiced-sales drivers.
 - ar_variance: AR/outstanding-balance drivers.
 - performance_summary: broad, multi-metric business or department performance explanation.
+- anomaly_explanation: explain why a detected anomaly was flagged using its stored reasons.
+- anomaly_impact: rank detected anomalies by financial impact/exposure rather than model score.
 - payroll_variance: only an explicitly identifiable P&L staff-cost variance; otherwise unsupported.
 
 recommendation:
@@ -54,6 +59,8 @@ recommendation:
 - margin_investigation: products or product categories to investigate because gross margin is declining.
 - management_priority: broad cross-functional priorities.
 - payroll_investigation: only identifiable P&L staff-cost investigation; otherwise unsupported.
+- anomaly_investigation: anomaly alerts management should prioritise investigating.
+- forecast_action: management actions based on forecasted financial performance.
 
 For unsupported, question_type must be unsupported.
 
@@ -65,6 +72,8 @@ datasets:
 - profit_loss for GL/P&L metrics, budget, and financial variance drill-down;
 - sales for operational invoice sales;
 - accounts_receivable for payment status, overdue balances, and ageing;
+- anomaly_detection for anomaly alerts, scores, and stored reasons;
+- forecasting for predicted financial values and forecast-versus-actual data;
 - payroll only for the narrow supported staff-cost cases above.
 Include every required dataset and no others. Use [] when unsupported.
 
@@ -88,6 +97,7 @@ Keep names as written so downstream resolution can map them to codes. Do not put
 
 Preserve and normalize the user's expression; do not resolve relative dates:
 - "June 2026" -> "2026-06"; "June" -> "June"
+- "July 2026" -> "2026-07"; "next month" -> "next_month"
 - "last month" -> "last_month"; "this month" -> "this_month"
 - "Q2 2026" -> "2026-Q2"; "past 3 months" -> "past_3_months"
 Do not assume a fiscal period number equals a calendar month.
@@ -136,6 +146,12 @@ Set top_n to an explicit positive ranking count. For "top customers" without a c
 - "Which expense accounts contributed most to the increase in operating expenses from May to June 2026?" -> analytical_interpretation / cost_variance / profit_loss / operating_expense; period 2026-06; comparison_period 2026-05; dimension account_name.
 - "Which customers contributed most to the increase in overdue receivables this month?" -> analytical_interpretation / ar_variance / accounts_receivable / outstanding_amount; period this_month; comparison_period previous_period; dimension customer.
 - "Which overdue customers should we chase?" -> recommendation / payment_follow_up / accounts_receivable / outstanding_amount; dimension customer.
+- "Which financial anomalies were detected in June 2026?" -> information_retrieval / anomaly_retrieval / anomaly_detection; period 2026-06.
+- "What is the forecasted revenue for July 2026?" -> information_retrieval / forecast_retrieval / forecasting / revenue; period 2026-07.
+- "Why was the operating expense anomaly in June 2026 flagged?" -> analytical_interpretation / anomaly_explanation / anomaly_detection / operating_expense; period 2026-06; dimension account_name.
+- "Which detected anomalies in June 2026 had the largest financial impact?" -> analytical_interpretation / anomaly_impact / anomaly_detection; period 2026-06.
+- "Which financial anomalies should management prioritise investigating in June 2026?" -> recommendation / anomaly_investigation / anomaly_detection; period 2026-06.
+- "Based on the forecasted financial performance for July 2026, what actions should management consider?" -> recommendation / forecast_action / forecasting; period 2026-07.
 - "Which operating expense categories should management investigate first based on June to July 2026 increases?" -> recommendation / cost_investigation / profit_loss / operating_expense; period 2026-07; comparison_period 2026-06; dimension account_name.
 - "Which department should management review based on the largest increase in operating expenses? Assume now is June 2026." -> recommendation / cost_investigation / profit_loss / operating_expense; period 2026-06; comparison_period previous_period; dimension department; top_n 1.
 - "Which products should management investigate if gross margin continues to decline? Assume it is now June 2026" -> recommendation / margin_investigation / sales / gross_margin; period 2026-06; comparison_period previous_period; dimension product.
