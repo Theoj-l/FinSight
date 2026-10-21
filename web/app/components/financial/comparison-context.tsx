@@ -81,12 +81,6 @@ export function ComparisonSelector() {
             <SingleSelect label="Budget scenario" hideLabel value={params.get("budgetId") ?? ""} onChange={value => update("budgetId", value)} options={[{value:"",label:"Unique monthly scenario, if available"},...context.bundle.budgets.map(b => ({value:b.id,label:b.name}))]} className="w-full sm:w-72" />
           </div>
         )}
-        <a
-          href="/settings#budgets-forecasts"
-          className="text-sm font-medium text-brand-blue underline"
-        >
-          Manage budgets & forecasts
-        </a>
       </div>
       <p className="mt-2 text-xs text-muted">
         Actual ledger values stay unchanged. The selected reference applies
