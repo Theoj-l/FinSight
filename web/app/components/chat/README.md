@@ -34,7 +34,7 @@ backend starts streaming:
 On the dashboard the assistant can explain an answer *using* the charts and
 tables on the page: each one is highlighted while its explanation is shown, as a
 step-by-step card under the answer. The labelled parts and their ids live in
-`../tour/tour-labels.ts` (badges 1–6 on the page).
+`../tour/tour-labels.ts` (badges 1–12 on the page).
 
 **Request** — when the user is on the dashboard the widget adds `context`
 (read from the page address, see `chat-context.ts`):

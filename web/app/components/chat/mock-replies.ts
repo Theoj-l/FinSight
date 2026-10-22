@@ -84,7 +84,7 @@ const PROFIT_WALKTHROUGH: TourScript = {
     {
       label: "profit-loss",
       explanation:
-        "The Profit and Loss table spells out where the change came from: revenue, cost of sales and operating expenses, each set against budget. Green means better than plan.",
+        "The Profit and Loss table spells out where the change came from: revenue, cost of sales and operating expenses, each set against your chosen comparison source. Green means favorable.",
     },
   ],
 };
@@ -98,9 +98,24 @@ const DASHBOARD_WALKTHROUGH: TourScript = {
         "Start here. Pick a single month or a date range, and optionally narrow to specific business units. Everything below refreshes when you press Apply Filters.",
     },
     {
+      label: "comparison-source",
+      explanation:
+        "Choose what the figures are compared against: the previous month, the budget, or a forecast. The headline cards, the first two charts and the profit and loss table all follow this choice.",
+    },
+    {
       label: "kpi-cards",
       explanation:
-        "Your headline numbers for the selected month, each compared with the month before: revenue, profit, margins and budget variance.",
+        "Your headline numbers for the selected month, each compared with the source you chose: revenue, profit, margins and expense ratio. A flag appears when a figure breaches your threshold settings.",
+    },
+    {
+      label: "anomalies",
+      explanation:
+        "Unusual movements the model found for the selected months, strongest first. Open one to see why it was flagged.",
+    },
+    {
+      label: "profit-yoy",
+      explanation:
+        "Net profit for the latest three months set against the same three months a year earlier, with the total change.",
     },
     {
       label: "revenue-vs-expenses",
@@ -110,7 +125,7 @@ const DASHBOARD_WALKTHROUGH: TourScript = {
     {
       label: "profit-margin",
       explanation:
-        "The bars show net profit, and the red line is net margin: profit as a percentage of revenue, read on the right-hand axis.",
+        "The bars show profit, and the red line is margin: profit as a percentage of revenue, read on the right-hand axis. Switch between net and gross view.",
     },
     {
       label: "revenue-by-group",
@@ -118,9 +133,24 @@ const DASHBOARD_WALKTHROUGH: TourScript = {
         "How invoiced revenue splits across product groups. It comes from invoices rather than the ledger, so its total can differ from the revenue above.",
     },
     {
+      label: "revenue-by-business-type",
+      explanation:
+        "The same invoiced revenue, split between the Machining and Bulk business types.",
+    },
+    {
+      label: "expense-by-category",
+      explanation:
+        "Where the operating expenses went for the month, by account category, with the change against the previous month.",
+    },
+    {
+      label: "expense-by-business-type",
+      explanation:
+        "Operating expenses split between Machining and Bulk, shown as a percentage mix alongside the total.",
+    },
+    {
       label: "profit-loss",
       explanation:
-        "The full statement: this month's actual, the year to date, and the month's budget, with a variance percentage. Green is favorable and red is unfavorable.",
+        "The full statement: this month's actual, the year to date, and the figure from your chosen comparison source, with a variance percentage. Green is favorable and red is unfavorable.",
     },
   ],
 };

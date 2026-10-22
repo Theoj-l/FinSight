@@ -21,6 +21,19 @@ describe("buildWalkthroughSystemPrompt", () => {
     expect(prompt).toContain("showing period 2026-06");
   });
 
+  it("covers the anomaly, comparison and breakdown panels, and no longer says anomalies have no panel", () => {
+    expect(WALKTHROUGH_LABELS).toHaveLength(12);
+    expect(prompt).toContain("- anomalies (badge 4)");
+    expect(prompt).toContain('"Compare against"');
+    expect(prompt).toContain("- expense-by-category");
+    expect(prompt).not.toMatch(/NO panel for[^.]*anomalies/);
+  });
+
+  it("lists the panels in page order, so badge numbers rise down the page", () => {
+    const numbers = WALKTHROUGH_LABELS.map((label) => TOUR_LABELS[label].number);
+    expect(numbers).toEqual(numbers.map((_, i) => i + 1));
+  });
+
   it("says when not to point at a panel", () => {
     expect(prompt).toContain("NO panel for receivables");
     expect(prompt).toMatch(/Set it to null when no panel helps/);

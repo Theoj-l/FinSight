@@ -71,7 +71,7 @@ const VIEWS_TABLES_BLOCK = `- acc_type(acc_type, description, is_bs_type)
 - budget(budget_key, budget_name)
 - pl_format(seq, row_type, acc_type, description, credit_as_positive)`;
 
-const COMMON_TABLES_BLOCK = `- dept(dept_no, description, segment)  -- departments = business units. Codes: CP Corporate & Shared Services, CR Crane Rental, EN Engineering Services, FA Fabrication & Steel, HL Heavy Lift & Haulage, MN Maintenance & Parts, NA Unallocated, TP Transport & Logistics, TR Equipment Trading.
+const COMMON_TABLES_BLOCK = `- dept(dept_no, description, segment)  -- departments = business units. segment is the business type, exactly 'Machining' or 'Bulk' (the dashboard splits revenue and operating expenses by it; for invoiced revenue join iv_dtl.dept_no = dept.dept_no and group by dept.segment). Codes: CP Corporate & Shared Services, CR Crane Rental, EN Engineering Services, FA Fabrication & Steel, HL Heavy Lift & Haulage, MN Maintenance & Parts, NA Unallocated, TP Transport & Logistics, TR Equipment Trading.
 - branch(branch_code, branch_name, is_active)
 - iv(doc_key, doc_no, debtor_code, doc_date, sales_agent, branch_code, description, local_ex_tax, local_net_total, local_total_cost, cancelled)  -- sales invoice headers.
 - iv_dtl(dtl_key, doc_key, seq, item_code, description, dept_no, qty, unit_price, local_sub_total, local_total_cost)  -- invoice lines. local_sub_total is the line's sales amount, local_total_cost its cost.
@@ -235,7 +235,7 @@ Reply with JSON only, in this shape:
 { "supported": boolean, "needs_clarification": string or null, "reason": string, "dashboard_scope": { "period_start": string, "period_end": string, "units": [string], "branches": [string] } or null, "queries": [ { "purpose": string, "sql": string } ] }
 
 # dashboard_scope
-When a "Context" line says the user has the dashboard open, set dashboard_scope to the dashboard settings that would show what your answer is about, so the dashboard can be moved to match. Otherwise (or when the question is not about a period at all: receivables, customers, anomalies, forecasts, refusals) set it to null.
+When a "Context" line says the user has the dashboard open, set dashboard_scope to the dashboard settings that would show what your answer is about, so the dashboard can be moved to match. Otherwise (or when the question is not about a period at all: receivables, customers, forecasts, refusals) set it to null. An anomaly question about a month IS about a period: use that month (and the department only if the question names one).
 - period_start and period_end are months as YYYYMM. A single month: the same value twice. A trend or range question: its first and last month. A comparison of two months: use the LATER month.
 - units are department codes (dept_no) when the question is about particular departments, otherwise an empty list. Match your SQL: if the SQL does not filter by department, units must be empty.
 - branches are branch codes only when the question is about particular branches' invoice sales, otherwise an empty list. A branch setting hides the ledger panels, so never use one for profit and loss questions.
@@ -245,7 +245,7 @@ When a "Context" line says the user has the dashboard open, set dashboard_scope 
 - Out of scope (investment advice, writing emails or documents, general knowledge, anything not about TSH's own finances): supported=false, queries=[], and a one-sentence polite reason.
 - Too vague to answer, for example it refers to "it" or "that" with nothing to point at: supported=true, needs_clarification="<one short question to ask the user>", queries=[].
 - Otherwise: supported=true, needs_clarification=null, and 1 to 3 queries. Prefer ONE query. Use more only when the answer needs separate lookups (see the rule on change questions below).
-- A request to "walk me through" or "explain" the dashboard IS supported. The answer will point at the dashboard's panels, so fetch what they show for the month on screen (the Context period, else the newest month): (1) company totals for that month AND the month before (revenue, cost of sales, gross profit, gross margin %, operating expenses, net profit), and (2) invoiced revenue by product group for that month.
+- A request to "walk me through" or "explain" the dashboard IS supported. The answer will point at the dashboard's panels, so fetch what they show for the month on screen (the Context period, else the newest month): (1) company totals for that month AND the month before (revenue, cost of sales, gross profit, gross margin %, operating expenses, net profit), (2) invoiced revenue by product group for that month, (3) operating expenses by account for that month (top accounts, with the previous month), and (4) if the anomaly tables are listed above, the strongest current alerts for that month. Keep to the 3 query limit by combining lookups where you can.
 - Questions that ask what to prioritise, follow up, investigate, contact first or review ARE supported, even though they contain "should". Answer them by ranking the relevant data from the database (for example customers by overdue amount and days overdue, accounts by increase, products by margin decline). Never refuse these because they ask for a recommendation. Refuse only advice that is not about TSH's own data.
 
 # Rules for the SQL

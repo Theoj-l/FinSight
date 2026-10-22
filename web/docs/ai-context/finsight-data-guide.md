@@ -104,7 +104,7 @@ is produced by adding the months of the year together.
 
 ## 5. The dashboard, panel by panel
 
-The dashboard page has six labelled parts. Each shows a small numbered badge in its
+The dashboard page has twelve labelled parts, numbered 1 to 12 from top to bottom. Each shows a small numbered badge in its
 top-left corner. The label id is what the assistant returns when it wants a part
 highlighted (see section 7).
 
@@ -123,12 +123,29 @@ Controls what every panel below shows.
   message instead of data.
 - **Branch limitation.** Choosing any branch makes the KPI cards, both trend
   charts and the P&L show a "not available yet" message, because ledger balances
-  and budgets cannot be attributed to branches. Only Revenue by Product Group
-  works with a branch.
+  and budgets cannot be attributed to branches. Only the two invoice-based
+  revenue panels (by Product Group and by Business Type) work with a branch.
+  The anomaly panel also says branch-level attribution is unavailable.
 
-### 2 · `kpi-cards` — Financial overview
+### 2 · `comparison-source` — Compare against
 
-Seven headline figures for one month, each compared with the month before.
+A dropdown directly under the filters. It decides what the KPI cards, the revenue
+vs expenses chart, the profit and margin chart and the P&L table are compared
+with:
+
+- **Previous month** (the default),
+- **Budget** (with a budget scenario picker when there is more than one),
+- **Auto forecast** (the ML model's forecast), or
+- **Manual forecast** (figures entered by the finance team).
+
+This is the only place budgets and forecasts show on the dashboard. The product
+group, business type, expense category, expense business type and year-over-year
+panels always show actuals only and say so in a note under the chart.
+
+### 3 · `kpi-cards` — Financial overview
+
+Headline figures for one month, each compared with the source chosen in panel 2
+(the calculations below describe the default, previous-month view).
 The month shown is the **selected month, or the last month of the range** if a
 range is chosen. "Prior" is the calendar month immediately before it (January
 compares with the previous December).
@@ -158,7 +175,27 @@ debits. Then:
 - If the prior month or the budget is missing, the card says so rather than
   showing zero.
 
-### 3 · `revenue-vs-expenses` — Revenue vs Operating Expenses
+### 4 · `anomalies` — Anomalies to review
+
+A list of unusual movements found by the anomaly-detection model for the selected
+months and business units, strongest (highest score) first. It shows the top three
+with a "View all" button for the rest, and each one explains in plain English why
+it was flagged and links to the chart it affects.
+
+- Only months the model has already checked are covered; the panel says when the
+  selection includes months that have not been checked yet.
+- Not available when a branch is selected.
+- The same alerts are stored in the `anomaly_alert` table.
+
+### 5 · `profit-yoy` — Profit Year-Over-Year Comparison
+
+Net profit for the **latest three months of the selected range** against the **same
+three months one year earlier**, month by month, with the total, the absolute change
+and the percentage change. Net profit is calculated as in panel 3. It always compares
+with last year, whatever panel 2 says. A badge shows whether profit improved or
+declined.
+
+### 6 · `revenue-vs-expenses` — Revenue vs Operating Expenses
 
 A clustered bar chart. For each month: a navy bar for revenue and a red bar for
 operating expenses.
@@ -171,18 +208,18 @@ operating expenses.
   up to and including it** (that exist in the data), to give context. For a
   range, **every month in the range**.
 
-### 4 · `profit-margin` — Net Profit and Margin
+### 7 · `profit-margin` — Net Profit and Margin
 
 A combined chart. Bars (left axis, currency) are net profit per month. A red line
-(right axis, percent) is net margin per month. Same months as panel 3.
+(right axis, percent) is net margin per month. Same months as panel 6. The user can switch the view between net and gross profit.
 
 - Net profit = revenue (`RE`) + other income (`OI`) − cost of sales (`CS`) −
   operating expenses (`EX`).
 - Net margin % = net profit ÷ revenue × 100. If a month's revenue is zero the line
   has a gap for that month.
-- Unlike panel 3, this includes cost of sales and other income.
+- Unlike panel 6, this includes cost of sales and other income.
 
-### 5 · `revenue-by-group` — Revenue by Product Group
+### 8 · `revenue-by-group` — Revenue by Product Group
 
 A donut chart of how revenue splits across product groups, from **sales invoices**
 rather than the ledger.
@@ -199,9 +236,30 @@ rather than the ledger.
 - Slice labels are drawn on the chart only when there are six groups or fewer.
   Otherwise use the legend and hover.
 - Because this comes from invoices and not the ledger, **its total can differ
-  from the revenue in panels 2, 3 and 4.** Do not tell the user they must match.
+  from the revenue in panels 3, 6 and 7.** Do not tell the user they must match.
 
-### 6 · `profit-loss` — Profit and Loss Statement
+### 9 · `revenue-by-business-type` — Revenue by Business Type
+
+The same invoice-based revenue as panel 8 (non-cancelled invoice lines, selected
+period or range), split between the two business types, **Machining** and **Bulk**,
+using the segment of the department on each invoice line. Responds to the period,
+business unit and branch filters. Like panel 8, its total can differ from ledger
+revenue.
+
+### 10 · `expense-by-category` — Operating Expenses by Category
+
+Operating expenses (`EX` accounts, debits − credits) grouped by expense account name
+for the **selected month, or the last month of a range**, with the change against the
+previous calendar month. Follows the period and business unit filters. Actuals only;
+no category forecast exists.
+
+### 11 · `expense-by-business-type` — Operating Expenses by Business Type
+
+Operating expenses split between **Machining** and **Bulk** by the department's
+segment, shown as a percentage mix together with the total operating expenses. It
+covers the selected range month by month. Actuals only.
+
+### 12 · `profit-loss` — Profit and Loss Statement
 
 A table laid out by the rows of `pl_format`.
 
@@ -233,14 +291,22 @@ A table laid out by the rows of `pl_format`.
 
 | Panel | Month / range | Business unit | Branch |
 |---|---|---|---|
-| 2 KPI cards | Last month of the range only | Yes | No (shows message) |
-| 3 Revenue vs Expenses | Yes (single month shows up to 6 months of context) | Yes | No (shows message) |
-| 4 Net Profit and Margin | Same as 3 | Yes | No (shows message) |
-| 5 Revenue by Product Group | Whole range | Yes | **Yes** |
-| 6 Profit and Loss | Last month of the range only (plus year-to-date) | Yes | No (shows message) |
+| 3 KPI cards | Last month of the range only | Yes | No (shows message) |
+| 4 Anomalies | Whole range (only months already checked) | Yes | No (shows message) |
+| 5 Profit year-over-year | Latest three months of the range | Yes | No (shows message) |
+| 6 Revenue vs Expenses | Yes (single month shows up to 6 months of context) | Yes | No (shows message) |
+| 7 Net Profit and Margin | Same as 6 | Yes | No (shows message) |
+| 8 Revenue by Product Group | Whole range | Yes | **Yes** |
+| 9 Revenue by Business Type | Whole range | Yes | **Yes** |
+| 10 Expenses by Category | Last month of the range only | Yes | No (shows message) |
+| 11 Expenses by Business Type | Whole range | Yes | No (shows message) |
+| 12 Profit and Loss | Last month of the range only (plus year-to-date) | Yes | No (shows message) |
 
-Mention this when a user chooses a range: the KPI cards and the P&L describe the
-last month of the range, while the charts cover the whole range.
+Panels 3, 6, 7 and 12 are also compared against whatever "Compare against" (panel 2)
+is set to.
+
+Mention this when a user chooses a range: the KPI cards, the category breakdown and the
+P&L describe the last month of the range, while the charts cover the whole range.
 
 ---
 
@@ -287,14 +353,18 @@ Return the normal `reply` text, and **optionally** a `walkthrough`:
 
 Rules:
 
-- `label` must be one of these ids, written exactly: `filters`, `kpi-cards`,
-  `revenue-vs-expenses`, `profit-margin`, `revenue-by-group`, `profit-loss`.
-  The page shows them as badges 1 to 6 in that order. Anything else is ignored.
+- `label` must be one of these ids, written exactly: `filters`, `comparison-source`,
+  `kpi-cards`, `anomalies`, `profit-yoy`, `revenue-vs-expenses`, `profit-margin`,
+  `revenue-by-group`, `revenue-by-business-type`, `expense-by-category`,
+  `expense-by-business-type`, `profit-loss`. The page shows them as badges 1 to 12
+  in that order. Anything else is ignored.
 - Use each id **at most once**, in the order you want them shown. Use only the
   parts that help answer *this* question (one is fine). A full walk-through of the
-  dashboard uses all six, in the order above.
+  dashboard can use all twelve, in the order above, but keep it to the panels that
+  matter.
 - Leave `walkthrough` out entirely when no panel helps. There is no panel for
-  receivables, per-customer sales or forecasts, so do not invent a label for them.
+  receivables or per-customer sales, so do not invent a label for them. For anomaly
+  questions use `anomalies`; for budget or forecast questions use `comparison-source`.
 - `explanation` is plain text, two or three sentences, no Markdown. Tie it to what
   the panel shows and to the answer. Only quote figures you were actually given.
 - `opening` is plain text, one or two sentences. Do not repeat `reply` in it.
@@ -304,8 +374,9 @@ Rules:
 
 ## 8. What the app cannot do (do not claim otherwise)
 
-- **No forecasts or predictions yet.** A separate ML service exists but is not
-  connected to any screen or to the assistant.
+- **No forecast chart.** Forecasts and budgets appear only as the comparison
+  source (panel 2) for the KPI cards, the first two charts and the P&L. Forecasts
+  exist only for months after the newest month of data.
 - **No branch view of ledger figures.** Profit, expenses, KPIs, budgets and the
   P&L cannot be split by branch.
 - **No per-customer or receivables view on the dashboard.** The `debtor` and

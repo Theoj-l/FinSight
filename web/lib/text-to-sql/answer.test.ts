@@ -30,13 +30,13 @@ describe("writeAnswerWithWalkthrough", () => {
     expect(result.tokens).toEqual({ input: 10, output: 4 });
   });
 
-  it("asks for JSON limited to the six panel ids, with the dashboard in the system prompt", async () => {
+  it("asks for JSON limited to the twelve panel ids, with the dashboard in the system prompt", async () => {
     generateContent.mockResolvedValueOnce(reply({ reply: "ok", walkthrough: null }));
     await writeAnswerWithWalkthrough("q", executed, context);
 
     const { config, contents } = generateContent.mock.calls[0][0];
     expect(config.responseMimeType).toBe("application/json");
-    expect(config.responseSchema.properties.walkthrough.properties.steps.items.properties.label.enum).toHaveLength(6);
+    expect(config.responseSchema.properties.walkthrough.properties.steps.items.properties.label.enum).toHaveLength(12);
     expect(config.systemInstruction).toContain("showing period 2026-06");
     expect(contents).toContain("946629.66");
   });

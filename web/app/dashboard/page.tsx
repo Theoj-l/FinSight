@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { AppPage } from "@/app/components/app-page";
+import { TourTarget } from "@/app/components/tour/tour-target";
 import {
   AnomaliesPanel,
   DashboardPanelLoading,
@@ -117,10 +118,16 @@ export default async function DashboardPage({
           selection={selection}
           error={filterError}
         >
-          {!filterError && <ComparisonSelector />}
+          {!filterError && (
+            <TourTarget id="comparison-source">
+              <ComparisonSelector />
+            </TourTarget>
+          )}
           {filterError ? null : (
             <Suspense fallback={<DashboardPanelLoading label="KPI data" />}>
-              <KpiPanel scope={scope} userId={user.id} />
+              <TourTarget id="kpi-cards">
+                <KpiPanel scope={scope} userId={user.id} />
+              </TourTarget>
             </Suspense>
           )}
 
@@ -135,12 +142,14 @@ export default async function DashboardPage({
             <Suspense
               fallback={<DashboardPanelLoading label="anomaly results" />}
             >
-              <AnomaliesPanel scope={scope} />
+              <TourTarget id="anomalies">
+                <AnomaliesPanel scope={scope} />
+              </TourTarget>
             </Suspense>
           )}
 
           {!filterError && (
-            <div className="mt-8">
+            <TourTarget id="profit-yoy" className="mt-8">
               <Suspense
                 fallback={
                   <DashboardPanelLoading label="profit comparison data" />
@@ -148,67 +157,46 @@ export default async function DashboardPage({
               >
                 <ProfitYoyComparisonPanel scope={scope} />
               </Suspense>
-            </div>
+            </TourTarget>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
             <div className="h-full">
               {!filterError && (
-                <Suspense
-                  fallback={<DashboardPanelLoading label="financial data" />}
-                >
-                  <RevenueExpensePanel
-                    scope={
-                      focus?.finding.chart === "revenue" ? chartScope : scope
-                    }
-                    focus={focus?.finding.chart === "revenue" ? focus : null}
-                  />
-                </Suspense>
+                <TourTarget id="revenue-vs-expenses" className="h-full">
+                  <Suspense
+                    fallback={<DashboardPanelLoading label="financial data" />}
+                  >
+                    <RevenueExpensePanel
+                      scope={
+                        focus?.finding.chart === "revenue" ? chartScope : scope
+                      }
+                      focus={focus?.finding.chart === "revenue" ? focus : null}
+                    />
+                  </Suspense>
+                </TourTarget>
               )}
             </div>
             <div className="h-full">
               {!filterError && (
-                <Suspense
-                  fallback={<DashboardPanelLoading label="profit data" />}
-                >
-                  <ProfitMarginPanel
-                    scope={
-                      focus?.finding.chart === "gross" ? chartScope : scope
-                    }
-                    mode={
-                      focus?.finding.chart === "gross" ||
-                      params.profitMode === "gross"
-                        ? "gross"
-                        : "net"
-                    }
-                    focus={focus?.finding.chart === "gross" ? focus : null}
-                  />
-                </Suspense>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <div className="h-full">
-              {!filterError && (
-                <Suspense
-                  fallback={
-                    <DashboardPanelLoading label="product group revenue" />
-                  }
-                >
-                  <RevenueByGroupPanel scope={scope} />
-                </Suspense>
-              )}
-            </div>
-            <div className="h-full">
-              {!filterError && (
-                <Suspense
-                  fallback={
-                    <DashboardPanelLoading label="business type revenue" />
-                  }
-                >
-                  <RevenueByBusinessTypePanel scope={scope} />
-                </Suspense>
+                <TourTarget id="profit-margin" className="h-full">
+                  <Suspense
+                    fallback={<DashboardPanelLoading label="profit data" />}
+                  >
+                    <ProfitMarginPanel
+                      scope={
+                        focus?.finding.chart === "gross" ? chartScope : scope
+                      }
+                      mode={
+                        focus?.finding.chart === "gross" ||
+                        params.profitMode === "gross"
+                          ? "gross"
+                          : "net"
+                      }
+                      focus={focus?.finding.chart === "gross" ? focus : null}
+                    />
+                  </Suspense>
+                </TourTarget>
               )}
             </div>
           </div>
@@ -216,37 +204,72 @@ export default async function DashboardPage({
           <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div className="h-full">
               {!filterError && (
-                <Suspense
-                  fallback={
-                    <DashboardPanelLoading label="expense categories" />
-                  }
-                >
-                  <ExpenseCategoryPanel scope={scope} />
-                </Suspense>
+                <TourTarget id="revenue-by-group" className="h-full">
+                  <Suspense
+                    fallback={
+                      <DashboardPanelLoading label="product group revenue" />
+                    }
+                  >
+                    <RevenueByGroupPanel scope={scope} />
+                  </Suspense>
+                </TourTarget>
               )}
             </div>
             <div className="h-full">
               {!filterError && (
-                <Suspense
-                  fallback={
-                    <DashboardPanelLoading label="expense business types" />
-                  }
-                >
-                  <ExpenseByBusinessTypePanel scope={scope} />
-                </Suspense>
+                <TourTarget id="revenue-by-business-type" className="h-full">
+                  <Suspense
+                    fallback={
+                      <DashboardPanelLoading label="business type revenue" />
+                    }
+                  >
+                    <RevenueByBusinessTypePanel scope={scope} />
+                  </Suspense>
+                </TourTarget>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="h-full">
+              {!filterError && (
+                <TourTarget id="expense-by-category" className="h-full">
+                  <Suspense
+                    fallback={
+                      <DashboardPanelLoading label="expense categories" />
+                    }
+                  >
+                    <ExpenseCategoryPanel scope={scope} />
+                  </Suspense>
+                </TourTarget>
+              )}
+            </div>
+            <div className="h-full">
+              {!filterError && (
+                <TourTarget id="expense-by-business-type" className="h-full">
+                  <Suspense
+                    fallback={
+                      <DashboardPanelLoading label="expense business types" />
+                    }
+                  >
+                    <ExpenseByBusinessTypePanel scope={scope} />
+                  </Suspense>
+                </TourTarget>
               )}
             </div>
           </div>
 
           <div className="mt-8">
             {!filterError && (
-              <Suspense
-                fallback={
-                  <DashboardPanelLoading label="profit and loss data" />
-                }
-              >
-                <ProfitLossPanel scope={scope} />
-              </Suspense>
+              <TourTarget id="profit-loss">
+                <Suspense
+                  fallback={
+                    <DashboardPanelLoading label="profit and loss data" />
+                  }
+                >
+                  <ProfitLossPanel scope={scope} />
+                </Suspense>
+              </TourTarget>
             )}
           </div>
         </DashboardFilters>

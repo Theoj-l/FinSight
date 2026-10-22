@@ -119,10 +119,16 @@ describe("demo mode — walkthrough", () => {
     const labels = mockWalkthroughFor("Walk me through this dashboard")?.steps.map((step) => step.label);
     expect(labels).toEqual([
       "filters",
+      "comparison-source",
       "kpi-cards",
+      "anomalies",
+      "profit-yoy",
       "revenue-vs-expenses",
       "profit-margin",
       "revenue-by-group",
+      "revenue-by-business-type",
+      "expense-by-category",
+      "expense-by-business-type",
       "profit-loss",
     ]);
   });
@@ -159,6 +165,6 @@ describe("demo mode — walkthrough", () => {
     );
     expect(chunks.join("")).toContain("one part at a time");
     expect(received).toHaveLength(1);
-    expect(received[0].steps).toHaveLength(6);
+    expect(received[0].steps).toHaveLength(12);
   });
 });
