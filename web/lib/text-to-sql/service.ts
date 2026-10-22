@@ -66,7 +66,7 @@ export async function answerChatQuestion(message: string, context: ChatContext |
       today: todayInSingapore(),
       latestPeriod: await getLatestPeriod(),
       context,
-      // Only looked up when the dashboard is open: it is what lets the answer move the dashboard.
+      // Only looked up when the app sends a page context: it is what lets the answer open or set a page.
       ...(context ? { scopeOptions: await getScopeOptions() } : {}),
     });
 
@@ -81,7 +81,7 @@ export async function answerChatQuestion(message: string, context: ChatContext |
       body: {
         reply: result.reply,
         ...(result.walkthrough ? { walkthrough: result.walkthrough } : {}),
-        // The dashboard settings the walkthrough is written for; the page applies them before highlighting.
+        // The page and settings the walkthrough is written for; the app opens them before highlighting.
         ...(result.walkthrough && result.scope ? { scope: result.scope } : {}),
       },
     };

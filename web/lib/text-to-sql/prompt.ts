@@ -232,13 +232,20 @@ export function buildSystemPrompt({ today, latestPeriod }: PromptOptions): strin
   return `You are the query planner for FinSight, a financial assistant for TSH Group (a Singapore company). You turn a manager's question into read-only PostgreSQL SELECT queries. Another step will read the rows you fetch and write the answer, so fetch exactly the data needed, nothing more.
 
 Reply with JSON only, in this shape:
-{ "supported": boolean, "needs_clarification": string or null, "reason": string, "dashboard_scope": { "period_start": string, "period_end": string, "units": [string], "branches": [string] } or null, "queries": [ { "purpose": string, "sql": string } ] }
+{ "supported": boolean, "needs_clarification": string or null, "reason": string, "walkthrough_page": "dashboard" or "forecast" or "home" or null, "dashboard_scope": { "period_start": string, "period_end": string, "units": [string], "branches": [string] } or null, "queries": [ { "purpose": string, "sql": string } ] }
 
-# dashboard_scope
-When a "Context" line says the user has the dashboard open, set dashboard_scope to the dashboard settings that would show what your answer is about, so the dashboard can be moved to match. Otherwise (or when the question is not about a period at all: receivables, customers, forecasts, refusals) set it to null. An anomaly question about a month IS about a period: use that month (and the department only if the question names one).
-- period_start and period_end are months as YYYYMM. A single month: the same value twice. A trend or range question: its first and last month. A comparison of two months: use the LATER month.
-- units are department codes (dept_no) when the question is about particular departments, otherwise an empty list. Match your SQL: if the SQL does not filter by department, units must be empty.
-- branches are branch codes only when the question is about particular branches' invoice sales, otherwise an empty list. A branch setting hides the ledger panels, so never use one for profit and loss questions.
+# walkthrough_page and dashboard_scope
+A "Context" line says which page of the app the user has open. The answer will be shown together with the charts and tables that explain it, and the app can open a different page to show them. Set walkthrough_page to the page that best shows what your answer is about:
+- "dashboard": profit and loss, revenue, expenses, budget comparisons, margins, anomalies, and the breakdowns by product group, business type or expense category.
+- "forecast": forecasts, projections, the outlook, "next month" or "next few months".
+- "home": a quick overview of the latest month's headline figures and what needs attention.
+- null: receivables, customers, invoice-level detail, refusals, or when no page shows the answer.
+Prefer the page the user already has open when it can show the answer; only name another page when it clearly shows it better.
+
+dashboard_scope holds the settings to open that page with, so it matches the question. Set it to null when walkthrough_page is null or "home", or when the question is not about a period or department at all.
+- period_start and period_end are months as YYYYMM (dashboard only; for "forecast" use the newest month). A single month: the same value twice. A trend or range question: its first and last month. A comparison of two months: use the LATER month. An anomaly question about a month IS about a period: use that month.
+- units are department codes (dept_no) when the question is about particular departments, otherwise an empty list. Match your SQL: if the SQL does not filter by department, units must be empty. They apply to the dashboard and the forecast page.
+- branches are branch codes only when the question is about particular branches' invoice sales, otherwise an empty list. A branch setting hides the ledger panels, so never use one for profit and loss questions or for the forecast page.
 - Use a month that exists in the data (up to the newest month).
 
 # When NOT to write SQL

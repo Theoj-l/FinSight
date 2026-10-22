@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { Type, type Schema } from "@google/genai";
+import type { TourPage } from "../../app/components/tour/tour-labels";
 import { parseTourScript, type TourScript } from "../../app/components/tour/tour-script";
 import { genai } from "../gemini/client";
 import { RESPONSE_GENERATION_PROMPT } from "../gemini/prompts/response-generation";
@@ -19,7 +20,7 @@ import { GEMINI_MODEL } from "./config";
 import type { ChatContext } from "./context";
 import type { PlannedQuery } from "./generate-sql";
 import type { QueryRows } from "./run-readonly";
-import { WALKTHROUGH_LABELS, buildWalkthroughSystemPrompt } from "./walkthrough-prompt";
+import { buildWalkthroughSystemPrompt, walkthroughLabels } from "./walkthrough-prompt";
 
 export interface ExecutedQuery extends PlannedQuery, Partial<QueryRows> {
   error?: string;
@@ -67,7 +68,8 @@ export async function writeAnswer(question: string, executed: ExecutedQuery[]): 
   return { reply: text.trim(), tokens: usageOf(response) };
 }
 
-const walkthroughSchema: Schema = {
+/** The reply schema for one page: the panel ids are limited to that page's. */
+const walkthroughSchema = (page: TourPage): Schema => ({
   type: Type.OBJECT,
   properties: {
     reply: { type: Type.STRING },
@@ -81,7 +83,7 @@ const walkthroughSchema: Schema = {
           items: {
             type: Type.OBJECT,
             properties: {
-              label: { type: Type.STRING, enum: [...WALKTHROUGH_LABELS] },
+              label: { type: Type.STRING, enum: [...walkthroughLabels(page)] },
               explanation: { type: Type.STRING },
             },
             required: ["label", "explanation"],
@@ -92,10 +94,10 @@ const walkthroughSchema: Schema = {
     },
   },
   required: ["reply", "walkthrough"],
-};
+});
 
 /**
- * Write the answer and say which dashboard panels to point at. The walkthrough is
+ * Write the answer and say which panels of one page to point at. The walkthrough is
  * checked before it leaves: unknown ids, empty text and repeats are dropped, and
  * it is null when nothing usable is left, so a bad reply can only cost the
  * highlighting, never the answer.
@@ -103,7 +105,7 @@ const walkthroughSchema: Schema = {
 export async function writeAnswerWithWalkthrough(
   question: string,
   executed: ExecutedQuery[],
-  context: ChatContext,
+  context: ChatContext & { page: TourPage },
   moved = false,
 ): Promise<{ reply: string; walkthrough: TourScript | null; tokens: Usage }> {
   const response = await genai.models.generateContent({
@@ -112,7 +114,7 @@ export async function writeAnswerWithWalkthrough(
     config: {
       systemInstruction: buildWalkthroughSystemPrompt(context, moved),
       responseMimeType: "application/json",
-      responseSchema: walkthroughSchema,
+      responseSchema: walkthroughSchema(context.page),
     },
   });
 
@@ -130,5 +132,5 @@ export async function writeAnswerWithWalkthrough(
   const reply = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
   if (!reply) throw new Error("Gemini returned no answer text");
 
-  return { reply, walkthrough: parseTourScript(parsed.walkthrough), tokens: usageOf(response) };
+  return { reply, walkthrough: parseTourScript(parsed.walkthrough, context.page), tokens: usageOf(response) };
 }

@@ -12,10 +12,17 @@ describe("parseChatContext", () => {
     });
   });
 
-  it("is null for anything that is not a dashboard context", () => {
-    for (const raw of [null, undefined, "x", 5, [], {}, { page: "home" }, { page: "dashboard-ish" }]) {
+  it("is null for anything that is not a context for a known page", () => {
+    for (const raw of [null, undefined, "x", 5, [], {}, { page: "settings" }, { page: "dashboard-ish" }]) {
       expect(parseChatContext(raw)).toBeNull();
     }
+  });
+
+  it("knows the forecast, home and other pages, and keeps only the filters each has", () => {
+    const filters = { periodStart: "202606", periodEnd: "202608", units: ["CP"], branches: ["KL"] };
+    expect(parseChatContext({ page: "forecast", ...filters })).toEqual({ page: "forecast", units: ["CP"], branches: ["KL"] });
+    expect(parseChatContext({ page: "home", ...filters })).toEqual({ page: "home", units: [], branches: [] });
+    expect(parseChatContext({ page: "other", ...filters })).toEqual({ page: "other", units: [], branches: [] });
   });
 
   it("drops months and codes that are not in a safe shape", () => {

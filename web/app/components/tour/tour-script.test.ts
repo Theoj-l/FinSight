@@ -44,11 +44,31 @@ describe("parseTourScript", () => {
   );
 });
 
+describe("parseTourScript — one page", () => {
+  const mixed = { opening: "Here.", steps: [{ label: "kpi-cards", explanation: "a" }, { label: "forecast-chart", explanation: "b" }] };
+
+  it("keeps only the steps on the given page", () => {
+    expect(parseTourScript(mixed, "forecast")?.steps.map((step) => step.label)).toEqual(["forecast-chart"]);
+    expect(parseTourScript(mixed, "dashboard")?.steps.map((step) => step.label)).toEqual(["kpi-cards"]);
+  });
+
+  it("is null when no step is on that page", () => {
+    expect(parseTourScript(mixed, "home")).toBeNull();
+  });
+
+  it("keeps every valid step when no page is given", () => {
+    expect(parseTourScript(mixed)?.steps).toHaveLength(2);
+  });
+});
+
 describe("tourPageFor", () => {
-  it("only matches the dashboard", () => {
+  it("matches the pages that have labelled parts, and nothing else", () => {
     expect(tourPageFor("/dashboard")).toBe("dashboard");
     expect(tourPageFor("/dashboard/x")).toBe("dashboard");
+    expect(tourPageFor("/forecast")).toBe("forecast");
+    expect(tourPageFor("/home")).toBe("home");
     expect(tourPageFor("/dashboardx")).toBeNull();
-    expect(tourPageFor("/home")).toBeNull();
+    expect(tourPageFor("/reports")).toBeNull();
+    expect(tourPageFor("/settings")).toBeNull();
   });
 });

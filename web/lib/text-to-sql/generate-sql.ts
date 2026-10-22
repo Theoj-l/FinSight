@@ -5,6 +5,7 @@
 import { Type, type Schema } from "@google/genai";
 import { genai } from "../gemini/client";
 import { GEMINI_MODEL, MAX_QUERIES } from "./config";
+import { isTourPage, TOUR_PAGES, type TourPage } from "../../app/components/tour/tour-labels";
 import { describeContext, parseChatContext, type ChatContext } from "./context";
 import { buildSystemPrompt } from "./prompt";
 
@@ -19,7 +20,10 @@ export interface SqlPlan {
   needsClarification: string | null;
   reason: string;
   queries: PlannedQuery[];
-  /** The dashboard settings that show what the answer is about, if the question is about a period. */
+  /**
+   * The page that best shows what the answer is about, with the settings to open it with.
+   * Its `page` is the page the walkthrough is for. Null when no page was named.
+   */
   scope: ChatContext | null;
   tokens: { input: number; output: number };
 }
@@ -30,6 +34,7 @@ const planSchema: Schema = {
     supported: { type: Type.BOOLEAN },
     needs_clarification: { type: Type.STRING, nullable: true },
     reason: { type: Type.STRING },
+    walkthrough_page: { type: Type.STRING, nullable: true, enum: [...TOUR_PAGES] },
     dashboard_scope: {
       type: Type.OBJECT,
       nullable: true,
@@ -50,7 +55,7 @@ const planSchema: Schema = {
       },
     },
   },
-  required: ["supported", "needs_clarification", "reason", "dashboard_scope", "queries"],
+  required: ["supported", "needs_clarification", "reason", "walkthrough_page", "dashboard_scope", "queries"],
 };
 
 export interface GenerateOptions {
@@ -86,6 +91,7 @@ export async function generateSql(question: string, { today, latestPeriod, feedb
     supported?: boolean;
     needs_clarification?: string | null;
     reason?: string;
+    walkthrough_page?: unknown;
     dashboard_scope?: { period_start?: unknown; period_end?: unknown; units?: unknown; branches?: unknown } | null;
     queries?: { purpose?: string; sql?: string }[];
   };
@@ -100,18 +106,31 @@ export async function generateSql(question: string, { today, latestPeriod, feedb
     needsClarification: raw.needs_clarification?.trim() ? raw.needs_clarification.trim() : null,
     reason: raw.reason ?? "",
     queries,
-    scope: raw.dashboard_scope
-      ? parseChatContext({
-          page: "dashboard",
-          periodStart: raw.dashboard_scope.period_start,
-          periodEnd: raw.dashboard_scope.period_end,
-          units: raw.dashboard_scope.units,
-          branches: raw.dashboard_scope.branches,
-        })
-      : null,
+    scope: planScope(raw.walkthrough_page, raw.dashboard_scope),
     tokens: {
       input: response.usageMetadata?.promptTokenCount ?? 0,
       output: response.usageMetadata?.candidatesTokenCount ?? 0,
     },
   };
+}
+
+/**
+ * The page the model named, with the settings to open it with. A scope without a page is the
+ * dashboard (what the model did before it could name a page); a page without a scope opens
+ * with the page's defaults.
+ */
+function planScope(
+  page: unknown,
+  scope: { period_start?: unknown; period_end?: unknown; units?: unknown; branches?: unknown } | null | undefined,
+): ChatContext | null {
+  const target: TourPage | null = isTourPage(page) ? page : scope ? "dashboard" : null;
+  if (!target) return null;
+  if (!scope) return { page: target, units: [], branches: [] };
+  return parseChatContext({
+    page: target,
+    periodStart: scope.period_start,
+    periodEnd: scope.period_end,
+    units: scope.units,
+    branches: scope.branches,
+  });
 }

@@ -37,7 +37,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
   return (
     <AppPage email={user.email ?? "Finance user"}>
       <PageHeading eyebrow="Decision support" title="Forecast" description="Compare closed-month performance with forward-looking projections for the selected reporting scope." />
-      <DashboardFilters key={JSON.stringify(selection)} destination="/forecast" hidePeriod options={optionsResult.options} selection={selection} error={filterError}>
+      <DashboardFilters key={JSON.stringify(selection)} destination="/forecast" tourId="forecast-filters" hidePeriod options={optionsResult.options} selection={selection} error={filterError}>
         {filterError ? null : <Suspense fallback={<ForecastLoading />}><ForecastPanel scope={scope} /></Suspense>}
       </DashboardFilters>
     </AppPage>

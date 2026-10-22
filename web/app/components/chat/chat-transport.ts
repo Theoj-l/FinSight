@@ -13,13 +13,13 @@
 //                      same streaming UX until the server streams for real.
 //
 // Optional extras (JSON replies and demo mode only for now):
-//   request  `context`      which dashboard period/filters the user is looking at
+//   request  `context`      the page the user is on, with its period/filters
 //   response `walkthrough`  { opening, steps: [{ label, explanation }] } — which
 //                           charts/tables to point at while explaining. It is
 //                           validated, and handed to `onWalkthrough` once the
 //                           text has finished.
-//   response `scope`        the dashboard period/units the walkthrough is written
-//                           for; the page moves the dashboard there first.
+//   response `scope`        the page (and its period/units) the walkthrough is
+//                           written for; the app opens it first.
 // ---------------------------------------------------------------------------
 
 import type { TourScript } from "../tour/tour-script";
@@ -229,7 +229,10 @@ export async function* streamChatReply(
 
     const extras = data as { walkthrough?: unknown; scope?: unknown };
     const walkthrough = parseTourScript(extras.walkthrough);
-    if (walkthrough) onWalkthrough?.(walkthrough, parseChatContext(extras.scope));
+    if (walkthrough) {
+      const scope = parseChatContext(extras.scope);
+      onWalkthrough?.(walkthrough, scope && scope.page !== "other" ? scope : null);
+    }
   } catch (error) {
     if (signal?.aborted) throw error; // the caller cancelled — pass it through untouched
     if (error instanceof ChatRequestError) throw error;

@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { useState } from "react";
+import { TourTarget } from "@/app/components/tour/tour-target";
 import { useCurrency } from "@/lib/currency-context";
 import { formatCurrencyCompact, formatCurrencyExact } from "@/lib/currency";
 import { formatPeriod } from "@/app/dashboard/data/revenue-expense-utils";
@@ -72,6 +73,7 @@ export function ForecastView({ data }: { data: ForecastData }) {
           <h2 className="text-lg font-semibold text-brand-navy">Actuals and projections</h2>
           <p className="mt-1 text-sm text-muted">Solid lines show closed-month actuals; dashed lines are projections, not guarantees.</p>
         </div>
+        <TourTarget id="forecast-metric" className="rounded-lg">
         <div className="flex rounded-lg border border-brand-navy/15 bg-white p-1" role="group" aria-label="Forecast metric">
           {FORECAST_METRICS.map(option => (
             <button key={option} type="button" onClick={() => setMetric(option)} className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${metric === option ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-brand-blue-light"}`}>
@@ -79,14 +81,18 @@ export function ForecastView({ data }: { data: ForecastData }) {
             </button>
           ))}
         </div>
+        </TourTarget>
       </div>
 
+      <TourTarget id="forecast-summary">
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard label={`Next-month ${series.label.toLowerCase()}`} value={next ? formatCurrencyExact(next.value, fx) : "—"} detail={next ? `${formatPeriod(next.periodNo)} projection` : "No projection available"} accent="navy" />
         <SummaryCard label="Latest closed actual" value={latestActual ? formatCurrencyExact(latestActual.actual, fx) : "—"} detail={latestActual ? `${formatPeriod(latestActual.periodNo)} actual` : "No actual available"} accent="blue" />
         <SummaryCard label="Movement vs latest actual" value={nextChange ? `${nextChange.percent >= 0 ? "+" : ""}${nextChange.percent.toFixed(1)}%` : "—"} detail={nextChange ? `${nextChange.amount >= 0 ? "Higher" : "Lower"} by ${formatCurrencyExact(Math.abs(nextChange.amount), fx)}` : "Comparison unavailable"} accent={nextChange && nextChange.percent < 0 ? "red" : "green"} />
       </div>
+      </TourTarget>
 
+      <TourTarget id="forecast-chart">
       <section aria-labelledby="forecast-chart-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -120,8 +126,9 @@ export function ForecastView({ data }: { data: ForecastData }) {
           </ResponsiveContainer>
         </div>
       </section>
+      </TourTarget>
 
-      <div>
+      <TourTarget id="forecast-horizon">
         <section aria-labelledby="forecast-horizon-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h3 id="forecast-horizon-title" className="text-base font-semibold text-brand-navy">Forecast horizon</h3>
           <p className="mt-1 text-sm text-muted">Monthly projections for the selected scope.</p>
@@ -132,7 +139,7 @@ export function ForecastView({ data }: { data: ForecastData }) {
             </table>
           </div>
         </section>
-      </div>
+      </TourTarget>
     </div>
   );
 }

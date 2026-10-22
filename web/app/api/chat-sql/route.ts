@@ -3,7 +3,7 @@
 //
 // The chatbot backend that lets the model write read-only SQL (lib/text-to-sql),
 // as an alternative to /api/chat. Same request and reply shape, plus:
-//   request  `context`      what the user has open (the dashboard's period/filters)
+//   request  `context`      the page the user has open (and its period/filters)
 //   response `walkthrough`  which charts and tables to highlight while explaining
 //
 // Unlike /api/chat this requires a signed-in user: it can read the whole ledger.

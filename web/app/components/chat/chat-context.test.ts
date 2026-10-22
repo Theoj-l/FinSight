@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { readChatContext } from "./chat-context";
 
 describe("readChatContext", () => {
-  it("is null on pages with nothing to point at", () => {
-    expect(readChatContext("/home", "")).toBeNull();
-    expect(readChatContext("/reports", "?period=202608")).toBeNull();
+  it("is page 'other' on pages with nothing to point at", () => {
+    expect(readChatContext("/reports", "?period=202608")).toEqual({ page: "other", units: [], branches: [] });
+    expect(readChatContext("/assistant", "")).toEqual({ page: "other", units: [], branches: [] });
+  });
+
+  it("knows the home page, which has no filters, and the forecast page, which has no period", () => {
+    expect(readChatContext("/home", "?unit=A")).toEqual({ page: "home", units: [], branches: [] });
+    expect(readChatContext("/forecast", "?periodStart=202606&unit=A&branch=KL")).toEqual({ page: "forecast", units: ["A"], branches: ["KL"] });
   });
 
   it("uses the dashboard defaults when no filters are in the address", () => {

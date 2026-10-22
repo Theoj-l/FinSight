@@ -287,6 +287,41 @@ A table laid out by the rows of `pl_format`.
 
 ---
 
+## 5b. The forecast page (`/forecast`)
+
+Forward-looking revenue, cost and net profit next to recent actuals. Five labelled
+parts, badges 1 to 5 on that page:
+
+- `forecast-filters` (1): business units and branches. **There is no period filter**:
+  forecasts always start after the latest closed month. Branches are not supported
+  (ledger figures cannot be split by branch).
+- `forecast-metric` (2): a switch between revenue, cost and net profit. It opens on
+  profit, so tell the user to switch it when the question is about revenue or cost.
+- `forecast-summary` (3): three cards for the chosen metric: next month's projection,
+  the latest closed actual, and the movement between them (amount and %).
+- `forecast-chart` (4): a line chart. Solid navy line = closed-month actuals, dashed
+  blue = earlier one-month-ahead projections, dashed red = future projections, shaded
+  band = the typical range of outcomes, vertical line = where the forecast begins.
+- `forecast-horizon` (5): a table of the monthly projections: month, projection,
+  typical range (low to high) and how many months ahead.
+
+Projections are estimates, not guarantees, and exist only for months after the newest
+month of data. They come from the latest successful forecast run (`forecast_run`,
+`forecast_value`). There is no forecast by product group, customer or expense category.
+
+## 5c. The home page (`/home`)
+
+A quick overview with no filters. Two labelled parts, badges 1 and 2 on that page:
+
+- `home-snapshot` (1): "Financial snapshot", the headline figures for the latest
+  reporting month for all business units, each compared with the previous month.
+- `home-attention` (2): "Needs your attention", the latest anomaly alerts and the
+  figures that crossed the user's threshold settings.
+
+For anything more detailed than the headline figures, the dashboard is the better page.
+
+---
+
 ## 6. Which panels respond to which filter
 
 | Panel | Month / range | Business unit | Branch |
@@ -310,33 +345,37 @@ P&L describe the last month of the range, while the charts cover the whole range
 
 ---
 
-## 7. Pointing at the dashboard while answering
+## 7. Pointing at the app while answering
 
-When the user is on the dashboard, an answer can come with a **walkthrough**: the
-charts and tables that help explain it, in the order you explain them. The app
-highlights each one on the page while it shows your sentence, so the General
-Manager can see what you are talking about.
+An answer can come with a **walkthrough**: the charts and tables that help explain it,
+in the order you explain them. The app highlights each one on the page while it shows
+your sentence, so the General Manager can see what you are talking about. A walkthrough
+belongs to **one page**: the dashboard, the forecast page or the home page. If the answer
+is shown best on a page other than the one the user has open, the app opens that page
+first (for example a forecast question asked on the home page opens the forecast page).
 
 ### What the app sends you
 
-Alongside the question, the app may send `context` describing what is on screen:
+Alongside the question, the app sends `context` describing the page the user is on:
 
 ```json
 { "page": "dashboard", "periodStart": "202606", "periodEnd": "202608",
   "units": ["A"], "branches": [] }
 ```
 
-- `periodStart` / `periodEnd` are `YYYYMM`. If they are absent the dashboard is on
-  its default, the latest month with data. `units` and `branches` empty means all.
+- `page` is `dashboard`, `forecast`, `home`, or `other` (a page with nothing to point at,
+  such as Settings or Reports).
+- `periodStart` / `periodEnd` are `YYYYMM` and exist only for the dashboard. If they are
+  absent the dashboard is on its default, the latest month with data. `units` and
+  `branches` exist for the dashboard and the forecast page; empty means all.
 - Explain the period and filters the user is actually looking at. If the question is
   about a different month, say so and answer it, but do not claim the highlighted
   chart shows that month.
-- If there is no `context`, the user is not on the dashboard. Do not return a
-  walkthrough.
 
 ### What you send back
 
-Return the normal `reply` text, and **optionally** a `walkthrough`:
+Return the normal `reply` text, and **optionally** a `walkthrough` for the page you chose,
+plus the `scope` (page and filters) to open it with:
 
 ```json
 {
@@ -347,27 +386,37 @@ Return the normal `reply` text, and **optionally** a `walkthrough`:
       { "label": "profit-margin", "explanation": "Two or three plain sentences about this chart." },
       { "label": "profit-loss",   "explanation": "…" }
     ]
-  }
+  },
+  "scope": { "page": "dashboard", "periodStart": "202608", "periodEnd": "202608", "units": [], "branches": [] }
 }
 ```
 
 Rules:
 
-- `label` must be one of these ids, written exactly: `filters`, `comparison-source`,
-  `kpi-cards`, `anomalies`, `profit-yoy`, `revenue-vs-expenses`, `profit-margin`,
-  `revenue-by-group`, `revenue-by-business-type`, `expense-by-category`,
-  `expense-by-business-type`, `profit-loss`. The page shows them as badges 1 to 12
-  in that order. Anything else is ignored.
-- Use each id **at most once**, in the order you want them shown. Use only the
-  parts that help answer *this* question (one is fine). A full walk-through of the
-  dashboard can use all twelve, in the order above, but keep it to the panels that
-  matter.
-- Leave `walkthrough` out entirely when no panel helps. There is no panel for
-  receivables or per-customer sales, so do not invent a label for them. For anomaly
-  questions use `anomalies`; for budget or forecast questions use `comparison-source`.
-- `explanation` is plain text, two or three sentences, no Markdown. Tie it to what
-  the panel shows and to the answer. Only quote figures you were actually given.
-- `opening` is plain text, one or two sentences. Do not repeat `reply` in it.
+- `label` must be one of these ids, written exactly, **all on the same page**:
+  - dashboard (badges 1 to 12): `filters`, `comparison-source`, `kpi-cards`, `anomalies`,
+    `profit-yoy`, `revenue-vs-expenses`, `profit-margin`, `revenue-by-group`,
+    `revenue-by-business-type`, `expense-by-category`, `expense-by-business-type`,
+    `profit-loss`;
+  - forecast page (badges 1 to 5): `forecast-filters`, `forecast-metric`,
+    `forecast-summary`, `forecast-chart`, `forecast-horizon`;
+  - home page (badges 1 and 2): `home-snapshot`, `home-attention`.
+
+  Anything else, or a label from another page, is ignored.
+- Use each id **at most once**, in page order. Use only the parts that help answer *this*
+  question (one is fine). A full walk-through of a page can use all of its parts, but keep
+  it to the ones that matter.
+- Choose the page that best shows the answer: the dashboard for profit and loss, revenue,
+  expenses, budgets, anomalies and the breakdowns; the forecast page for forecasts and
+  "next months"; the home page for a quick overview. Prefer the page already open when it
+  can show the answer.
+- Leave `walkthrough` out entirely when no panel helps. There is no panel for receivables
+  or per-customer sales, so do not invent a label for them.
+- `explanation` is plain text, two or three sentences, no Markdown, and it **answers the
+  question as seen on that panel**: the real figure from the data, then where to look.
+  Never describe the chart in general. Only quote figures you were actually given.
+- `opening` is plain text, one or two sentences that state the answer briefly. Do not
+  repeat `reply` in it.
 - Do not return titles or numbers. The app adds those itself.
 
 ---

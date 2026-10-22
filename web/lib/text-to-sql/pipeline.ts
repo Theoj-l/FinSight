@@ -9,6 +9,7 @@
 // If the SQL is rejected or fails, the model gets the error once and tries again.
 // ---------------------------------------------------------------------------
 
+import type { TourPage } from "../../app/components/tour/tour-labels";
 import type { TourScript } from "../../app/components/tour/tour-script";
 import { writeAnswer, writeAnswerWithWalkthrough, type ExecutedQuery } from "./answer";
 import { sameScope, validateScope, type ChatContext, type ScopeOptions } from "./context";
@@ -28,9 +29,9 @@ export interface DirectSqlResult {
   tablesUsed: string[];
   timings: { generateMs: number; runMs: number; answerMs: number; totalMs: number };
   tokens: { input: number; output: number };
-  /** Charts and tables on the dashboard to point at while explaining (only when a dashboard context was given). */
+  /** Charts and tables to point at while explaining (only when a page context was given). All are on `scope.page`. */
   walkthrough?: TourScript | null;
-  /** The dashboard settings the walkthrough is written for. Differs from the user's current ones when the question is about something else. */
+  /** The page, and its settings, the walkthrough is written for. Differs from what the user has open when the answer is shown better elsewhere. */
   scope?: ChatContext | null;
   /** Why it failed or was declined. */
   detail?: string;
@@ -41,10 +42,31 @@ export interface DirectSqlOptions {
   today: string;
   /** Newest month with data, YYYYMM. */
   latestPeriod: number;
-  /** The dashboard the user has open. When given, the answer also says which panels to highlight. */
+  /** The page the user has open. When given, the answer also says which panels to highlight, on that page or another. */
   context?: ChatContext | null;
-  /** What exists in the data, so a scope proposed by the model can be checked. Without it the dashboard is never moved. */
+  /** What exists in the data, so a scope proposed by the model can be checked. Without it the dashboard's period is never changed. */
   scopeOptions?: ScopeOptions;
+}
+
+/** A page with panels to point at, and the settings to show it with. */
+type Target = ChatContext & { page: TourPage };
+
+/**
+ * Where the walkthrough happens: the page the model named (if it is a real scope), otherwise the
+ * page already open if it has panels to point at, otherwise nowhere (a plain answer). `moved` is
+ * true when that is not what the user has on screen, so the app will open or change a page.
+ */
+function resolveTarget(planned: ChatContext | null, current: ChatContext | null, options: ScopeOptions | undefined): { target: Target | null; moved: boolean } {
+  const open = current && current.page !== "other" ? (current as Target) : null;
+  if (!current) return { target: null, moved: false };
+
+  let proposed = options ? validateScope(planned, options) : null;
+  // Opening another page with no usable period (for the dashboard): use that page's defaults.
+  if (!proposed && planned && planned.page !== "other" && planned.page !== current.page) {
+    proposed = { page: planned.page, units: [], branches: [] };
+  }
+  const target = (proposed as Target | null) ?? open;
+  return { target, moved: Boolean(proposed && !sameScope(proposed, current)) };
 }
 
 const ms = (from: number) => Math.round(performance.now() - from);
@@ -135,11 +157,7 @@ export async function answerWithDirectSql(question: string, options: DirectSqlOp
     // Answer from the rows.
     const t3 = performance.now();
     try {
-      // The scope the question is about, if it is a real one and differs from what is on screen;
-      // otherwise the dashboard stays as the user has it.
-      const proposed = options.context && options.scopeOptions ? validateScope(plan.scope, options.scopeOptions) : null;
-      const target = proposed ?? options.context ?? null;
-      const moved = Boolean(proposed && options.context && !sameScope(proposed, options.context));
+      const { target, moved } = resolveTarget(plan.scope, options.context ?? null, options.scopeOptions);
 
       const written = target
         ? await writeAnswerWithWalkthrough(question, executed, target, moved)

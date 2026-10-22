@@ -7,11 +7,12 @@ import { ChevronDown } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/app/components/page-loading";
+import type { TourLabelId } from "@/app/components/tour/tour-labels";
 import { TourBadge } from "@/app/components/tour/tour-target";
 import { BRANCH_LEDGER_MESSAGE, type FilterOptions, type FilterSelection } from "../data/dashboard-scope";
 import { formatPeriod } from "../data/revenue-expense-utils";
 
-export function DashboardFilters({ options, selection, error, destination = "/dashboard", hidePeriod = false, children }: { options: FilterOptions; selection: FilterSelection; error?: string; destination?: string; hidePeriod?: boolean; children: ReactNode }) {
+export function DashboardFilters({ options, selection, error, destination = "/dashboard", hidePeriod = false, tourId = "filters", children }: { tourId?: TourLabelId; options: FilterOptions; selection: FilterSelection; error?: string; destination?: string; hidePeriod?: boolean; children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -47,8 +48,8 @@ export function DashboardFilters({ options, selection, error, destination = "/da
   }
   const periodLabel = !selection.periodStart || error ? "Unavailable" : selection.periodStart === selection.periodEnd ? formatPeriod(Number(selection.periodStart)) : `${formatPeriod(Number(selection.periodStart))} to ${formatPeriod(Number(selection.periodEnd))}`;
   return <>
-    <section aria-label="Dashboard filters" data-tour-id="filters" className="relative mt-6 rounded-xl border border-brand-navy/15 bg-brand-blue-light/60 p-5">
-      <TourBadge id="filters" />
+    <section aria-label="Dashboard filters" data-tour-id={tourId} className="relative mt-6 rounded-xl border border-brand-navy/15 bg-brand-blue-light/60 p-5">
+      <TourBadge id={tourId} />
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-brand-navy">Reporting scope</h2>

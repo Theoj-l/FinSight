@@ -45,6 +45,60 @@ beforeEach(() => {
   writeAnswerWithWalkthrough.mockResolvedValue({ reply: "rich", walkthrough, tokens: { input: 1, output: 1 } });
 });
 
+const onPage = (page: "home" | "forecast" | "other") => ({ page, units: [] as string[], branches: [] as string[] });
+
+describe("answerWithDirectSql — walkthroughs on any page", () => {
+  it("opens the forecast page when the answer is a forecast, even from the home page", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: onPage("forecast") }));
+    const result = await answerWithDirectSql("forecast next months", { ...options, context: onPage("home"), scopeOptions });
+
+    const [, , target, moved] = writeAnswerWithWalkthrough.mock.calls[0];
+    expect(target).toMatchObject({ page: "forecast" });
+    expect(moved).toBe(true);
+    expect(result.scope).toMatchObject({ page: "forecast" });
+  });
+
+  it("does not move when the page that shows the answer is already open", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: onPage("forecast") }));
+    await answerWithDirectSql("forecast next months", { ...options, context: onPage("forecast"), scopeOptions });
+
+    expect(writeAnswerWithWalkthrough.mock.calls[0][3]).toBe(false);
+  });
+
+  it("opens the dashboard at the period asked about from a page with no panels (like reports)", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: dashboard({ periodStart: "202605", periodEnd: "202605", units: ["TP"] }) }));
+    const result = await answerWithDirectSql("transport revenue may 2026", { ...options, context: onPage("other"), scopeOptions });
+
+    expect(result.scope).toMatchObject({ page: "dashboard", periodStart: "202605", units: ["TP"] });
+    expect(writeAnswerWithWalkthrough.mock.calls[0][3]).toBe(true);
+  });
+
+  it("opens another page with its defaults when the dashboard period is unusable", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: { page: "dashboard", units: [], branches: [] } }));
+    const result = await answerWithDirectSql("walk me through", { ...options, context: onPage("forecast"), scopeOptions });
+
+    expect(result.scope).toMatchObject({ page: "dashboard", units: [] });
+    expect(writeAnswerWithWalkthrough.mock.calls[0][3]).toBe(true);
+  });
+
+  it("answers in plain text when no page is named and the open page has nothing to point at", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: null }));
+    const result = await answerWithDirectSql("who owes us the most", { ...options, context: onPage("other"), scopeOptions });
+
+    expect(writeAnswer).toHaveBeenCalled();
+    expect(writeAnswerWithWalkthrough).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ reply: "plain", walkthrough: null, scope: null });
+  });
+
+  it("keeps the open page when no page is named", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: null }));
+    await answerWithDirectSql("anything", { ...options, context: onPage("home"), scopeOptions });
+
+    expect(writeAnswerWithWalkthrough.mock.calls[0][2]).toMatchObject({ page: "home" });
+    expect(writeAnswerWithWalkthrough.mock.calls[0][3]).toBe(false);
+  });
+});
+
 describe("answerWithDirectSql — which dashboard the walkthrough is for", () => {
   it("moves the dashboard to the scope the question is about, and says so to Call 2", async () => {
     generateSql.mockResolvedValueOnce(plan({ scope: dashboard({ periodStart: "202605", periodEnd: "202605", units: ["TP"] }) }));

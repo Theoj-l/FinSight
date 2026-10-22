@@ -31,47 +31,58 @@ backend starts streaming:
 
 ## Pointing at charts and tables (walkthrough)
 
-On the dashboard the assistant can explain an answer *using* the charts and
-tables on the page: each one is highlighted while its explanation is shown, as a
-step-by-step card under the answer. The labelled parts and their ids live in
-`../tour/tour-labels.ts` (badges 1–12 on the page).
+An answer can be explained *using* the charts and tables of the app: each one is
+highlighted while its explanation is shown, as a step-by-step card. It works on three
+pages, each with its own numbered badges (ids and numbers in `../tour/tour-labels.ts`):
 
-**Request** — when the user is on the dashboard the widget adds `context`
-(read from the page address, see `chat-context.ts`):
+| Page | Parts | Badges |
+| --- | --- | --- |
+| Dashboard (`/dashboard`) | filters, compare-against, KPI cards, anomalies, 8 charts and tables | 1–12 |
+| Forecast (`/forecast`) | filters, metric switch, summary cards, chart, horizon table | 1–5 |
+| Home (`/home`) | financial snapshot, needs your attention | 1–2 |
+
+**The app opens the right page.** A walkthrough belongs to one page. If the answer is
+shown best on another one (a forecast question asked on the home page, a profit question
+asked on Reports), the reply names that page and the widget opens it before the
+highlighting starts. While it runs the chat minimizes and the step card floats beside the
+chat button, so it never covers the part being pointed at; reopening the chat shows the
+card inside the conversation again.
+
+**Request** — the widget adds `context` (read from the page address, see
+`chat-context.ts`). `page` is `dashboard`, `forecast`, `home`, or `other` for pages with
+nothing to point at:
 
 ```json
 { "message": "…", "context": { "page": "dashboard", "periodStart": "202608",
   "periodEnd": "202608", "units": [], "branches": [] } }
 ```
 
-**Response** — the JSON reply may carry an optional `walkthrough`:
+**Response** — the JSON reply may carry an optional `walkthrough` and the `scope` it is
+written for (the page, and its period and filters where it has them):
 
 ```json
-{ "reply": "…", "walkthrough": { "opening": "…",
-  "steps": [ { "label": "profit-margin", "explanation": "…" } ] } }
+{ "reply": "…",
+  "walkthrough": { "opening": "…", "steps": [ { "label": "profit-margin", "explanation": "…" } ] },
+  "scope": { "page": "dashboard", "periodStart": "202608", "periodEnd": "202608", "units": [], "branches": [] } }
 ```
 
-**The dashboard follows the question.** When the answer is about a particular month,
-range or business unit, the reply also carries `scope` (`{ page, periodStart,
-periodEnd, units, branches }`). Before the highlighting starts, the page moves the
-dashboard there (`router.push` to `/dashboard?periodStart=…&unit=…`), waits until
-the address has changed (Next only changes it once the new page is ready), and then
-begins. The backend only returns a `scope` that exists in the data, and only together
-with a walkthrough, so nothing on the page changes without an explanation. If the
-dashboard cannot be moved within 10 seconds the answer is still shown, just without
-the highlighting.
+Before the highlighting starts the widget opens `scope` (`router.push` to
+`/dashboard?periodStart=…&unit=…`, `/forecast?unit=…` or `/home`), waits until the address
+has changed (Next only changes it once the new page is ready) and until the labelled
+parts exist, and then begins. The backend only returns a `scope` that exists in the data,
+and only together with a walkthrough, so nothing changes without an explanation. If the
+page cannot be opened within 10 seconds the answer is still shown, just without the
+highlighting.
 
-It is validated (`parseTourScript`): unknown labels, empty text and duplicates
-are dropped, and a walkthrough with nothing left is ignored, so a bad reply can't
-break the page. It starts once the answer text has finished, and only if those
-parts are on screen; on other pages the answer is shown as plain text. Only JSON
-replies carry it so far (not SSE / plain-text streams). The wording the AI should
-follow is in `docs/ai-context/finsight-data-guide.md`, section 7.
+It is validated (`parseTourScript`): unknown labels, labels from another page, empty text
+and duplicates are dropped, and a walkthrough with nothing left is ignored, so a bad reply
+can't break a page. It starts once the answer text has finished. Only JSON replies carry it
+so far (not SSE / plain-text streams). The wording the AI should follow is in
+`docs/ai-context/finsight-data-guide.md`, section 7.
 
 Demo mode produces walkthroughs too: try "Walk me through this dashboard" or the
 net-profit question. In demo mode the first visit to the dashboard asks for the
-walkthrough by itself (`WALKTHROUGH_ON_FIRST_VISIT` in `chat-widget.tsx`; flip it
-on for everyone once the backend returns walkthroughs).
+walkthrough by itself (`WALKTHROUGH_ON_FIRST_VISIT` in `chat-widget.tsx`).
 
 ## Demo mode (fake answers)
 

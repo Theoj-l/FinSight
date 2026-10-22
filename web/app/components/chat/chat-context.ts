@@ -1,50 +1,65 @@
 // ---------------------------------------------------------------------------
 // chat-context.ts — what the user is looking at, sent along with each question.
 //
-// When the dashboard is open the assistant should explain the period and filters
-// the charts are actually showing, not guess. This reads them from the page
-// address (the dashboard keeps its filters there). Pure: no React, no DOM.
+// The assistant should explain the period and filters the page is actually
+// showing, not guess, and it needs to know which page the user is on so it can
+// either point at what is there or open the page that shows the answer. This
+// reads both from the page address (the dashboard and forecast keep their filters
+// there). Pure: no React, no DOM.
 // ---------------------------------------------------------------------------
 
-import { tourPageFor, type TourPage } from "../tour/tour-script";
+import { TOUR_PAGE_INFO, type TourPage } from "../tour/tour-labels";
+import { tourPageFor } from "../tour/tour-script";
 
 export interface ChatContext {
-  page: TourPage;
-  /** First month on screen, as YYYYMM. Absent means the dashboard default (latest month). */
+  /** The page open, or "other" for a page with nothing the assistant can point at. */
+  page: TourPage | "other";
+  /** First month on screen, as YYYYMM (dashboard only). Absent means the default (latest month). */
   periodStart?: string;
   periodEnd?: string;
-  /** Business-unit (department) codes. Empty means all. */
+  /** Business-unit (department) codes (dashboard and forecast). Empty means all. */
   units: string[];
-  /** Branch codes. Empty means all. */
+  /** Branch codes (dashboard and forecast). Empty means all. */
   branches: string[];
 }
 
-/** The context for a page, or null when the page has nothing the assistant can point at. */
-export function readChatContext(pathname: string, search: string): ChatContext | null {
+/** Whether a page has a period filter. */
+export const hasPeriod = (page: ChatContext["page"]) => page === "dashboard";
+/** Whether a page has business-unit and branch filters. */
+export const hasUnitFilters = (page: ChatContext["page"]) => page === "dashboard" || page === "forecast";
+
+/** The context for the page the user is on. Pages the assistant cannot point at give page "other". */
+export function readChatContext(pathname: string, search: string): ChatContext {
   const page = tourPageFor(pathname);
-  if (!page) return null;
+  if (!page) return { page: "other", units: [], branches: [] };
 
   const params = new URLSearchParams(search);
-  const periodStart = params.get("periodStart") ?? params.get("period") ?? undefined;
-  const periodEnd = params.get("periodEnd") ?? periodStart;
+  const periodStart = hasPeriod(page) ? (params.get("periodStart") ?? params.get("period") ?? undefined) : undefined;
+  const periodEnd = periodStart ? (params.get("periodEnd") ?? periodStart) : undefined;
 
   return {
     page,
     ...(periodStart ? { periodStart } : {}),
     ...(periodEnd ? { periodEnd } : {}),
-    units: params.getAll("unit").filter(Boolean),
-    branches: params.getAll("branch").filter(Boolean),
+    units: hasUnitFilters(page) ? params.getAll("unit").filter(Boolean) : [],
+    branches: hasUnitFilters(page) ? params.getAll("branch").filter(Boolean) : [],
   };
 }
 
-/** The dashboard address that shows a scope. The dashboard keeps its filters in the address. */
+/** The address that shows a scope: its page, with the filters that page keeps in the address. */
 export function scopeToUrl(scope: ChatContext): string {
+  if (scope.page === "other") return TOUR_PAGE_INFO.home.path;
+  const path = TOUR_PAGE_INFO[scope.page].path;
+
   const params = new URLSearchParams();
-  if (scope.periodStart) params.set("periodStart", scope.periodStart);
-  const end = scope.periodEnd ?? scope.periodStart;
-  if (end) params.set("periodEnd", end);
-  for (const unit of scope.units) params.append("unit", unit);
-  for (const branch of scope.branches) params.append("branch", branch);
+  if (hasPeriod(scope.page) && scope.periodStart) {
+    params.set("periodStart", scope.periodStart);
+    params.set("periodEnd", scope.periodEnd ?? scope.periodStart);
+  }
+  if (hasUnitFilters(scope.page)) {
+    for (const unit of scope.units) params.append("unit", unit);
+    for (const branch of scope.branches) params.append("branch", branch);
+  }
   const query = params.toString();
-  return query ? `/dashboard?${query}` : "/dashboard";
+  return query ? `${path}?${query}` : path;
 }

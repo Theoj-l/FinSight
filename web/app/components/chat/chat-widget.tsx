@@ -13,7 +13,8 @@ import {
 import { usePathname } from "next/navigation";
 import { memo, useEffect, useRef, useState } from "react";
 import { claimFirstVisit, useTour } from "../tour/tour-context";
-import { WalkthroughCard } from "../tour/walkthrough-card";
+import { placeWalkthroughCard } from "../tour/card-placement";
+import { FloatingWalkthrough, WalkthroughCard } from "../tour/walkthrough-card";
 import { readChatContext } from "./chat-context";
 import type { ChatMessage } from "./chat-state";
 import { CHAT_ENDPOINT, CHAT_MOCK_ENABLED, DEFAULT_CHAT_ENDPOINT } from "./chat-transport";
@@ -29,9 +30,10 @@ const SUGGESTIONS = [
   "Which customer has the highest sales?",
   "What are our outstanding receivables?",
   "How did net profit change versus last month?",
+  "What is the forecast for the next few months?",
 ];
 
-// Offered on the dashboard, where the assistant can point at the charts and tables.
+// Offered on the dashboard. (Elsewhere, any answer can still come with a walkthrough: the app opens the page that shows it.)
 const WALKTHROUGH_QUESTION = "Walk me through this dashboard";
 
 // First time on the dashboard, ask for the walkthrough automatically. Only where
@@ -180,6 +182,18 @@ function ChatDock() {
 
   // Follow the stream (and the walkthrough card as it changes) unless the reader has scrolled up.
   const { status: tourStatus, stepIndex: tourStep } = tour.state;
+
+  // A walkthrough starting minimizes the chat: its card moves beside the button,
+  // so the chart or table being pointed at stays visible. (Adjusted during render,
+  // like TourProvider does, rather than in an effect.)
+  const [trackedTourStatus, setTrackedTourStatus] = useState(tourStatus);
+  if (trackedTourStatus !== tourStatus) {
+    setTrackedTourStatus(tourStatus);
+    if (trackedTourStatus === "idle" && tourStatus === "active") {
+      setOpen(false);
+      setExpanded(false);
+    }
+  }
   useEffect(() => {
     const log = logRef.current;
     if (open && log && pinnedRef.current) log.scrollTop = log.scrollHeight;
@@ -189,7 +203,7 @@ function ChatDock() {
   // The timer (not a direct call) keeps this to one question under React's
   // dev-mode double effect, which would otherwise abort the first request.
   useEffect(() => {
-    if (!WALKTHROUGH_ON_FIRST_VISIT || !tour.page) return;
+    if (!WALKTHROUGH_ON_FIRST_VISIT || tour.page !== "dashboard") return;
     const timer = window.setTimeout(() => {
       if (!claimFirstVisit()) return;
       setOpen(true);
@@ -250,8 +264,11 @@ function ChatDock() {
     };
   })();
 
+  const tourCardStyle = placeWalkthroughCard(position, viewport, CHAT_BUTTON_SIZE, VIEWPORT_MARGIN, PANEL_GAP);
+
   return (
     <>
+      {!open && tourCardStyle && <FloatingWalkthrough style={tourCardStyle} />}
       <button
         ref={buttonRef}
         type="button"
@@ -415,7 +432,7 @@ function ChatDock() {
                 <p className="mt-3 text-sm font-semibold text-brand-navy">How can I help?</p>
                 <p className="mt-1 text-xs leading-5 text-muted">Ask about profit &amp; loss, sales, or receivables.</p>
                 <div className="mt-4 flex w-full flex-col gap-2">
-                  {(tour.page ? [WALKTHROUGH_QUESTION, ...SUGGESTIONS] : SUGGESTIONS).map((question) => (
+                  {(tour.page === "dashboard" ? [WALKTHROUGH_QUESTION, ...SUGGESTIONS] : SUGGESTIONS).map((question) => (
                     <button
                       key={question}
                       type="button"

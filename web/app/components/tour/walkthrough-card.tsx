@@ -1,27 +1,27 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { Check, ChevronLeft, ChevronRight, Presentation, RotateCcw, X } from "lucide-react";
-import { TOUR_LABELS } from "./tour-labels";
+import { TOUR_LABELS, TOUR_PAGE_INFO } from "./tour-labels";
 import { useTour } from "./tour-context";
 import type { ChatContext } from "../chat/chat-context";
-import type { TourScript } from "./tour-script";
+import { pageOfScript, type TourScript } from "./tour-script";
 
 const chip =
   "grid h-7 min-w-7 place-items-center rounded-full px-1 text-xs font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue";
 
 /**
  * Under an assistant answer that comes with a walkthrough: a button to start it,
- * and while it runs, the step-by-step card that highlights the charts and tables
- * on the page as each one is explained.
+ * and, if the chat is open while it runs, the step-by-step card. While the chat is
+ * minimized the same card is shown by <FloatingWalkthrough> beside the chat button.
  */
 export function WalkthroughCard({ messageId, script, scope }: { messageId: string; script: TourScript; scope: ChatContext | null }) {
-  const { state, page, begin, goTo, next, prev, exit } = useTour();
-
-  // Nothing here to point at (e.g. the answer was given on another page).
-  if (!page) return null;
+  const { state, page, begin } = useTour();
 
   const running = state.messageId === messageId && state.status !== "idle" && state.script !== null;
   if (!running || !state.script) {
+    // The walkthrough may be for another page than the one open: starting it opens that page.
+    const target = scope && scope.page !== "other" ? scope.page : pageOfScript(script);
     return (
       <button
         type="button"
@@ -29,17 +29,41 @@ export function WalkthroughCard({ messageId, script, scope }: { messageId: strin
         className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-brand-blue/30 bg-brand-blue-light/60 px-3 py-1.5 text-xs font-semibold text-brand-navy transition hover:bg-brand-blue-light focus-visible:outline-2 focus-visible:outline-brand-blue"
       >
         <Presentation aria-hidden="true" className="h-3.5 w-3.5 text-brand-blue" />
-        Show me on the dashboard · {script.steps.length} {script.steps.length === 1 ? "part" : "parts"}
+        {target === page ? "Show me on the" : "Take me to the"} {TOUR_PAGE_INFO[target].name} · {script.steps.length} {script.steps.length === 1 ? "part" : "parts"}
       </button>
     );
   }
+
+  return <RunningWalkthrough className="mt-2" />;
+}
+
+/**
+ * The small window shown while the chat is minimized, so the walkthrough does not
+ * cover the chart or table it points at. `style` places it beside the chat button.
+ */
+export function FloatingWalkthrough({ style }: { style: CSSProperties }) {
+  const { state } = useTour();
+  if (!state.script || state.status === "idle") return null;
+  return (
+    <div
+      style={style}
+      className="chat-pop fixed z-40 overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl shadow-brand-navy/25 [scrollbar-width:thin] print:hidden"
+    >
+      <RunningWalkthrough />
+    </div>
+  );
+}
+
+function RunningWalkthrough({ className = "" }: { className?: string }) {
+  const { state, goTo, next, prev, exit } = useTour();
+  if (!state.script || state.status === "idle") return null;
 
   const { status, stepIndex } = state;
   const steps = state.script.steps;
   const last = steps.length - 1;
 
   return (
-    <section aria-label="Walkthrough" className="mt-2 rounded-2xl border border-brand-blue/30 bg-brand-blue-light/60 p-3.5 text-sm">
+    <section aria-label="Walkthrough" className={`rounded-2xl border border-brand-blue/30 bg-brand-blue-light/60 p-3.5 text-sm ${className}`}>
       <div className="flex items-center gap-2">
         <Presentation aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-blue" />
         <p className="flex-1 text-xs font-semibold uppercase tracking-wide text-brand-navy">On your dashboard</p>

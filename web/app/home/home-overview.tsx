@@ -11,6 +11,7 @@ import { useCurrency } from "@/lib/currency-context";
 import { reportingMonth, reportingStatus, timestamp } from "./overview-data";
 import { useHomeAlerts } from "./use-home-alerts";
 import { NotificationPanel } from "./notification-panel";
+import { TourTarget } from "@/app/components/tour/tour-target";
 
 const features = [
   { title: "Dashboard", href: "/dashboard", icon: BarChart3, copy: "Explore financial trends, compare periods and drill into your accounts." },
@@ -62,9 +63,10 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
         </div>
       </section>
 
+      <TourTarget id="home-snapshot">
       <section aria-labelledby="home-kpis">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div><h2 id="home-kpis" className="text-lg font-semibold text-brand-navy">Financial snapshot</h2><p className="mt-1 text-sm text-muted">{period ? `${period} · All business units · ${fx.currency} · ${financialData?.comparisonLabel ?? "Previous month"}` : "Your key financial measures at a glance."}</p></div>
+          <div className="pl-6"><h2 id="home-kpis" className="text-lg font-semibold text-brand-navy">Financial snapshot</h2><p className="mt-1 text-sm text-muted">{period ? `${period} · All business units · ${fx.currency} · ${financialData?.comparisonLabel ?? "Previous month"}` : "Your key financial measures at a glance."}</p></div>
           <Link href={dashboardHref} className={linkStyle}>View all KPIs <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
         </div>
         {!financialData ? <div role="status" className={`${panel} p-6`}><p className="font-medium text-brand-navy">{error ? "Financial snapshot unavailable" : "No financial data yet"}</p><p className="mt-2 text-sm text-muted">{error ?? "No ledger balances are available. Your KPIs and threshold alerts will appear when data is available."}</p><p className="mt-3 text-xs text-muted">Checked <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p></div> : <>
@@ -95,8 +97,11 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
           </details>
         )}
       </section>
+      </TourTarget>
 
+      <TourTarget id="home-attention">
       <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} anomalyAvailable={!!anomalyResult?.status && !anomalyResult.error} anomalyStatus={anomalyResult?.status} anomalyError={anomalyResult?.error} />
+      </TourTarget>
 
       <section aria-labelledby="explore-heading">
         <h2 id="explore-heading" className="text-lg font-semibold text-brand-navy">Explore FinSight</h2>

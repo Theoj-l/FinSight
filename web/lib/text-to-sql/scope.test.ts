@@ -62,3 +62,26 @@ describe("sameScope", () => {
     expect(sameScope(null, scope())).toBe(false);
   });
 });
+
+describe("scopes for pages other than the dashboard", () => {
+  const forecast = (over: Record<string, unknown> = {}) => ({ page: "forecast" as const, units: ["TP"], branches: [] as string[], ...over });
+
+  it("validateScope keeps the forecast page's real units and drops the rest, with no period needed", () => {
+    expect(validateScope(forecast({ units: ["TP", "ZZ"] }), options)).toEqual({ page: "forecast", units: ["TP"], branches: [] });
+  });
+
+  it("validateScope gives the home page no filters at all", () => {
+    expect(validateScope({ page: "home", units: ["TP"], branches: ["KL"] }, options)).toEqual({ page: "home", units: [], branches: [] });
+  });
+
+  it("validateScope never accepts page 'other'", () => {
+    expect(validateScope({ page: "other", units: [], branches: [] }, options)).toBeNull();
+  });
+
+  it("sameScope tells pages apart, and ignores filters a page does not have", () => {
+    expect(sameScope(forecast(), scope())).toBe(false);
+    expect(sameScope(forecast(), forecast({ periodStart: "202601" }))).toBe(true);
+    expect(sameScope({ page: "home", units: ["A"], branches: [] }, { page: "home", units: [], branches: [] })).toBe(true);
+    expect(sameScope(forecast(), forecast({ units: [] }))).toBe(false);
+  });
+});

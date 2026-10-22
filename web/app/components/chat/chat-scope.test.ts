@@ -20,6 +20,12 @@ describe("scopeToUrl", () => {
     expect(scopeToUrl({ ...scope, units: [] })).toBe("/dashboard?periodStart=202605&periodEnd=202605");
   });
 
+  it("builds the address of the other pages: forecast keeps units and branches, home has no filters", () => {
+    expect(scopeToUrl({ page: "forecast", periodStart: "202605", units: ["TP"], branches: [] })).toBe("/forecast?unit=TP");
+    expect(scopeToUrl({ page: "forecast", units: [], branches: [] })).toBe("/forecast");
+    expect(scopeToUrl({ page: "home", units: ["TP"], branches: [] })).toBe("/home");
+  });
+
   it("round-trips: the address it builds is read back as the same scope", () => {
     const url = new URL(scopeToUrl({ ...scope, units: ["CP", "TP"] }), "http://localhost");
     expect(sameScope(readChatContext(url.pathname, url.search), { ...scope, units: ["CP", "TP"] })).toBe(true);
@@ -66,6 +72,14 @@ describe("streamChatReply — scope", () => {
 
   it("passes null when there is no usable scope", async () => {
     expect(await run({ reply: "ok", walkthrough })).toEqual([[walkthrough, null]]);
-    expect(await run({ reply: "ok", walkthrough, scope: { page: "home" } })).toEqual([[walkthrough, null]]);
+    expect(await run({ reply: "ok", walkthrough, scope: { page: "settings" } })).toEqual([[walkthrough, null]]);
+    expect(await run({ reply: "ok", walkthrough, scope: { page: "other" } })).toEqual([[walkthrough, null]]);
+  });
+
+  it("hands over a scope for another page, so the app can open it", async () => {
+    expect(await run({ reply: "ok", walkthrough, scope: { page: "forecast", units: ["TP"], branches: [] } })).toEqual([
+      [walkthrough, { page: "forecast", units: ["TP"], branches: [] }],
+    ]);
+    expect(await run({ reply: "ok", walkthrough, scope: { page: "home" } })).toEqual([[walkthrough, { page: "home", units: [], branches: [] }]]);
   });
 });

@@ -40,10 +40,11 @@ export function KpiCards({
   return (
     <section aria-labelledby="kpi-heading" className="mt-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Left padding keeps the walkthrough badge (top-left corner) off the heading text. */}
         <div>
           <h2
             id="kpi-heading"
-            className="text-xl font-semibold text-brand-navy"
+            className="text-xl font-semibold text-brand-navy pl-3"
           >
             Financial overview
           </h2>
