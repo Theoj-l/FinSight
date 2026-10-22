@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { BASE_CURRENCY, CURRENCIES, type ExchangeRates } from "@/lib/currency";
 
-const symbols = CURRENCIES.filter((currency) => currency !== BASE_CURRENCY);
+const quotes = CURRENCIES.filter((currency) => currency !== BASE_CURRENCY);
 
-// Frankfurter mirrors the ECB's daily reference rates and needs no API key.
+// Frankfurter v2 (v1 is deprecated) needs no API key. By default each rate is
+// blended across the central banks that publish it, which for SGD and MYR
+// include the Monetary Authority of Singapore and Bank Negara Malaysia.
 // Next.js persists this fetch for 24h server-side, so every request for a
 // given day is served from cache instead of re-hitting the upstream API.
-const UPSTREAM = `https://api.frankfurter.dev/v1/latest?base=${BASE_CURRENCY}&symbols=${symbols.join(",")}`;
+const UPSTREAM = `https://api.frankfurter.dev/v2/rates?base=${BASE_CURRENCY}&quotes=${quotes.join(",")}`;
 
-type FrankfurterResponse = { amount: number; base: string; date: string; rates: Record<string, number> };
+// One row per quote currency, e.g. { date: "2026-10-22", base: "SGD", quote: "USD", rate: 0.78284 }.
+type FrankfurterRate = { date: string; base: string; quote: string; rate: number };
 
 export async function GET() {
   let upstream: Response;
@@ -22,8 +25,15 @@ export async function GET() {
     return NextResponse.json({ error: "Exchange rate service returned an error." }, { status: 502 });
   }
 
-  const payload = (await upstream.json()) as FrankfurterResponse;
-  const rates: ExchangeRates = { [BASE_CURRENCY]: 1, ...payload.rates };
+  const rows = (await upstream.json()) as FrankfurterRate[];
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return NextResponse.json({ error: "Exchange rate service returned no rates." }, { status: 502 });
+  }
 
-  return NextResponse.json({ base: BASE_CURRENCY, date: payload.date, rates });
+  const rates: ExchangeRates = { [BASE_CURRENCY]: 1 };
+  for (const row of rows) rates[row.quote as keyof ExchangeRates] = row.rate;
+  // Rows can carry different dates; report the most recent one.
+  const date = rows.map((row) => row.date).sort().at(-1);
+
+  return NextResponse.json({ base: BASE_CURRENCY, date, rates });
 }
