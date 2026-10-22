@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { TourScript } from "../tour/tour-script";
+import type { ChatContext } from "./chat-context";
 
 export type MessageStatus = "streaming" | "done" | "stopped" | "error";
 
@@ -15,6 +16,8 @@ export interface ChatMessage {
   error?: string;
   /** Charts and tables on the page that help explain this answer. */
   walkthrough?: TourScript;
+  /** The dashboard settings the walkthrough is written for. */
+  scope?: ChatContext;
 }
 
 export interface ChatState {
@@ -25,7 +28,7 @@ export type ChatAction =
   | { type: "send"; text: string; userId: string; assistantId: string }
   | { type: "retry"; failedId: string; assistantId: string }
   | { type: "delta"; id: string; text: string }
-  | { type: "walkthrough"; id: string; script: TourScript }
+  | { type: "walkthrough"; id: string; script: TourScript; scope?: ChatContext | null }
   | { type: "finish"; id: string }
   | { type: "stop"; id: string }
   | { type: "fail"; id: string; error: string }
@@ -67,7 +70,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       );
 
     case "walkthrough":
-      return update(state, action.id, (message) => ({ ...message, walkthrough: action.script }));
+      return update(state, action.id, (message) => ({ ...message, walkthrough: action.script, scope: action.scope ?? undefined }));
 
     case "finish":
       return update(state, action.id, (message) => ({ ...message, status: "done" }));

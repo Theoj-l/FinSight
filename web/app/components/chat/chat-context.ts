@@ -36,3 +36,15 @@ export function readChatContext(pathname: string, search: string): ChatContext |
     branches: params.getAll("branch").filter(Boolean),
   };
 }
+
+/** The dashboard address that shows a scope. The dashboard keeps its filters in the address. */
+export function scopeToUrl(scope: ChatContext): string {
+  const params = new URLSearchParams();
+  if (scope.periodStart) params.set("periodStart", scope.periodStart);
+  const end = scope.periodEnd ?? scope.periodStart;
+  if (end) params.set("periodEnd", end);
+  for (const unit of scope.units) params.append("unit", unit);
+  for (const branch of scope.branches) params.append("branch", branch);
+  const query = params.toString();
+  return query ? `/dashboard?${query}` : "/dashboard";
+}

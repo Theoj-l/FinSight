@@ -24,6 +24,6 @@ describe("buildWalkthroughSystemPrompt", () => {
   it("says when not to point at a panel", () => {
     expect(prompt).toContain("NO panel for receivables");
     expect(prompt).toMatch(/Set it to null when no panel helps/);
-    expect(prompt).toMatch(/Check the period first/);
+    expect(prompt).toMatch(/Check what the panels show/);
   });
 });

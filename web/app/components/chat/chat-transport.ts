@@ -18,10 +18,13 @@
 //                           charts/tables to point at while explaining. It is
 //                           validated, and handed to `onWalkthrough` once the
 //                           text has finished.
+//   response `scope`        the dashboard period/units the walkthrough is written
+//                           for; the page moves the dashboard there first.
 // ---------------------------------------------------------------------------
 
 import type { TourScript } from "../tour/tour-script";
 import { parseTourScript } from "../tour/tour-script";
+import { parseChatContext } from "@/lib/text-to-sql/context";
 import type { ChatContext } from "./chat-context";
 import { mockReplyFor, mockWalkthroughFor } from "./mock-replies";
 import { StreamError, parseSseStream, readTextStream } from "./stream-parser";
@@ -138,8 +141,11 @@ export interface StreamChatOptions {
   mockLatencyMs?: number;
   /** What the user is looking at; sent to the server when present. */
   context?: ChatContext | null;
-  /** Called once, after the reply text, if the answer comes with a valid walkthrough. */
-  onWalkthrough?: (script: TourScript) => void;
+  /**
+   * Called once, after the reply text, if the answer comes with a valid walkthrough.
+   * `scope` is the dashboard setting the walkthrough is written for (null: leave the dashboard as it is).
+   */
+  onWalkthrough?: (script: TourScript, scope: ChatContext | null) => void;
 }
 
 async function errorFromResponse(response: Response): Promise<ChatRequestError> {
@@ -173,7 +179,7 @@ export async function* streamChatReply(
   if (mock) {
     yield* streamMockReply(message, signal, mockLatencyMs);
     const walkthrough = mockWalkthroughFor(message);
-    if (walkthrough) onWalkthrough?.(walkthrough);
+    if (walkthrough) onWalkthrough?.(walkthrough, null);
     return;
   }
 
@@ -221,8 +227,9 @@ export async function* streamChatReply(
     if (simulate) yield* simulateStream(reply, { signal: combined });
     else yield reply;
 
-    const walkthrough = parseTourScript((data as { walkthrough?: unknown }).walkthrough);
-    if (walkthrough) onWalkthrough?.(walkthrough);
+    const extras = data as { walkthrough?: unknown; scope?: unknown };
+    const walkthrough = parseTourScript(extras.walkthrough);
+    if (walkthrough) onWalkthrough?.(walkthrough, parseChatContext(extras.scope));
   } catch (error) {
     if (signal?.aborted) throw error; // the caller cancelled — pass it through untouched
     if (error instanceof ChatRequestError) throw error;

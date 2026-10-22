@@ -104,12 +104,13 @@ export async function writeAnswerWithWalkthrough(
   question: string,
   executed: ExecutedQuery[],
   context: ChatContext,
+  moved = false,
 ): Promise<{ reply: string; walkthrough: TourScript | null; tokens: Usage }> {
   const response = await genai.models.generateContent({
     model: GEMINI_MODEL,
     contents: requestContents(question, executed),
     config: {
-      systemInstruction: buildWalkthroughSystemPrompt(context),
+      systemInstruction: buildWalkthroughSystemPrompt(context, moved),
       responseMimeType: "application/json",
       responseSchema: walkthroughSchema,
     },

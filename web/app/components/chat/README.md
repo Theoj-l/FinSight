@@ -51,6 +51,16 @@ step-by-step card under the answer. The labelled parts and their ids live in
   "steps": [ { "label": "profit-margin", "explanation": "…" } ] } }
 ```
 
+**The dashboard follows the question.** When the answer is about a particular month,
+range or business unit, the reply also carries `scope` (`{ page, periodStart,
+periodEnd, units, branches }`). Before the highlighting starts, the page moves the
+dashboard there (`router.push` to `/dashboard?periodStart=…&unit=…`), waits until
+the address has changed (Next only changes it once the new page is ready), and then
+begins. The backend only returns a `scope` that exists in the data, and only together
+with a walkthrough, so nothing on the page changes without an explanation. If the
+dashboard cannot be moved within 10 seconds the answer is still shown, just without
+the highlighting.
+
 It is validated (`parseTourScript`): unknown labels, empty text and duplicates
 are dropped, and a walkthrough with nothing left is ignored, so a bad reply can't
 break the page. It starts once the answer text has finished, and only if those

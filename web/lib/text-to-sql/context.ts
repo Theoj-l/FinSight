@@ -49,3 +49,40 @@ export function describeContext(context: ChatContext): string {
   const branches = context.branches.length ? context.branches.join(", ") : "all branches";
   return `The user has the dashboard open, showing period ${period}, business units: ${units}, branches: ${branches}.`;
 }
+
+/** What the database actually contains, for checking a scope before the dashboard is moved to it. */
+export interface ScopeOptions {
+  periods: number[];
+  units: string[];
+  branches: string[];
+}
+
+/**
+ * A scope proposed by the model, checked against real data. Months that do not exist
+ * or run backwards make the whole scope invalid (null); unit and branch codes that do
+ * not exist are dropped. Null means "leave the dashboard as it is".
+ */
+export function validateScope(scope: ChatContext | null, options: ScopeOptions): ChatContext | null {
+  if (!scope?.periodStart || !scope.periodEnd) return null;
+  const periods = new Set(options.periods);
+  const start = Number(scope.periodStart);
+  const end = Number(scope.periodEnd);
+  if (!periods.has(start) || !periods.has(end) || start > end) return null;
+
+  const known = (values: string[], allowed: string[]) => values.filter((value) => allowed.includes(value));
+  return {
+    page: "dashboard",
+    periodStart: scope.periodStart,
+    periodEnd: scope.periodEnd,
+    units: known(scope.units, options.units),
+    branches: known(scope.branches, options.branches),
+  };
+}
+
+/** Whether two scopes show the same thing on the dashboard. */
+export function sameScope(a: ChatContext | null, b: ChatContext | null): boolean {
+  if (!a || !b) return a === b;
+  const key = (scope: ChatContext) =>
+    JSON.stringify([scope.periodStart ?? "", scope.periodEnd ?? scope.periodStart ?? "", [...scope.units].sort(), [...scope.branches].sort()]);
+  return key(a) === key(b);
+}

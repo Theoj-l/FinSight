@@ -10,7 +10,7 @@ export interface UseChatOptions {
   /** What the user is looking at right now; read when a question is sent. */
   getContext?: () => ChatContext | null;
   /** An answer finished and came with charts/tables to point at. */
-  onWalkthrough?: (messageId: string, script: TourScript) => void;
+  onWalkthrough?: (messageId: string, script: TourScript, scope: ChatContext | null) => void;
 }
 
 let sequence = 0;
@@ -44,15 +44,16 @@ export function useChat(options: UseChatOptions = {}) {
     let received = false;
     // A holder, not a plain variable: the callback below assigns it, and TypeScript
     // would otherwise narrow a `let` to `null` after the loop.
-    const walkthrough: { script: TourScript | null } = { script: null };
+    const walkthrough: { script: TourScript | null; scope: ChatContext | null } = { script: null, scope: null };
 
     try {
       for await (const delta of streamChatReply(prompt, {
         signal: controller.signal,
         context: optionsRef.current.getContext?.() ?? null,
-        onWalkthrough: (script) => {
+        onWalkthrough: (script, scope) => {
           walkthrough.script = script;
-          dispatch({ type: "walkthrough", id: assistantId, script });
+          walkthrough.scope = scope;
+          dispatch({ type: "walkthrough", id: assistantId, script, scope });
         },
       })) {
         if (!delta) continue;
@@ -62,7 +63,7 @@ export function useChat(options: UseChatOptions = {}) {
       if (!received) throw new ChatRequestError(EMPTY_REPLY_MESSAGE);
       dispatch({ type: "finish", id: assistantId });
       // The whole answer is on screen: start pointing at the page while it is read.
-      if (walkthrough.script) optionsRef.current.onWalkthrough?.(assistantId, walkthrough.script);
+      if (walkthrough.script) optionsRef.current.onWalkthrough?.(assistantId, walkthrough.script, walkthrough.scope);
     } catch (error) {
       if (controller.signal.aborted) dispatch({ type: "stop", id: assistantId });
       else dispatch({ type: "fail", id: assistantId, error: describeChatError(error) });

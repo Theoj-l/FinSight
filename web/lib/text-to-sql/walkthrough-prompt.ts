@@ -32,15 +32,23 @@ const RULES = `Reply with JSON only, in this shape:
 - Use only ids from the list above, each at most once, in the order that tells the story. One step is fine. A broad question about the whole dashboard may use all six.
 - "explanation" is plain text, two or three sentences: say what that panel shows and how it supports the answer. Quote only figures that appear in the retrieved data. Do not repeat the whole reply.
 - "opening" is one or two plain sentences leading into the steps.
-- Check the period first. The panels show the period given in the dashboard context, not necessarily the period of the question. If the question is about a different period, or the panels cannot show what it asks, say so in the explanation or use null. Never claim a panel shows a figure it does not.
+- Check what the panels show. They show the period, business units and branches given in the dashboard context above. If the question is about something else, or the panels cannot show what it asks, say so in the explanation or use null. Never claim a panel shows a figure it does not.
 - Do not return titles or badge numbers; the page adds them.`;
 
-/** The Call 2 system prompt for a user who has the dashboard open. */
-export function buildWalkthroughSystemPrompt(context: ChatContext): string {
+/**
+ * The Call 2 system prompt for a user who has the dashboard open.
+ * `moved` means the dashboard has just been set to this scope to match the question,
+ * so the panels show the same period and units as the answer.
+ */
+export function buildWalkthroughSystemPrompt(context: ChatContext, moved = false): string {
+  const state = moved
+    ? `The dashboard has just been set to match the question: ${describeContext(context).replace("The user has the dashboard open, showing", "it now shows")} The panels therefore show the same period and business units as your answer, so a panel can be used to show a figure from the retrieved data when that figure is on it.`
+    : describeContext(context);
+
   return `${RESPONSE_GENERATION_PROMPT}
 
 # Pointing at the dashboard
-${describeContext(context)}
+${state}
 
 ${PANEL_GUIDE}
 

@@ -1,7 +1,9 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { sameScope } from "@/lib/text-to-sql/context";
+import { readChatContext, scopeToUrl, type ChatContext } from "../chat/chat-context";
 import { activeLabel, initialTourState, tourReducer, type TourState } from "./tour-state";
 import { parseTourScript, tourPageFor, type TourPage, type TourScript } from "./tour-script";
 
@@ -13,10 +15,12 @@ interface TourContextValue {
   /** The page whose labelled parts can be highlighted, or null if this page has none. */
   page: TourPage | null;
   /**
-   * Start stepping through a message's walkthrough. Only the steps whose part
-   * is on screen are kept. Returns false (and does nothing) if none are.
+   * Start stepping through a message's walkthrough. If `scope` differs from what the
+   * dashboard is showing, the dashboard is first moved there and given time to load.
+   * Only the steps whose part is on screen are kept. Resolves false (and does nothing)
+   * if the dashboard could not be moved or none of the steps can be shown.
    */
-  begin: (messageId: string, script: TourScript) => boolean;
+  begin: (messageId: string, script: TourScript, scope?: ChatContext | null) => Promise<boolean>;
   goTo: (index: number) => void;
   next: () => void;
   prev: () => void;
@@ -46,8 +50,26 @@ function targetFor(label: string) {
   return document.querySelector<HTMLElement>(`[data-tour-id="${label}"]`);
 }
 
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const onScreen = (scope: ChatContext) => sameScope(readChatContext(window.location.pathname, window.location.search), scope);
+
+/**
+ * Wait for the dashboard address to show a scope. Next changes the address only once
+ * the new page is ready, so this is also the signal that the figures have loaded.
+ */
+async function waitForScope(scope: ChatContext, timeoutMs = 10_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (onScreen(scope)) return true;
+    await pause(100);
+  }
+  return false;
+}
+
 export function TourProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const page = tourPageFor(pathname);
   const [state, dispatch] = useReducer(tourReducer, initialTourState);
 
@@ -58,13 +80,23 @@ export function TourProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "exit" });
   }
 
-  const begin = useCallback((messageId: string, script: TourScript) => {
-    // Only explain what is actually on screen right now.
-    const onScreen = parseTourScript({ ...script, steps: script.steps.filter((step) => targetFor(step.label)) });
-    if (!onScreen) return false;
-    dispatch({ type: "start", messageId, script: onScreen });
-    return true;
-  }, []);
+  const begin = useCallback(
+    async (messageId: string, script: TourScript, scope?: ChatContext | null) => {
+      // Show what the answer is about: move the dashboard to its period and units first.
+      if (scope && page && !onScreen(scope)) {
+        router.push(scopeToUrl(scope), { scroll: false });
+        if (!(await waitForScope(scope))) return false;
+        await pause(300); // let the new figures finish painting
+      }
+
+      // Only explain what is actually on screen right now.
+      const visible = parseTourScript({ ...script, steps: script.steps.filter((step) => targetFor(step.label)) });
+      if (!visible) return false;
+      dispatch({ type: "start", messageId, script: visible });
+      return true;
+    },
+    [page, router],
+  );
 
   // Highlight and scroll to the part of the page being explained.
   const label = activeLabel(state);

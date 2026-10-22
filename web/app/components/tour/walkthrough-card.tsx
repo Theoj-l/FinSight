@@ -3,6 +3,7 @@
 import { Check, ChevronLeft, ChevronRight, Presentation, RotateCcw, X } from "lucide-react";
 import { TOUR_LABELS } from "./tour-labels";
 import { useTour } from "./tour-context";
+import type { ChatContext } from "../chat/chat-context";
 import type { TourScript } from "./tour-script";
 
 const chip =
@@ -13,7 +14,7 @@ const chip =
  * and while it runs, the step-by-step card that highlights the charts and tables
  * on the page as each one is explained.
  */
-export function WalkthroughCard({ messageId, script }: { messageId: string; script: TourScript }) {
+export function WalkthroughCard({ messageId, script, scope }: { messageId: string; script: TourScript; scope: ChatContext | null }) {
   const { state, page, begin, goTo, next, prev, exit } = useTour();
 
   // Nothing here to point at (e.g. the answer was given on another page).
@@ -24,7 +25,7 @@ export function WalkthroughCard({ messageId, script }: { messageId: string; scri
     return (
       <button
         type="button"
-        onClick={() => begin(messageId, script)}
+        onClick={() => void begin(messageId, script, scope)}
         className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-brand-blue/30 bg-brand-blue-light/60 px-3 py-1.5 text-xs font-semibold text-brand-navy transition hover:bg-brand-blue-light focus-visible:outline-2 focus-visible:outline-brand-blue"
       >
         <Presentation aria-hidden="true" className="h-3.5 w-3.5 text-brand-blue" />

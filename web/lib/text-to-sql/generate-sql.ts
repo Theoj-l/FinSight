@@ -5,7 +5,7 @@
 import { Type, type Schema } from "@google/genai";
 import { genai } from "../gemini/client";
 import { GEMINI_MODEL, MAX_QUERIES } from "./config";
-import { describeContext, type ChatContext } from "./context";
+import { describeContext, parseChatContext, type ChatContext } from "./context";
 import { buildSystemPrompt } from "./prompt";
 
 export interface PlannedQuery {
@@ -19,6 +19,8 @@ export interface SqlPlan {
   needsClarification: string | null;
   reason: string;
   queries: PlannedQuery[];
+  /** The dashboard settings that show what the answer is about, if the question is about a period. */
+  scope: ChatContext | null;
   tokens: { input: number; output: number };
 }
 
@@ -28,6 +30,17 @@ const planSchema: Schema = {
     supported: { type: Type.BOOLEAN },
     needs_clarification: { type: Type.STRING, nullable: true },
     reason: { type: Type.STRING },
+    dashboard_scope: {
+      type: Type.OBJECT,
+      nullable: true,
+      properties: {
+        period_start: { type: Type.STRING },
+        period_end: { type: Type.STRING },
+        units: { type: Type.ARRAY, items: { type: Type.STRING } },
+        branches: { type: Type.ARRAY, items: { type: Type.STRING } },
+      },
+      required: ["period_start", "period_end", "units", "branches"],
+    },
     queries: {
       type: Type.ARRAY,
       items: {
@@ -37,7 +50,7 @@ const planSchema: Schema = {
       },
     },
   },
-  required: ["supported", "needs_clarification", "reason", "queries"],
+  required: ["supported", "needs_clarification", "reason", "dashboard_scope", "queries"],
 };
 
 export interface GenerateOptions {
@@ -73,6 +86,7 @@ export async function generateSql(question: string, { today, latestPeriod, feedb
     supported?: boolean;
     needs_clarification?: string | null;
     reason?: string;
+    dashboard_scope?: { period_start?: unknown; period_end?: unknown; units?: unknown; branches?: unknown } | null;
     queries?: { purpose?: string; sql?: string }[];
   };
 
@@ -86,6 +100,15 @@ export async function generateSql(question: string, { today, latestPeriod, feedb
     needsClarification: raw.needs_clarification?.trim() ? raw.needs_clarification.trim() : null,
     reason: raw.reason ?? "",
     queries,
+    scope: raw.dashboard_scope
+      ? parseChatContext({
+          page: "dashboard",
+          periodStart: raw.dashboard_scope.period_start,
+          periodEnd: raw.dashboard_scope.period_end,
+          units: raw.dashboard_scope.units,
+          branches: raw.dashboard_scope.branches,
+        })
+      : null,
     tokens: {
       input: response.usageMetadata?.promptTokenCount ?? 0,
       output: response.usageMetadata?.candidatesTokenCount ?? 0,

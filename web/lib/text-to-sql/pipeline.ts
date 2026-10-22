@@ -11,7 +11,7 @@
 
 import type { TourScript } from "../../app/components/tour/tour-script";
 import { writeAnswer, writeAnswerWithWalkthrough, type ExecutedQuery } from "./answer";
-import type { ChatContext } from "./context";
+import { sameScope, validateScope, type ChatContext, type ScopeOptions } from "./context";
 import { generateSql, type SqlPlan } from "./generate-sql";
 import { runReadOnly } from "./run-readonly";
 import { validateSql } from "./validate-sql";
@@ -30,6 +30,8 @@ export interface DirectSqlResult {
   tokens: { input: number; output: number };
   /** Charts and tables on the dashboard to point at while explaining (only when a dashboard context was given). */
   walkthrough?: TourScript | null;
+  /** The dashboard settings the walkthrough is written for. Differs from the user's current ones when the question is about something else. */
+  scope?: ChatContext | null;
   /** Why it failed or was declined. */
   detail?: string;
 }
@@ -41,6 +43,8 @@ export interface DirectSqlOptions {
   latestPeriod: number;
   /** The dashboard the user has open. When given, the answer also says which panels to highlight. */
   context?: ChatContext | null;
+  /** What exists in the data, so a scope proposed by the model can be checked. Without it the dashboard is never moved. */
+  scopeOptions?: ScopeOptions;
 }
 
 const ms = (from: number) => Math.round(performance.now() - from);
@@ -131,13 +135,27 @@ export async function answerWithDirectSql(question: string, options: DirectSqlOp
     // Answer from the rows.
     const t3 = performance.now();
     try {
-      const written = options.context
-        ? await writeAnswerWithWalkthrough(question, executed, options.context)
+      // The scope the question is about, if it is a real one and differs from what is on screen;
+      // otherwise the dashboard stays as the user has it.
+      const proposed = options.context && options.scopeOptions ? validateScope(plan.scope, options.scopeOptions) : null;
+      const target = proposed ?? options.context ?? null;
+      const moved = Boolean(proposed && options.context && !sameScope(proposed, options.context));
+
+      const written = target
+        ? await writeAnswerWithWalkthrough(question, executed, target, moved)
         : { ...(await writeAnswer(question, executed)), walkthrough: null };
       timings.answerMs += ms(t3);
       add(written.tokens);
       const tablesUsed = [...new Set(executed.flatMap((query) => query.tables ?? []))].sort();
-      return finish({ status: "answered", reply: written.reply, walkthrough: written.walkthrough, queries: executed, attempts, tablesUsed });
+      return finish({
+        status: "answered",
+        reply: written.reply,
+        walkthrough: written.walkthrough,
+        scope: written.walkthrough ? target : null,
+        queries: executed,
+        attempts,
+        tablesUsed,
+      });
     } catch (error) {
       timings.answerMs += ms(t3);
       return finish({ status: "error", reply: "", queries: executed, attempts, tablesUsed: [], detail: `Writing the answer failed: ${short(String(error))}` });

@@ -89,7 +89,7 @@ const MessageBubble = memo(function MessageBubble({
       </div>
       {message.walkthrough && message.status === "done" && (
         <div className="w-full">
-          <WalkthroughCard messageId={message.id} script={message.walkthrough} />
+          <WalkthroughCard messageId={message.id} script={message.walkthrough} scope={message.scope ?? null} />
         </div>
       )}
     </div>
@@ -102,8 +102,8 @@ function ChatDock() {
     // Read when a question is sent, so the answer matches what is on screen.
     getContext: () => readChatContext(window.location.pathname, window.location.search),
     // The answer is complete: start pointing at the charts and tables it mentions.
-    onWalkthrough: (messageId, script) => {
-      tour.begin(messageId, script);
+    onWalkthrough: (messageId, script, scope) => {
+      void tour.begin(messageId, script, scope);
     },
   });
   const [open, setOpen] = useState(false);
