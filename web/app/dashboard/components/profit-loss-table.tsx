@@ -1,5 +1,7 @@
 "use client";
 
+import { useFinancialComparison } from "@/app/components/financial/comparison-context";
+import { FinancialProfitLoss } from "@/app/components/financial/financial-pnl";
 import { formatCurrencyExact, type ProfitLossStatement } from "../data/profit-loss-utils";
 import { formatPercentage } from "../data/kpi-presentation";
 import { useCurrency } from "@/lib/currency-context";
@@ -22,12 +24,14 @@ function valueStyle(value: number | null | undefined, higherIsBetter = true) {
 
 export function ProfitLossTable({ data, error }: ProfitLossTableProps) {
   const fx = useCurrency();
+  const financial = useFinancialComparison();
+  if (financial) return <FinancialProfitLoss />;
   return (
     <section aria-labelledby="profit-loss-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="profit-loss-title" className="text-lg font-semibold text-brand-navy">Profit and Loss Statement</h2>
-          <p className="mt-1 text-sm text-muted">Selected month actual versus budget. Year-to-date runs from January through the selected month, for the same business unit.</p>
+          <p className="mt-1 text-sm text-muted">Actual vs. budget for the selected month (latest month, if a range is selected). Year-to-date runs from January through that month, for the same business unit.</p>
         </div>
         {data?.period && <span className="text-sm font-medium text-muted">Period {data.period}</span>}
       </div>

@@ -1,9 +1,11 @@
+import type { Comparison, Metric, Rules, Source } from "@/lib/financial/types";
 import { BASE_CURRENCY, convertAmount, fxSymbol, type FxContext } from "@/lib/currency";
 
 export const metricIds = ["revenue", "grossProfit", "netProfit", "budgetVariance", "grossMargin", "netMargin", "expenseRatio"] as const;
 export type MetricId = typeof metricIds[number];
 export type Change = { absolute: string; percentage: number | null; direction: -1 | 0 | 1 };
 export type KpiMetric = {
+  comparison?: Comparison;
   higherIsBetter?: boolean;
   id: MetricId;
   label: string;
@@ -14,7 +16,7 @@ export type KpiMetric = {
   description: string;
   budgetComparison?: Change | null;
 };
-export type KpiData = { period: string; priorPeriod: string; metrics: KpiMetric[]; notices: string[] };
+export type KpiData = { comparisonSource?: Source; comparisonBudgetId?: string; financialComparisons?: Record<Metric, Comparison>; comparisonLabel?: string; financialRules?: Rules; period: string; priorPeriod: string; metrics: KpiMetric[]; notices: string[] };
 export type Threshold = { enabled: boolean; min: number; max: number };
 export type Thresholds = Record<MetricId, Threshold>;
 function validThreshold(value: unknown): value is Threshold {
@@ -58,7 +60,11 @@ export function formatAmount(value: string, unit: "money" | "ratio", fx?: FxCont
     }
   }
   const negative = value.startsWith("-");
-  const [whole, fraction = "00"] = value.replace(/^-/, "").split(".");
+  const [integer, decimal = ""] = value.replace(/^-/, "").split(".");
+  // Round for display with integer arithmetic; keep exact saved/calculated
+  // values intact, including amounts beyond JavaScript's safe integer limit.
+  const cents = BigInt(integer) * BigInt(100) + BigInt(decimal.padEnd(2, "0").slice(0, 2)) + (Number(decimal[2] ?? "0") >= 5 ? BigInt(1) : BigInt(0));
+  const whole = (cents / BigInt(100)).toString(), fraction = (cents % BigInt(100)).toString().padStart(2, "0");
   return `${negative ? "−" : ""}${unit === "money" ? "S$" : ""}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${fraction}${unit === "ratio" ? "%" : ""}`;
 }
 export function formatPercentage(value: number) {

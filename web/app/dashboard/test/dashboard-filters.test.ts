@@ -4,7 +4,7 @@ import { invoiceWhere, ledgerDepartment, parseDashboardFilters, type FilterOptio
 const options: FilterOptions = { periods: [202402, 202401, 202312], units: [{ code: "U1", label: "Estate 1" }], branches: [{ code: "B1", label: "Branch 1" }] };
 describe("reporting filter validation", () => {
   it("defaults to the latest available month, all units and all branches", () => {
-    expect(parseDashboardFilters({}, options)).toEqual({ selection: { periodStart: "202402", periodEnd: "202402", units: [], branches: [] }, scope: { period: 202402, periodStart: 202402, periodEnd: 202402, periodNumbers: [202402], trendPeriodNumbers: [202312, 202401, 202402] }, error: undefined });
+    expect(parseDashboardFilters({}, options)).toEqual({ selection: { businessType: "", periodStart: "202402", periodEnd: "202402", units: [], branches: [] }, scope: { period: 202402, periodStart: 202402, periodEnd: 202402, periodNumbers: [202402], trendPeriodNumbers: [202312, 202401, 202402] }, error: undefined });
   });
   it.each([
     { period: "202413" }, { period: "202001" }, { period: "2024-02" }, { period: "" },

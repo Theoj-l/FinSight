@@ -26,8 +26,9 @@ type ExpenseCategoryChartProps = {
 
 export function ExpenseCategoryChart({ data = [], error, loading = false }: ExpenseCategoryChartProps) {
   const fx = useCurrency();
-  const activePeriod = data.at(-1)?.periodNo;
-  const categories = activePeriod === undefined ? [] : getCategoriesForPeriod(data, activePeriod);
+    const activePeriod = data.at(-1)?.periodNo;
+    const activePeriodLabel = data.find((period) => period.periodNo === activePeriod)?.period;
+    const categories = activePeriod === undefined ? [] : getCategoriesForPeriod(data, activePeriod);
 
   return (
     <section aria-labelledby="expense-category-title" className="flex h-full flex-col rounded-xl border border-black/10 bg-white p-6 shadow-sm">
@@ -36,8 +37,9 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
           <h2 id="expense-category-title" className="text-lg font-semibold text-brand-navy">
             Operating Expenses by Category
           </h2>
-          <p className="mt-1 text-sm text-muted">Selected reporting month · Change vs previous calendar month</p>
+          <p className="mt-1 text-sm text-muted">Selected month (latest, if a range) · Change vs previous calendar month.</p>
         </div>
+                {activePeriodLabel && <span className="text-sm font-medium text-muted">Period {activePeriodLabel}</span>}
       </div>
 
       {loading ? (

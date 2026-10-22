@@ -1,9 +1,10 @@
 "use client";
 
+import type { AnomalyAlert, AnomalyStatus } from "@/app/dashboard/data/anomalies-utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, MessageSquare, RefreshCw, Settings, ShieldCheck } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, MessageSquare, RefreshCw, Settings } from "lucide-react";
 import { PageHeading } from "@/app/components/app-page";
 import { formatAmount, formatPercentage, outcome, type KpiData } from "@/app/dashboard/data/kpi-presentation";
 import { useCurrency } from "@/lib/currency-context";
@@ -14,7 +15,7 @@ import { NotificationPanel } from "./notification-panel";
 const features = [
   { title: "Dashboard", href: "/dashboard", icon: BarChart3, copy: "Explore financial trends, compare periods and drill into your accounts." },
   { title: "Assistant", href: "/assistant", icon: MessageSquare, copy: "Visit your conversational workspace. Financial questions and forecast answers are in development." },
-  { title: "Insights", href: "/insights", icon: Lightbulb, copy: "Explore the insights workspace for financial decision support." },
+  { title: "Forecast", href: "/forecast", icon: Lightbulb, copy: "Compare actual performance with forward-looking projections." },
   { title: "Reports", href: "/reports", icon: FileText, copy: "Visit the reporting workspace and explore available report types." },
   { title: "Settings", href: "/settings", icon: Settings, copy: "Manage your account, display preferences and reporting currency." },
 ];
@@ -23,7 +24,7 @@ const tones = { favorable: "text-emerald-700", unfavorable: "text-red-700", neut
 const panel = "rounded-2xl border border-slate-200 bg-white shadow-sm";
 const linkStyle = "inline-flex items-center gap-2 text-sm font-semibold text-brand-navy hover:text-brand-red focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue";
 
-export function HomeOverview({ userId, data, error, loadedAt }: { userId: string; data?: KpiData | null; error?: string; loadedAt: string }) {
+export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: { anomalyResult?: { alerts: AnomalyAlert[]; status: AnomalyStatus | null; error?: string }; userId: string; data?: KpiData | null; error?: string; loadedAt: string }) {
   const router = useRouter();
   const [refreshing, startTransition] = useTransition();
   const currency = useCurrency();
@@ -32,11 +33,11 @@ export function HomeOverview({ userId, data, error, loadedAt }: { userId: string
   const fx = currency.currency === "SGD" || (rate && Number.isFinite(rate) && rate > 0)
     ? currency : { currency: "SGD" as const, rates: null };
   const financialData = error ? null : data;
-  const notifications = useHomeAlerts(userId, financialData);
-  const { thresholds, ready } = notifications;
+  const notifications = useHomeAlerts(userId, financialData, anomalyResult?.alerts);
+  const { thresholds } = notifications;
   const period = financialData ? reportingMonth(financialData.period) : null;
   const dashboardHref = financialData ? `/dashboard?period=${financialData.period.replace("-", "")}` : "/dashboard";
-  const evaluable = financialData?.metrics.filter(metric => metric.value !== null && thresholds[metric.id].enabled && Number.isFinite(metric.id === "budgetVariance" ? metric.budgetComparison?.percentage ?? NaN : metric.change?.percentage ?? NaN)).length ?? 0;
+  const evaluable = financialData?.financialComparisons ? Object.values(financialData.financialComparisons).filter(c => c.enabled && c.percentage !== null).length : financialData?.metrics.filter(metric => metric.value !== null && thresholds[metric.id].enabled && Number.isFinite(metric.id === "budgetVariance" ? metric.budgetComparison?.percentage ?? NaN : metric.change?.percentage ?? NaN)).length ?? 0;
 
   return (
     <div className="flex flex-col gap-10 pb-4 lg:gap-14">
@@ -63,7 +64,7 @@ export function HomeOverview({ userId, data, error, loadedAt }: { userId: string
 
       <section aria-labelledby="home-kpis">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div><h2 id="home-kpis" className="text-lg font-semibold text-brand-navy">Financial snapshot</h2><p className="mt-1 text-sm text-muted">{period ? `${period} · All business units · ${fx.currency}` : "Your key financial measures at a glance."}</p></div>
+          <div><h2 id="home-kpis" className="text-lg font-semibold text-brand-navy">Financial snapshot</h2><p className="mt-1 text-sm text-muted">{period ? `${period} · All business units · ${fx.currency} · ${financialData?.comparisonLabel ?? "Previous month"}` : "Your key financial measures at a glance."}</p></div>
           <Link href={dashboardHref} className={linkStyle}>View all KPIs <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
         </div>
         {!financialData ? <div role="status" className={`${panel} p-6`}><p className="font-medium text-brand-navy">{error ? "Financial snapshot unavailable" : "No financial data yet"}</p><p className="mt-2 text-sm text-muted">{error ?? "No ledger balances are available. Your KPIs and threshold alerts will appear when data is available."}</p><p className="mt-3 text-xs text-muted">Checked <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p></div> : <>
@@ -77,42 +78,25 @@ export function HomeOverview({ userId, data, error, loadedAt }: { userId: string
                 <p className="mt-2 text-xs font-medium text-muted">Reporting month: <time dateTime={financialData.period}>{period}</time></p>
                 <div className={`mt-4 flex items-start gap-1 text-sm font-medium ${tones[tone]}`}>
                   {change && change.direction !== 0 && (change.direction > 0 ? <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" /> : <ArrowDownRight aria-hidden="true" className="h-4 w-4 shrink-0" />)}
-                  <span>{!change ? "Comparison unavailable" : metric.unit === "ratio" ? `${Number(change.absolute) > 0 ? "+" : ""}${change.absolute} pp` : change.percentage === null ? "Percentage unavailable · zero baseline" : formatPercentage(change.percentage)}{change && <span className="sr-only"> · {tone}</span>}</span>
+                  <span>{!change ? "Comparison unavailable" : change.percentage === null ? "Percentage unavailable · zero baseline" : formatPercentage(change.percentage)}{change && <span className="sr-only"> · {tone}</span>}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted">vs {reportingMonth(financialData.priorPeriod)}{metric.prior !== null ? ` · ${formatAmount(metric.prior, metric.unit, fx)}` : ""}</p>
+                <p className="mt-1 text-xs text-muted">vs {financialData.comparisonLabel ?? reportingMonth(financialData.priorPeriod)}{metric.prior !== null ? ` · ${formatAmount(metric.prior, metric.unit, fx)}` : ""}</p>
                 <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-muted">{metric.description}</p>
               </article>;
             })}
           </div>
-          <p className="mt-5 text-xs leading-5 text-muted">Loaded <time dateTime={loadedAt}>{timestamp(loadedAt)}</time> · Load time is when this overview was retrieved; it is not a ledger sync date. pp = percentage points.{fx.currency !== "SGD" && currency.date ? ` Exchange rates dated ${currency.date}.` : ""}{fx.currency !== currency.currency ? " Showing SGD while exchange rates are unavailable." : ""}</p>
+          <p className="mt-5 text-xs leading-5 text-muted">Loaded <time dateTime={loadedAt}>{timestamp(loadedAt)}</time> · Load time is when this overview was retrieved; it is not a ledger sync date. Margin and ratio changes are relative percentages, not percentage points.{fx.currency !== "SGD" && currency.date ? ` Exchange rates dated ${currency.date}.` : ""}{fx.currency !== currency.currency ? " Showing SGD while exchange rates are unavailable." : ""}</p>
         </>}
+        {financialData && financialData.notices.length > 0 && (
+          <details className="mt-6 border-t border-slate-100 pt-5">
+            <summary className="cursor-pointer text-sm font-medium text-brand-navy"><CircleAlert aria-hidden="true" className="mr-2 inline h-4 w-4 text-amber-600" />Data availability</summary>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">{financialData.notices.map(notice => <li key={notice}>{notice}</li>)}</ul>
+            <p className="mt-4 text-xs text-muted">Reporting month: {period}</p>
+          </details>
+        )}
       </section>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-8">
-        <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} />
-
-        <section className={`${panel} min-w-0 p-6 sm:p-7`} aria-labelledby="monitoring-heading">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-blue-light text-brand-blue"><ShieldCheck aria-hidden="true" className="h-5 w-5" /></span>
-            <div><h2 id="monitoring-heading" className="font-semibold text-brand-navy">Monitoring coverage</h2><p className="mt-1 text-xs text-muted">Status of your financial checks</p></div>
-          </div>
-          <div className="mt-7 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Threshold monitoring</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{!ready ? "Loading" : financialData && evaluable ? "Available" : "Unavailable"}</span></div>
-            <div className="border-t border-slate-100 pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>Anomaly detection</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Not connected</span></div>
-              <p className="mt-3 text-xs leading-5 text-muted">Anomaly results are not available in this overview yet. This does not mean no anomalies exist.</p>
-            </div>
-          </div>
-          <p className="mt-6 text-xs text-muted">As of <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p>
-          {financialData && financialData.notices.length > 0 && (
-            <details className="mt-6 border-t border-slate-100 pt-5">
-              <summary className="cursor-pointer text-sm font-medium text-brand-navy"><CircleAlert aria-hidden="true" className="mr-2 inline h-4 w-4 text-amber-600" />Data availability</summary>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">{financialData.notices.map(notice => <li key={notice}>{notice}</li>)}</ul>
-              <p className="mt-4 text-xs text-muted">Reporting month: {period}</p>
-            </details>
-          )}
-        </section>
-      </div>
+      <NotificationPanel notifications={notifications} period={financialData?.period} priorPeriod={financialData?.priorPeriod} dashboardHref={dashboardHref} evaluable={evaluable} loadedAt={loadedAt} anomalyAvailable={!!anomalyResult?.status && !anomalyResult.error} anomalyStatus={anomalyResult?.status} anomalyError={anomalyResult?.error} />
 
       <section aria-labelledby="explore-heading">
         <h2 id="explore-heading" className="text-lg font-semibold text-brand-navy">Explore FinSight</h2>

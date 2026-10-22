@@ -333,4 +333,151 @@ alter table item enable row level security;
 alter table item_group enable row level security;
 alter table sales_agent enable row level security;
 
+-- ---------------------------------------------------------------------------
+-- FinSight application tables (not AutoCount): anomaly-detection output.
+-- Written only by ml-service (app/anomaly/score.py); read by web/ through Prisma.
+-- No foreign keys into the ledger tables, so `python -m datagen --load`
+-- (truncate ... cascade) never empties them; it rescores them instead.
+-- ---------------------------------------------------------------------------
+create table anomaly_run (
+  run_id                 bigint           generated always as identity,
+  started_at             timestamptz      default now() not null,
+  finished_at            timestamptz     ,
+  status                 varchar(10)      default 'running' not null,
+  triggered_by           varchar(20)      not null,
+  model_version          varchar(20)      not null,
+  data_through           integer         ,
+  scored_through         integer         ,
+  n_alerts               integer         ,
+  n_new                  integer         ,
+  error                  text            ,
+  constraint pk_anomaly_run primary key (run_id),
+  constraint ck_anomaly_run_status check (status in ('running', 'ok', 'failed'))
+);
+
+create table anomaly_alert (
+  unit_kind              varchar(4)       not null,
+  unit_key               varchar(12)      not null,
+  period_no              integer          not null,
+  score                  double precision not null,
+  reasons                jsonb            default '[]' not null,
+  evidence               jsonb,
+  model_version          varchar(20)      not null,
+  first_flagged_at       timestamptz      default now() not null,
+  run_id                 bigint           not null,
+  constraint pk_anomaly_alert primary key (unit_kind, unit_key, period_no),
+  constraint ck_anomaly_alert_unit_kind check (unit_kind in ('dept', 'acc', 'cust')),
+  constraint fk_anomaly_alert_run_id foreign key (run_id) references anomaly_run(run_id)
+);
+create index ix_anomaly_alert_period on anomaly_alert (period_no);
+
+comment on table anomaly_run is 'One row per anomaly scoring run. The latest ok run says how fresh anomaly_alert is.';
+comment on column anomaly_run.status is 'running, ok or failed. On failure anomaly_alert keeps the previous run''s alerts.';
+comment on column anomaly_run.triggered_by is 'What started the run: cli (cron), api (POST /anomalies/rescore) or datagen (after a data load).';
+comment on column anomaly_run.model_version is 'Trained model that produced the alerts, e.g. v1 (ml-service/models/anomaly/<version>).';
+comment on column anomaly_run.data_through is 'Latest period_no present in the ledger when the run started.';
+comment on column anomaly_run.scored_through is 'Latest period_no scored. Only closed months are scored; a month still in progress is provisional.';
+comment on column anomaly_run.n_alerts is 'Alerts in anomaly_alert after the run.';
+comment on column anomaly_run.n_new is 'Alerts first raised by this run (not present before it).';
+comment on column anomaly_run.error is 'Exception text when status = failed.';
+comment on table anomaly_alert is 'Current anomaly alerts, replaced by every successful scoring run. One row per flagged unit-month.';
+comment on column anomaly_alert.unit_kind is 'dept = business unit (key dept_no), acc = corporate expense account (key acc_no on dept CP), cust = customer (key debtor acc_no).';
+comment on column anomaly_alert.unit_key is 'dept_no, acc_no or debtor code, depending on unit_kind. Not a foreign key: it points at different tables.';
+comment on column anomaly_alert.period_no is 'Month flagged, YYYYMM.';
+comment on column anomaly_alert.score is 'Model probability that the unit-month is anomalous, 0 to 1. Rows exist only at or above the alert threshold.';
+comment on column anomaly_alert.evidence is 'Versioned review evidence, comparison values, source IDs and as-of snapshots; not model inputs.';
+comment on column anomaly_alert.reasons is 'JSON array of plain-English evidence strings, strongest first. Safe to show as-is.';
+comment on column anomaly_alert.first_flagged_at is 'When this unit-month was first flagged. Kept across reruns, so (unit_kind, unit_key, period_no) is a stable notification id.';
+comment on column anomaly_alert.run_id is 'The run that last confirmed this alert.';
+
+alter table anomaly_run enable row level security;
+alter table anomaly_alert enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- FinSight application tables (not AutoCount): revenue / cost / profit forecasts.
+-- Written only by ml-service (app/forecast/run.py, monthly); read by web/ through
+-- Prisma (app/dashboard/data/forecast.ts). Every run is kept. No foreign keys into
+-- the ledger tables, so `python -m datagen --load` never empties them.
+-- ---------------------------------------------------------------------------
+create table forecast_run (
+  run_id                 bigint           generated always as identity,
+  started_at             timestamptz      default now() not null,
+  finished_at            timestamptz     ,
+  status                 varchar(10)      default 'running' not null,
+  triggered_by           varchar(20)      not null,
+  model_version          varchar(20)      not null,
+  data_through           integer         ,
+  history_through        integer         ,
+  horizon                smallint        ,
+  n_series               integer         ,
+  summary                jsonb           ,
+  error                  text            ,
+  constraint pk_forecast_run primary key (run_id),
+  constraint ck_forecast_run_status check (status in ('running', 'ok', 'failed'))
+);
+
+create table forecast_value (
+  run_id                 bigint           not null,
+  kind                   varchar(8)       not null,
+  dept_no                varchar(10)      not null,
+  metric                 varchar(8)       not null,
+  origin                 integer          not null,
+  period_no              integer          not null,
+  horizon                smallint         not null,
+  yhat                   double precision not null,
+  actual                 double precision,
+  method                 varchar(20)      not null,
+  constraint pk_forecast_value primary key (run_id, kind, dept_no, metric, origin, period_no),
+  constraint ck_forecast_value_kind check (kind in ('forecast', 'backtest')),
+  constraint ck_forecast_value_metric check (metric in ('revenue', 'cost', 'profit')),
+  constraint ck_forecast_value_horizon check (horizon between 1 and 24),
+  constraint fk_forecast_value_run_id foreign key (run_id) references forecast_run(run_id) on delete cascade
+);
+
+comment on table forecast_run is 'One row per forecast run (monthly cron, POST /forecast/run or after a datagen load). The latest ok run is the current forecast.';
+comment on column forecast_run.status is 'running, ok or failed. A failed run stores no values; readers use the latest ok run.';
+comment on column forecast_run.triggered_by is 'What started the run: cli (cron), api (POST /forecast/run) or datagen (after a data load).';
+comment on column forecast_run.model_version is 'Selected forecaster, e.g. v1 (ml-service/models/forecast/<version>/config.json).';
+comment on column forecast_run.data_through is 'Latest period_no present in pbalance when the run started.';
+comment on column forecast_run.history_through is 'Last closed month the forecast was made from (a month in progress is never used). Forecasts start the month after.';
+comment on column forecast_run.horizon is 'Months forecast ahead of history_through.';
+comment on column forecast_run.n_series is 'Department x metric series forecast.';
+comment on column forecast_run.summary is 'JSON: the methods used, the 15% MAPE target, and company-level accuracy of 1-month-ahead backtest forecasts over the last 12 closed months (mape, wape, mae, rmse, meets_target per metric).';
+comment on column forecast_run.error is 'Exception text when status = failed.';
+comment on table forecast_value is 'Forecast and backtest values per department, metric and month. Selections of departments (All units, a segment) are sums of these rows.';
+comment on column forecast_value.kind is 'forecast = the months after history_through; backtest = past months re-forecast from the data before them, with the actual, for accuracy and the band.';
+comment on column forecast_value.dept_no is 'Department (business unit or CP). Not a foreign key, so reloading the ledger leaves forecasts in place.';
+comment on column forecast_value.metric is 'revenue (RE, credit - debit), cost (CS + EX, debit - credit) or profit (revenue - cost + other income; derived, never forecast on its own).';
+comment on column forecast_value.origin is 'Last month of data the forecast was made from, YYYYMM.';
+comment on column forecast_value.period_no is 'Month forecast, YYYYMM.';
+comment on column forecast_value.horizon is 'Months ahead of origin (1 = next month).';
+comment on column forecast_value.yhat is 'Forecast value, S$ (home currency).';
+comment on column forecast_value.actual is 'Actual value for backtest rows; null for forecast rows.';
+comment on column forecast_value.method is 'Method that produced the value (e.g. holt_winters, or snaive when history is short); derived for profit.';
+
+alter table forecast_run enable row level security;
+alter table forecast_value enable row level security;
+
 commit;
+-- Additive upgrade. Existing ledger, budget, model and anomaly data are untouched.
+CREATE TABLE IF NOT EXISTS financial_settings (
+  id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  rules jsonb NOT NULL DEFAULT '{}',
+  notification_source varchar(12) NOT NULL DEFAULT 'previous' CHECK (notification_source IN ('previous','budget','auto','manual')),
+  updated_by varchar(128),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS financial_manual_forecast (
+  dept_no varchar(10) NOT NULL REFERENCES dept(dept_no),
+  period_no integer NOT NULL CHECK (period_no BETWEEN 100001 AND 999912 AND period_no % 100 BETWEEN 1 AND 12),
+  metric varchar(12) NOT NULL CHECK (metric IN ('revenue','netProfit')),
+  amount numeric(19,4) NOT NULL,
+  updated_by varchar(128),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (dept_no, period_no, metric)
+);
+ALTER TABLE financial_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_settings ADD COLUMN IF NOT EXISTS notification_budget_key bigint REFERENCES budget(budget_key) ON DELETE SET NULL;
+ALTER TABLE financial_manual_forecast ENABLE ROW LEVEL SECURITY;
+COMMENT ON TABLE financial_settings IS 'Shared company financial deviation rules and Home notification source. Authenticated server routes own access.';
+COMMENT ON TABLE financial_manual_forecast IS 'Human estimates, kept separately from model forecasts and ledger facts.';

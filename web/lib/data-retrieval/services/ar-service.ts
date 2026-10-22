@@ -15,6 +15,8 @@ import type {
   ARSummaryResult,
   AgingBucket,
   TopDebtor,
+  OverdueCustomersResult,
+  OverdueCustomerRow,
 } from "../types";
 
 // ── Shared AR condition builder ─────────────────────────────────────────────
@@ -219,34 +221,77 @@ export async function getARSummary(
 // 3. getOverdueCustomers — internal helper for variance & recommendations
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface OverdueCustomer {
-  customer: string;
-  debtorCode: string;
-  outstanding: number;
-  daysOverdue: number;
-  invoiceCount: number;
-}
-
 export async function getOverdueCustomers(
-  filters: RF,
-  limit = 10
-): Promise<OverdueCustomer[]> {
+  classification: ClassificationResult
+): Promise<OverdueCustomersResult> {
+  const filters = await resolveFilters(classification);
   const conditions = buildARConditions(filters);
-  const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
+  const dayConditions = classification.metric_conditions.filter(
+    (condition) => condition.metric === "days_overdue"
+  );
 
-  return prisma.$queryRaw<OverdueCustomer[]>`
+  // An overdue-customer query always excludes current invoices. More specific
+  // day thresholds from the classifier are applied at invoice level.
+  conditions.push(Prisma.sql`ar.due_date < CURRENT_DATE`);
+  for (const condition of dayConditions) {
+    const days = Prisma.sql`(CURRENT_DATE - ar.due_date)`;
+    const value = Number(condition.value);
+    if (!Number.isFinite(value)) continue;
+    switch (condition.operator) {
+      case ">": conditions.push(Prisma.sql`${days} > ${value}`); break;
+      case ">=": conditions.push(Prisma.sql`${days} >= ${value}`); break;
+      case "<": conditions.push(Prisma.sql`${days} < ${value}`); break;
+      case "<=": conditions.push(Prisma.sql`${days} <= ${value}`); break;
+      case "=": conditions.push(Prisma.sql`${days} = ${value}`); break;
+      case "!=": conditions.push(Prisma.sql`${days} != ${value}`); break;
+    }
+  }
+  const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
+  const limit = classification.top_n ?? 10;
+
+  const rows = await prisma.$queryRaw<
+    (OverdueCustomerRow & {
+      totalCustomers: number;
+      totalInvoices: number;
+      totalOutstanding: number;
+    })[]
+  >`
+    WITH overdue_by_customer AS (
+      SELECT
+        d.company_name AS customer,
+        ar.debtor_code AS "debtorCode",
+        SUM(ar.outstanding)::float AS outstanding,
+        MAX(CURRENT_DATE - ar.due_date)::int AS "daysOverdue",
+        COUNT(*)::int AS "invoiceCount"
+      FROM ar_invoice ar
+      JOIN debtor d ON ar.debtor_code = d.acc_no
+      ${whereClause}
+      GROUP BY d.company_name, ar.debtor_code
+    )
     SELECT
-      d.company_name AS customer,
-      ar.debtor_code AS "debtorCode",
-      SUM(ar.outstanding)::float AS outstanding,
-      MAX(GREATEST(CURRENT_DATE - ar.due_date, 0))::int AS "daysOverdue",
-      COUNT(*)::int AS "invoiceCount"
-    FROM ar_invoice ar
-    JOIN debtor d ON ar.debtor_code = d.acc_no
-    ${whereClause}
-    GROUP BY d.company_name, ar.debtor_code
-    HAVING MAX(GREATEST(CURRENT_DATE - ar.due_date, 0)) > 0
-    ORDER BY SUM(ar.outstanding) DESC
+      *,
+      COUNT(*) OVER ()::int AS "totalCustomers",
+      SUM("invoiceCount") OVER ()::int AS "totalInvoices",
+      SUM(outstanding) OVER ()::float AS "totalOutstanding"
+    FROM overdue_by_customer
+    ORDER BY outstanding DESC
     LIMIT ${limit}
   `;
+
+  const customers: OverdueCustomerRow[] = rows.map((row) => ({
+    customer: row.customer,
+    debtorCode: row.debtorCode,
+    outstanding: row.outstanding,
+    daysOverdue: row.daysOverdue,
+    invoiceCount: row.invoiceCount,
+  }));
+
+  return {
+    questionType: "overdue_customers",
+    customers,
+    totalCustomers: rows[0]?.totalCustomers ?? 0,
+    totalInvoices: rows[0]?.totalInvoices ?? 0,
+    totalOutstanding: rows[0]?.totalOutstanding ?? 0,
+    filters: filters.applied,
+  };
 }

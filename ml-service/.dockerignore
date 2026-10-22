@@ -22,6 +22,8 @@ __pycache__/
 datagen/output/
 models/*
 !models/.gitkeep
+!models/anomaly/
+!models/forecast/
 
 # VCS / editor / docs
 .git

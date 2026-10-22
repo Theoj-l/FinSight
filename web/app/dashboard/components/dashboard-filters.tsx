@@ -1,14 +1,19 @@
 "use client";
 
+import { FILTER_CONTROL } from "./filter-control";
+import { SingleSelect } from "./single-select";
+import { MonthPicker } from "./month-picker";
+import { ChevronDown } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/app/components/page-loading";
 import { TourBadge } from "@/app/components/tour/tour-target";
 import { BRANCH_LEDGER_MESSAGE, type FilterOptions, type FilterSelection } from "../data/dashboard-scope";
 import { formatPeriod } from "../data/revenue-expense-utils";
 
-export function DashboardFilters({ options, selection, error, children }: { options: FilterOptions; selection: FilterSelection; error?: string; children: ReactNode }) {
+export function DashboardFilters({ options, selection, error, destination = "/dashboard", hidePeriod = false, children }: { options: FilterOptions; selection: FilterSelection; error?: string; destination?: string; hidePeriod?: boolean; children: ReactNode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState(selection);
   const [periodMode, setPeriodMode] = useState<"month" | "range">(selection.periodStart === selection.periodEnd ? "month" : "range");
@@ -17,15 +22,18 @@ export function DashboardFilters({ options, selection, error, children }: { opti
 
   function applyFilters() {
     const query = new URLSearchParams();
-    if (draft.periodStart) query.set("periodStart", draft.periodStart);
-    if (draft.periodEnd) query.set("periodEnd", periodMode === "range" ? draft.periodEnd : draft.periodStart);
+    for (const key of ["comparison", "budgetId"]) { const value = searchParams.get(key); if (value) query.set(key, value); }
+    if (destination === "/dashboard" && searchParams.get("profitMode") === "gross") query.set("profitMode", "gross");
+    if (!hidePeriod && draft.periodStart) query.set("periodStart", draft.periodStart);
+    if (!hidePeriod && draft.periodEnd) query.set("periodEnd", periodMode === "range" ? draft.periodEnd : draft.periodStart);
+    if (draft.businessType) query.set("businessType", draft.businessType);
     draft.units.forEach(unit => query.append("unit", unit));
     draft.branches.forEach(branch => query.append("branch", branch));
-    startTransition(() => router.push(`/dashboard?${query}`, { scroll: false }));
+    startTransition(() => router.push(`${destination}?${query}`, { scroll: false }));
   }
   function resetDraft() {
-    const defaultPeriod = String(options.periods[0] ?? "");
-    setDraft({ periodStart: defaultPeriod, periodEnd: defaultPeriod, units: [], branches: [] });
+    const defaultPeriod = String(options.defaultPeriod ?? options.periods[0] ?? "");
+    setDraft(current => ({ periodStart: hidePeriod ? current.periodStart : defaultPeriod, periodEnd: hidePeriod ? current.periodEnd : defaultPeriod, units: [], branches: [] }));
     setPeriodMode("month");
     setOpenMenu(null);
   }
@@ -37,8 +45,7 @@ export function DashboardFilters({ options, selection, error, children }: { opti
     if (values.length === 1) return values[0];
     return `${values.length} selected`;
   }
-  const style = "mt-1 w-full rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-sm text-foreground focus:outline-2 focus:outline-brand-blue";
-  const periodLabel = selection.periodStart === selection.periodEnd ? formatPeriod(Number(selection.periodStart)) : `${formatPeriod(Number(selection.periodStart))} to ${formatPeriod(Number(selection.periodEnd))}`;
+  const periodLabel = !selection.periodStart || error ? "Unavailable" : selection.periodStart === selection.periodEnd ? formatPeriod(Number(selection.periodStart)) : `${formatPeriod(Number(selection.periodStart))} to ${formatPeriod(Number(selection.periodEnd))}`;
   return <>
     <section aria-label="Dashboard filters" data-tour-id="filters" className="relative mt-6 rounded-xl border border-brand-navy/15 bg-brand-blue-light/60 p-5">
       <TourBadge id="filters" />
@@ -47,35 +54,29 @@ export function DashboardFilters({ options, selection, error, children }: { opti
           <h2 className="text-base font-semibold text-brand-navy">Reporting scope</h2>
           <p className="mt-1 text-sm text-muted">Configure your filters, then apply them to refresh the dashboard.</p>
         </div>
-        <button type="button" onClick={resetDraft} className="rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-sm font-medium text-brand-navy" disabled={pending}>Clear</button>
+        <button type="button" onClick={resetDraft} className="h-11 rounded-lg border border-brand-navy/20 bg-white px-3 text-sm font-medium text-brand-navy" disabled={pending}>Clear</button>
       </div>
-      <fieldset disabled={pending} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 disabled:opacity-60">
-        <legend className="sr-only">Reporting scope</legend>
-        <div className="md:col-span-2">
-          <div className="mb-1 flex items-center justify-between"><span className="text-sm font-medium text-brand-navy">Period</span><span className="text-xs text-muted">{periodMode === "month" ? "Specific month" : "Date range"}</span></div>
-          <div className="flex rounded-lg border border-brand-navy/20 bg-white p-1" role="group" aria-label="Period selection mode">
-            <button type="button" onClick={() => { setPeriodMode("month"); setDraft(current => ({ ...current, periodEnd: current.periodStart })); }} className={`flex-1 rounded px-3 py-1.5 text-sm font-medium ${periodMode === "month" ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-brand-blue-light"}`}>Specific month</button>
-            <button type="button" onClick={() => setPeriodMode("range")} className={`flex-1 rounded px-3 py-1.5 text-sm font-medium ${periodMode === "range" ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-brand-blue-light"}`}>Date range</button>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <label className="sr-only" htmlFor="period-start">{periodMode === "month" ? "Month" : "Range start"}</label>
-            <select id="period-start" className={style} value={draft.periodStart} disabled={!options.periods.length} onChange={event => setDraft(current => ({ ...current, periodStart: event.target.value, periodEnd: periodMode === "month" ? event.target.value : current.periodEnd }))}>
-              {options.periods.map(period => <option key={period} value={period}>{formatPeriod(period)}</option>)}
-            </select>
-            {periodMode === "range" && <><label className="sr-only" htmlFor="period-end">Range end</label><select id="period-end" className={style} value={draft.periodEnd} disabled={!options.periods.length} onChange={event => setDraft(current => ({ ...current, periodEnd: event.target.value }))}>
-              {options.periods.map(period => <option key={period} value={period}>{formatPeriod(period)}</option>)}
-            </select></>}
-          </div>
+      {!hidePeriod && <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-brand-navy">Period</span>
+        <div className="flex h-11 w-full max-w-sm rounded-lg border border-brand-navy/20 bg-white p-1" role="group" aria-label="Period selection mode">
+          <button type="button" disabled={pending} onClick={() => { setPeriodMode("month"); setDraft(current => ({ ...current, periodEnd: current.periodStart })); }} className={`flex-1 rounded px-3 text-sm font-medium ${periodMode === "month" ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-brand-blue-light"}`}>Specific month</button>
+          <button type="button" disabled={pending} onClick={() => setPeriodMode("range")} className={`flex-1 rounded px-3 text-sm font-medium ${periodMode === "range" ? "bg-brand-navy text-white" : "text-brand-navy hover:bg-brand-blue-light"}`}>Date range</button>
         </div>
-        <MultiSelect label="Business units" values={draft.units} options={options.units} open={openMenu === "units"} onToggle={() => setOpenMenu(openMenu === "units" ? null : "units")} onChange={value => toggleValue("units", value)} buttonLabel={selectedLabel(draft.units, "All business units")} />
+      </div>}
+      <fieldset disabled={pending} className={`grid items-start gap-4 md:grid-cols-2 ${hidePeriod ? "xl:grid-cols-3" : periodMode === "range" ? "xl:grid-cols-5" : "xl:grid-cols-4"} disabled:opacity-60`}>
+        <legend className="sr-only">Reporting scope</legend>
+        {!hidePeriod && <MonthPicker label={periodMode === "month" ? "Month" : "Range start"} value={draft.periodStart} periods={options.periods} onChange={value => setDraft(current => ({ ...current, periodStart: value, periodEnd: periodMode === "month" ? value : current.periodEnd }))} />}
+        {!hidePeriod && periodMode === "range" && <MonthPicker label="Range end" value={draft.periodEnd} periods={options.periods} onChange={value => setDraft(current => ({ ...current, periodEnd: value }))} />}
+        <SingleSelect label="Business type" value={draft.businessType ?? ""} options={[{value:"",label:"All business types"},{value:"Machining",label:"Machining"},{value:"Bulk",label:"Bulk"}]} onChange={businessType => setDraft(current => ({ ...current, businessType, units: current.units.filter(code => !businessType || options.units.some(u => u.code === code && u.businessType === businessType)) }))} />
+        <MultiSelect label="Business units" values={draft.units} options={options.units.filter(u => !draft.businessType || u.businessType === draft.businessType)} open={openMenu === "units"} onToggle={() => setOpenMenu(openMenu === "units" ? null : "units")} onChange={value => toggleValue("units", value)} buttonLabel={selectedLabel(draft.units, "All business units")} />
         <MultiSelect label="Branches" values={draft.branches} options={options.branches} open={openMenu === "branches"} onToggle={() => setOpenMenu(openMenu === "branches" ? null : "branches")} onChange={value => toggleValue("branches", value)} buttonLabel={selectedLabel(draft.branches, "All branches")} />
       </fieldset>
-      <p id="branch-coverage" className="mt-3 text-xs text-muted">Business units use the accounting department codes. Branch filtering currently applies to invoice revenue; ledger and budget branch attribution is not available.</p>
+      <p id="branch-coverage" className="mt-3 text-xs text-muted">Business units use the accounting unit codes. Branch filtering currently applies to invoice revenue; ledger and budget branch attribution is not available.</p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-brand-navy/10 pt-4">
-        <p role="status" className="text-sm text-brand-navy">Applied: {periodLabel} · {selection.units.length || "All"} unit{selection.units.length === 1 ? "" : "s"} · {selection.branches.length || "All"} branche{selection.branches.length === 1 ? "" : "s"}</p>
-        <button type="button" onClick={applyFilters} disabled={pending || !isDirty} className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-50">Apply Filters</button>
+        <p role="status" className="text-sm text-brand-navy">{hidePeriod ? "Using latest closed actuals and the current forecast run" : `Applied: ${periodLabel}`} · {selection.businessType || "All business types"} · {selection.units.length || "All"} unit{selection.units.length === 1 ? "" : "s"} · {selection.branches.length || "All"} branche{selection.branches.length === 1 ? "" : "s"}</p>
+        <button type="button" onClick={applyFilters} disabled={pending || !isDirty} className="h-11 rounded-lg bg-brand-blue px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-50">Apply Filters</button>
       </div>
-      {error && <p role="alert" className="mt-3 text-sm font-medium text-brand-red">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm font-medium text-brand-red">{error} <button className="underline" onClick={() => startTransition(() => router.refresh())}>Retry</button></p>}
       {!error && selection.branches.length > 0 && <p role="status" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{BRANCH_LEDGER_MESSAGE}</p>}
     </section>
     <div aria-busy={pending} className="relative">
@@ -86,10 +87,10 @@ export function DashboardFilters({ options, selection, error, children }: { opti
 }
 
 function MultiSelect({ label, values, options, open, onToggle, onChange, buttonLabel }: { label: string; values: string[]; options: { code: string; label: string }[]; open: boolean; onToggle: () => void; onChange: (value: string) => void; buttonLabel: string }) {
-  const style = "mt-1 w-full rounded-lg border border-brand-navy/20 bg-white px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:outline-2 focus:outline-brand-blue";
-  return <div className="relative">
-    <span className="text-sm font-medium text-brand-navy">{label}</span>
-    <button type="button" className={`${style} flex items-center justify-between text-left`} aria-haspopup="listbox" aria-expanded={open} onClick={onToggle}><span className="truncate">{buttonLabel}</span><span className="ml-2 text-muted" aria-hidden="true">{open ? "^" : "v"}</span></button>
+  const style = `${FILTER_CONTROL} mt-1`;
+  return <div className="relative min-w-0">
+    <span className="block text-sm font-medium text-brand-navy">{label}</span>
+    <button type="button" className={`${style} flex items-center justify-between text-left`} aria-haspopup="listbox" aria-expanded={open} onClick={onToggle}><span className="truncate">{buttonLabel}</span><ChevronDown size={16} className={`ml-2 shrink-0 text-muted ${open ? "rotate-180" : ""}`} aria-hidden="true" /></button>
     {open && <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-brand-navy/15 bg-white p-2 shadow-lg" role="listbox" aria-label={label} aria-multiselectable="true">
       {options.map(option => <label key={option.code} className="flex cursor-pointer items-start gap-2 rounded px-2 py-2 text-sm hover:bg-brand-blue-light"><input type="checkbox" checked={values.includes(option.code)} onChange={() => onChange(option.code)} className="mt-0.5 accent-brand-blue" /><span>{option.label}</span></label>)}
       {options.length === 0 && <span className="block px-2 py-2 text-sm text-muted">No options available</span>}

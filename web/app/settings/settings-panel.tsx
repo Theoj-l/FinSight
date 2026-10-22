@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Check, Globe2, LockKeyhole, Mail, Palette, UserRound } from "lucide-react";
+import { FinancialSettings } from "./financial-settings";
+import { SlidersHorizontal, ChartNoAxesCombined, Bell, Check, Globe2, LockKeyhole, Mail, Palette, UserRound } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import { useNotificationPreferences } from "@/lib/notification-store";
@@ -71,6 +72,8 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
           ["account", "Account", UserRound],
           ["preferences", "Preferences", Palette],
           ["notifications", "Notifications", Bell],
+          ["thresholds", "Threshold Settings", SlidersHorizontal],
+          ["budgets-forecasts", "Budgets & Forecasts", ChartNoAxesCombined],
           ["security", "Security", LockKeyhole],
         ].map(([id, label, Icon], index) => (
           <a key={String(id)} href={`#${id}`} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-brand-blue-light hover:text-brand-navy ${index === 0 ? "bg-brand-blue-light text-brand-navy" : "text-slate-600"}`}>
@@ -117,6 +120,8 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
           <p id="notification-frequency-help" className="mt-2 text-sm leading-6 text-muted">The first available alerts appear when you open Home. Daily and weekly updates group new issues at least 24 hours or 7 days after the last update, while Home is open or when you return. Refresh Home to check the latest financial data.</p>
           <p className="mt-3 text-xs leading-5 text-muted">These are in-app notifications, saved per account in this browser. Cleared notifications stay cleared for the same issue and reporting period. No email or push notifications are sent.</p>
         </section>
+
+        <FinancialSettings />
 
         <section id="security" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><LockKeyhole aria-hidden="true" className="h-5 w-5" /></span><div><h2 className="font-semibold text-brand-navy">Security</h2><p className="mt-0.5 text-sm text-muted">Your account is protected by Supabase authentication.</p></div></div>

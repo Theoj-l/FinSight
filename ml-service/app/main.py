@@ -1,14 +1,12 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
-from app.routers import health
+from app.routers import anomalies, forecast, health
+from app.security import require_service_token
 
 app = FastAPI(title="FinSight ML Service")
 
 app.include_router(health.router)
 
-# Register future routers here, guarding them with the shared-secret dependency:
-#
-#   from fastapi import Depends
-#   from app.security import require_service_token
-#   from app.routers import predict
-#   app.include_router(predict.router, dependencies=[Depends(require_service_token)])
+# Every router except health is guarded by the shared secret.
+app.include_router(anomalies.router, dependencies=[Depends(require_service_token)])
+app.include_router(forecast.router, dependencies=[Depends(require_service_token)])

@@ -151,7 +151,7 @@ export async function querySales(
   const conditions: Prisma.Sql[] = [Prisma.sql`cancelled = false`];
   if (period) {
     conditions.push(
-      Prisma.sql`doc_date >= ${period.dateFrom} AND doc_date <= ${period.dateTo}`
+      Prisma.sql`doc_date >= ${period.dateFrom} AND doc_date < ${period.dateToExclusive}`
     );
   }
   if (filters.debtorCodes?.length) {
@@ -189,7 +189,7 @@ export async function queryOutstanding(filters: ResolvedFilters): Promise<number
   return rows[0]?.amount ?? 0;
 }
 
-/** Query budget from budget_pbalance. */
+/** Query a P&L budget metric from budget_pbalance. */
 async function queryBudget(
   metric: string,
   periodNos: number[],
@@ -201,24 +201,20 @@ async function queryBudget(
       ? Prisma.sql`AND bp.dept_no IN (${Prisma.join(filters.deptNos)})`
       : Prisma.empty;
 
-  let accTypeCondition: Prisma.Sql;
-  if (metric === "revenue") {
-    accTypeCondition = Prisma.sql`AND pf.credit_as_positive = true`;
-  } else if (metric === "cogs") {
-    const cogsType = await prisma.pl_format.findFirst({
-      where: { credit_as_positive: false, acc_type: { not: null }, row_type: "A" },
-      orderBy: { seq: "asc" },
-      select: { acc_type: true },
-    });
-    accTypeCondition = cogsType?.acc_type
-      ? Prisma.sql`AND gm.acc_type = ${cogsType.acc_type}`
-      : Prisma.sql`AND 1 = 0`;
-  } else {
-    accTypeCondition = Prisma.sql`AND pf.credit_as_positive = false`;
-  }
+  const cogsType = await prisma.pl_format.findFirst({
+    where: { credit_as_positive: false, acc_type: { not: null }, row_type: "A" },
+    orderBy: { seq: "asc" },
+    select: { acc_type: true },
+  });
+  const cogsAccType = cogsType?.acc_type ?? "__NONE__";
 
-  const rows = await prisma.$queryRaw<{ amount: number }[]>`
-    SELECT COALESCE(SUM(bp.amount), 0)::float AS amount
+  const rows = await prisma.$queryRaw<
+    { revenue: number; expenses: number; cogs: number }[]
+  >`
+    SELECT
+      COALESCE(SUM(CASE WHEN pf.credit_as_positive = true THEN bp.amount ELSE 0 END), 0)::float AS revenue,
+      COALESCE(SUM(CASE WHEN pf.credit_as_positive = false THEN bp.amount ELSE 0 END), 0)::float AS expenses,
+      COALESCE(SUM(CASE WHEN gm.acc_type = ${cogsAccType} THEN bp.amount ELSE 0 END), 0)::float AS cogs
     FROM budget_pbalance bp
     JOIN gl_mast gm ON bp.acc_no = gm.acc_no
     JOIN acc_type at ON gm.acc_type = at.acc_type
@@ -226,9 +222,31 @@ async function queryBudget(
     WHERE at.is_bs_type = false
       AND bp.period_no IN (${periodList})
       ${deptCondition}
-      ${accTypeCondition}
   `;
-  return rows[0]?.amount ?? 0;
+  const row = rows[0] ?? { revenue: 0, expenses: 0, cogs: 0 };
+
+  switch (metric) {
+    case "revenue": return row.revenue;
+    case "cogs": return row.cogs;
+    case "total_cost": return row.expenses;
+    case "operating_expense": return row.expenses - row.cogs;
+    case "gross_profit": return row.revenue - row.cogs;
+    case "net_profit": return row.revenue - row.expenses;
+    case "gross_margin":
+      return row.revenue !== 0
+        ? ((row.revenue - row.cogs) / row.revenue) * 100
+        : 0;
+    case "net_margin":
+      return row.revenue !== 0
+        ? ((row.revenue - row.expenses) / row.revenue) * 100
+        : 0;
+    default:
+      throw new Error(`Metric "${metric}" is not supported for budget queries.`);
+  }
+}
+
+function isBudgetRequest(classification: ClassificationResult): boolean {
+  return classification.reason.toLowerCase().includes("budget");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -242,7 +260,7 @@ export async function getMetricValue(
   const period = await resolvePeriod(classification.period);
   const filters = await resolveFilters(classification);
 
-  const isBudget = classification.reason?.toLowerCase().includes("budget") ?? false;
+  const isBudget = isBudgetRequest(classification);
 
   let value: number;
   let source: "actual" | "budget" = "actual";
@@ -287,6 +305,47 @@ export async function getMetricComparison(
     throw new Error("A time period is required for metric comparison.");
   }
 
+  const filters = await resolveFilters(classification);
+
+  if (isBudgetRequest(classification)) {
+    if (!GL_METRICS.has(metric)) {
+      throw new Error(
+        `Metric "${metric}" is not supported for actual-versus-budget comparison.`
+      );
+    }
+
+    const actualValue = await computeGLMetric(
+      metric,
+      currentPeriod.periodNos,
+      filters
+    );
+    const budgetValue = await queryBudget(
+      metric,
+      currentPeriod.periodNos,
+      filters
+    );
+    const variance = actualValue - budgetValue;
+
+    return {
+      questionType: "metric_comparison",
+      metric,
+      comparisonType: "actual_vs_budget",
+      current: {
+        value: actualValue,
+        period: toPeriodInfo(currentPeriod),
+        source: "actual",
+      },
+      previous: {
+        value: budgetValue,
+        period: toPeriodInfo(currentPeriod),
+        source: "budget",
+      },
+      change: variance,
+      changePct: budgetValue !== 0 ? (variance / budgetValue) * 100 : null,
+      filters: filters.applied,
+    };
+  }
+
   const comparisonPeriod = await resolvePeriod(
     classification.comparison_period ?? "previous_period",
     currentPeriod.periodNos[0]
@@ -294,8 +353,6 @@ export async function getMetricComparison(
   if (!comparisonPeriod) {
     throw new Error("Could not resolve the comparison period.");
   }
-
-  const filters = await resolveFilters(classification);
 
   let currentValue: number;
   let previousValue: number;
@@ -316,8 +373,17 @@ export async function getMetricComparison(
   return {
     questionType: "metric_comparison",
     metric,
-    current: { value: currentValue, period: toPeriodInfo(currentPeriod) },
-    previous: { value: previousValue, period: toPeriodInfo(comparisonPeriod) },
+    comparisonType: "period",
+    current: {
+      value: currentValue,
+      period: toPeriodInfo(currentPeriod),
+      source: "actual",
+    },
+    previous: {
+      value: previousValue,
+      period: toPeriodInfo(comparisonPeriod),
+      source: "actual",
+    },
     change,
     changePct,
     filters: filters.applied,
@@ -544,15 +610,97 @@ async function topByProductCategory(period: RP, filters: RF, n: number): Promise
 async function topByDepartment(metric: string, period: RP, filters: RF, n: number): Promise<TopNItem[]> {
   if (!period) throw new Error("Period is required for department GL analysis.");
   const periodList = Prisma.join(period.periodNos);
-  const isRevenue = metric === "revenue" || metric === "sales";
+
+  // Look up the COGS acc_type (first expense A-row in pl_format by seq)
+  const cogsType = await prisma.pl_format.findFirst({
+    where: { credit_as_positive: false, acc_type: { not: null }, row_type: "A" },
+    orderBy: { seq: "asc" },
+    select: { acc_type: true },
+  });
+  const cogsAccType = cogsType?.acc_type ?? "__NONE__";
+
+  // Revenue / sales: credit-side P&L accounts only
+  if (metric === "revenue" || metric === "sales") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_cr - pb.home_dr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN acc_type at ON gm.acc_type = at.acc_type
+      JOIN pl_format pf ON pf.acc_type = at.acc_type
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE at.is_bs_type = false
+        AND pf.credit_as_positive = true
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // COGS: only the first expense acc_type in pl_format (e.g. 'CS')
+  if (metric === "cogs") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_dr - pb.home_cr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE gm.acc_type = ${cogsAccType}
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // Operating expense: all expense acc_types EXCEPT the COGS acc_type
+  if (metric === "operating_expense") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_dr - pb.home_cr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN acc_type at ON gm.acc_type = at.acc_type
+      JOIN pl_format pf ON pf.acc_type = at.acc_type
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE at.is_bs_type = false
+        AND pf.credit_as_positive = false
+        AND gm.acc_type != ${cogsAccType}
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // Total cost: all expense acc_types (COGS + OpEx combined)
+  if (metric === "total_cost") {
+    return prisma.$queryRaw<TopNItem[]>`
+      SELECT dept.description AS label,
+        SUM(pb.home_dr - pb.home_cr)::float AS value
+      FROM pbalance pb
+      JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+      JOIN acc_type at ON gm.acc_type = at.acc_type
+      JOIN pl_format pf ON pf.acc_type = at.acc_type
+      JOIN dept ON pb.dept_no = dept.dept_no
+      WHERE at.is_bs_type = false
+        AND pf.credit_as_positive = false
+        AND pb.period_no IN (${periodList})
+      GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
+    `;
+  }
+
+  // Net profit: revenue contribution minus expense contribution per department
   return prisma.$queryRaw<TopNItem[]>`
     SELECT dept.description AS label,
-      SUM(CASE WHEN ${isRevenue} THEN pb.home_cr - pb.home_dr ELSE pb.home_dr - pb.home_cr END)::float AS value
-    FROM pbalance pb JOIN gl_mast gm ON pb.acc_no = gm.acc_no JOIN acc_type at ON gm.acc_type = at.acc_type JOIN pl_format pf ON pf.acc_type = at.acc_type JOIN dept ON pb.dept_no = dept.dept_no
-    WHERE at.is_bs_type = false AND pf.credit_as_positive = ${isRevenue} AND pb.period_no IN (${periodList})
+      SUM(CASE WHEN pf.credit_as_positive THEN pb.home_cr - pb.home_dr
+               ELSE -(pb.home_dr - pb.home_cr) END)::float AS value
+    FROM pbalance pb
+    JOIN gl_mast gm ON pb.acc_no = gm.acc_no
+    JOIN acc_type at ON gm.acc_type = at.acc_type
+    JOIN pl_format pf ON pf.acc_type = at.acc_type
+    JOIN dept ON pb.dept_no = dept.dept_no
+    WHERE at.is_bs_type = false
+      AND pb.period_no IN (${periodList})
     GROUP BY dept.description ORDER BY value DESC LIMIT ${n}
   `;
 }
+
 
 async function topByAccount(period: RP, filters: RF, n: number): Promise<TopNItem[]> {
   if (!period) throw new Error("Period is required for account-level analysis.");

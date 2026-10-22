@@ -2,6 +2,9 @@ import { formatCurrencyCompact, formatCurrencyExact, formatPeriod } from "./reve
 
 export type ProfitMarginPoint = {
   period: string;
+  periodNo: number;
+  grossProfit: number;
+  grossMarginPct: number | null;
   netProfit: number;
   netMarginPct: number | null;
 };
@@ -53,6 +56,9 @@ export function aggregateProfitMargin(rows: ProfitBalanceRow[]): ProfitMarginPoi
 
       return {
         period: formatPeriod(periodNo),
+        periodNo,
+        grossProfit: total.revenue - total.costOfSales,
+        grossMarginPct: total.revenue <= 0 ? null : ((total.revenue - total.costOfSales) / total.revenue) * 100,
         netProfit,
         netMarginPct: total.revenue === 0 ? null : (netProfit / total.revenue) * 100,
       };

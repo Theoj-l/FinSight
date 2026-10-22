@@ -9,3 +9,17 @@ python-dotenv==1.2.3
 numpy==2.5.2
 pandas==3.0.5
 psycopg[binary]==3.3.5
+
+# ML — anomaly detection (app/anomaly, training/anomaly). Runtime deps because
+# the serving layer loads the trained artifacts.
+scikit-learn==1.9.1
+scipy==1.18.1
+joblib==1.6.0
+
+# Forecasting (app/forecast). Prophet is the selected model (models/forecast/v1);
+# statsmodels runs Holt-Winters, which the benchmark compares against it and
+# which a retrain may select. formulaic (a statsmodels dependency) accepts
+# pre-releases of wrapt, so pin a final release to keep the image reproducible.
+prophet==1.5.0
+statsmodels==0.15.0
+wrapt==2.5.0

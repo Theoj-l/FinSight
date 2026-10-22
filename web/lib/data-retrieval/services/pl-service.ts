@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client";
 import type { ClassificationResult } from "@/lib/types/classification";
 import { resolvePeriod, toPeriodInfo, periodNosToDateRange } from "../period-resolver";
 import { resolveFilters, type ResolvedFilters } from "../filter-builder";
-import { computeGLMetric, querySales, queryOutstanding } from "./metric-service";
+import { computeGLMetric, querySales } from "./metric-service";
 import type {
   PLSummaryResult,
   PLRow,
@@ -42,9 +42,12 @@ export async function getPLSummary(
   const plFormats = await prisma.pl_format.findMany({ orderBy: { seq: "asc" } });
 
   // Get amounts by acc_type
-  const amountRows = await prisma.$queryRaw<{ acc_type: string; amount: number }[]>`
+  const amountRows = await prisma.$queryRaw<
+    { acc_type: string; amount: number; profit_impact: number }[]
+  >`
     SELECT gm.acc_type,
-      SUM(CASE WHEN pf.credit_as_positive THEN pb.home_cr - pb.home_dr ELSE pb.home_dr - pb.home_cr END)::float AS amount
+      SUM(CASE WHEN pf.credit_as_positive THEN pb.home_cr - pb.home_dr ELSE pb.home_dr - pb.home_cr END)::float AS amount,
+      SUM(pb.home_cr - pb.home_dr)::float AS profit_impact
     FROM pbalance pb
     JOIN gl_mast gm ON pb.acc_no = gm.acc_no
     JOIN acc_type at ON gm.acc_type = at.acc_type
@@ -53,26 +56,43 @@ export async function getPLSummary(
     GROUP BY gm.acc_type
   `;
 
-  const amountByAccType = new Map<string, number>();
+  const amountByAccType = new Map<
+    string,
+    { amount: number; profitImpact: number }
+  >();
   for (const row of amountRows) {
-    amountByAccType.set(row.acc_type, row.amount ?? 0);
+    amountByAccType.set(row.acc_type, {
+      amount: row.amount ?? 0,
+      profitImpact: row.profit_impact ?? 0,
+    });
   }
 
   // Build rows
   const rows: PLRow[] = [];
+  // Track presentation subtotals separately from cumulative accounting profit.
   let runningSubtotal = 0;
+  let runningProfit = 0;
 
   for (const fmt of plFormats) {
     if (fmt.row_type === "A" && fmt.acc_type) {
-      const amount = amountByAccType.get(fmt.acc_type) ?? 0;
+      const values = amountByAccType.get(fmt.acc_type);
+      const amount = values?.amount ?? 0;
       runningSubtotal += amount;
+      runningProfit += values?.profitImpact ?? 0;
       rows.push({ seq: fmt.seq, label: fmt.description ?? "", rowType: "account", amount });
     } else if (fmt.row_type === "S" || fmt.row_type === "T") {
+      const label = fmt.description ?? "";
+      const isProfitLine = /\bprofit\b/i.test(label);
+
       rows.push({
         seq: fmt.seq,
-        label: fmt.description ?? "",
+        label,
         rowType: fmt.row_type === "T" ? "total" : "subtotal",
-        amount: runningSubtotal,
+        // Section totals (for example, Total Revenue) use only the current
+        // section. Profit lines are cumulative and include the accounting
+        // impact of every account above them: credits increase profit and
+        // debits reduce it.
+        amount: fmt.row_type === "T" || isProfitLine ? runningProfit : runningSubtotal,
       });
       if (fmt.row_type === "S") runningSubtotal = 0;
     } else {
@@ -117,15 +137,33 @@ export async function getVarianceBreakdown(
     case "revenue_variance":
       return buildGLVariance(qType, "revenue", true, null, currentPeriod, previousPeriod, filters);
     case "cost_variance":
-      return buildGLVariance(qType, "total_cost", false, null, currentPeriod, previousPeriod, filters);
+      return buildGLVariance(
+        qType,
+        classification.metric === "operating_expense" ? "operating_expense" : "total_cost",
+        false,
+        null,
+        currentPeriod,
+        previousPeriod,
+        filters
+      );
     case "profit_variance":
       return buildProfitVariance(currentPeriod, previousPeriod, filters);
     case "sales_variance":
-      return buildSalesVariance(currentPeriod, previousPeriod, filters);
+      return buildSalesVariance(
+        currentPeriod,
+        previousPeriod,
+        filters,
+        classification.dimensions[0] ?? "customer"
+      );
     case "payroll_variance":
       return buildGLVariance(qType, "payroll", false, ["6100", "6110"], currentPeriod, previousPeriod, filters);
     case "ar_variance":
-      return buildARVariance(currentPeriod, previousPeriod, filters);
+      return buildARVariance(
+        currentPeriod,
+        previousPeriod,
+        filters,
+        classification.dimensions[0] ?? "ageing_bucket"
+      );
     default:
       throw new Error(`Unsupported variance type: ${qType}`);
   }
@@ -153,7 +191,9 @@ async function buildGLVariance(
   // Account filter: either specific acc_nos or by credit_as_positive
   const accCondition = accNos
     ? Prisma.sql`AND gm.acc_no IN (${Prisma.join(accNos)})`
-    : Prisma.sql`AND pf.credit_as_positive = ${creditAsPositive}`;
+    : metric === "operating_expense"
+      ? Prisma.sql`AND gm.acc_type = 'EX'`
+      : Prisma.sql`AND pf.credit_as_positive = ${creditAsPositive}`;
 
   const signExpr = creditAsPositive
     ? Prisma.sql`pb.home_cr - pb.home_dr`
@@ -174,6 +214,23 @@ async function buildGLVariance(
 
   const totalChange = totalCurrent - totalPrevious;
   const totalChangePct = totalPrevious !== 0 ? (totalChange / totalPrevious) * 100 : null;
+  const changeExpr = Prisma.sql`
+    COALESCE(SUM(CASE WHEN pb.period_no IN (${curPeriods}) THEN ${signExpr} ELSE 0 END), 0)
+    - COALESCE(SUM(CASE WHEN pb.period_no IN (${prevPeriods}) THEN ${signExpr} ELSE 0 END), 0)
+  `;
+  // For operating-expense driver questions, return accounts contributing in
+  // the same direction as the overall movement. This matches "contributed
+  // most to the increase/decrease" rather than mixing in offsets.
+  const categoryDirection = metric === "operating_expense"
+    ? totalChange >= 0
+      ? Prisma.sql`AND (${changeExpr}) > 0`
+      : Prisma.sql`AND (${changeExpr}) < 0`
+    : Prisma.empty;
+  const categoryOrder = metric === "operating_expense"
+    ? totalChange >= 0
+      ? Prisma.sql`${changeExpr} DESC`
+      : Prisma.sql`${changeExpr} ASC`
+    : Prisma.sql`ABS(${changeExpr}) DESC`;
 
   // By category (account-level breakdown)
   const byCategory = await prisma.$queryRaw<
@@ -189,12 +246,12 @@ async function buildGLVariance(
     JOIN acc_type at ON gm.acc_type = at.acc_type
     JOIN pl_format pf ON pf.acc_type = at.acc_type
     WHERE at.is_bs_type = false ${accCondition} ${deptCond}
-      AND pb.period_no IN (${curPeriods}) OR pb.period_no IN (${prevPeriods})
+      AND (pb.period_no IN (${curPeriods}) OR pb.period_no IN (${prevPeriods}))
     GROUP BY gm.acc_no, gm.description
     HAVING ABS(COALESCE(SUM(CASE WHEN pb.period_no IN (${curPeriods}) THEN ${signExpr} ELSE 0 END), 0)
              - COALESCE(SUM(CASE WHEN pb.period_no IN (${prevPeriods}) THEN ${signExpr} ELSE 0 END), 0)) > 0
-    ORDER BY ABS(COALESCE(SUM(CASE WHEN pb.period_no IN (${curPeriods}) THEN ${signExpr} ELSE 0 END), 0)
-             - COALESCE(SUM(CASE WHEN pb.period_no IN (${prevPeriods}) THEN ${signExpr} ELSE 0 END), 0)) DESC
+      ${categoryDirection}
+    ORDER BY ${categoryOrder}
     LIMIT 10
   `;
 
@@ -341,7 +398,8 @@ async function buildProfitVariance(
 async function buildSalesVariance(
   currentPeriod: RP,
   previousPeriod: RP,
-  filters: ResolvedFilters
+  filters: ResolvedFilters,
+  dimension: string
 ): Promise<VarianceBreakdownResult> {
   const totalCurrent = await querySales(currentPeriod, filters);
   const totalPrevious = await querySales(previousPeriod, filters);
@@ -360,20 +418,65 @@ async function buildSalesVariance(
     ? Prisma.sql`AND ${Prisma.join(filterConds.slice(1), " AND ")}`
     : Prisma.empty;
 
-  const customerRows = await prisma.$queryRaw<
+  let varianceRows: { label: string; current_val: number; previous_val: number }[];
+
+  if (dimension === "product" || dimension === "product_category") {
+    const labelExpression = dimension === "product"
+      ? Prisma.sql`COALESCE(i.description, dtl.description, dtl.item_code, 'Unknown product')`
+      : Prisma.sql`COALESCE(ig.description, 'Uncategorised')`;
+    const categoryJoin = dimension === "product_category"
+      ? Prisma.sql`LEFT JOIN item_group ig ON i.item_group = ig.item_group`
+      : Prisma.empty;
+    const itemGroupCondition = filters.itemGroups?.length
+      ? Prisma.sql`AND i.item_group IN (${Prisma.join(filters.itemGroups)})`
+      : Prisma.empty;
+
+    varianceRows = await prisma.$queryRaw<
+      { label: string; current_val: number; previous_val: number }[]
+    >`
+      WITH product_sales AS (
+        SELECT
+          ${labelExpression} AS label,
+          COALESCE(SUM(CASE
+            WHEN iv.doc_date >= ${currentPeriod.dateFrom}
+             AND iv.doc_date < ${currentPeriod.dateToExclusive}
+            THEN dtl.local_sub_total ELSE 0 END), 0)::float AS current_val,
+          COALESCE(SUM(CASE
+            WHEN iv.doc_date >= ${previousPeriod.dateFrom}
+             AND iv.doc_date < ${previousPeriod.dateToExclusive}
+            THEN dtl.local_sub_total ELSE 0 END), 0)::float AS previous_val
+        FROM iv_dtl dtl
+        JOIN iv ON dtl.doc_key = iv.doc_key
+        LEFT JOIN item i ON dtl.item_code = i.item_code
+        ${categoryJoin}
+        WHERE iv.cancelled = false
+          AND iv.doc_date >= ${previousPeriod.dateFrom}
+          AND iv.doc_date < ${currentPeriod.dateToExclusive}
+          ${extraWhere}
+          ${itemGroupCondition}
+        GROUP BY ${labelExpression}
+      )
+      SELECT label, current_val, previous_val
+      FROM product_sales
+      WHERE current_val < previous_val
+      ORDER BY current_val - previous_val ASC
+      LIMIT 10
+    `;
+  } else {
+    varianceRows = await prisma.$queryRaw<
     { label: string; current_val: number; previous_val: number }[]
-  >`
+    >`
     WITH curr AS (
       SELECT iv.debtor_code, SUM(iv.local_ex_tax) AS amt
       FROM iv
-      WHERE iv.cancelled = false AND iv.doc_date >= ${currentPeriod.dateFrom} AND iv.doc_date <= ${currentPeriod.dateTo}
+      WHERE iv.cancelled = false AND iv.doc_date >= ${currentPeriod.dateFrom} AND iv.doc_date < ${currentPeriod.dateToExclusive}
         ${extraWhere}
       GROUP BY iv.debtor_code
     ),
     prev AS (
       SELECT iv.debtor_code, SUM(iv.local_ex_tax) AS amt
       FROM iv
-      WHERE iv.cancelled = false AND iv.doc_date >= ${previousPeriod.dateFrom} AND iv.doc_date <= ${previousPeriod.dateTo}
+      WHERE iv.cancelled = false AND iv.doc_date >= ${previousPeriod.dateFrom} AND iv.doc_date < ${previousPeriod.dateToExclusive}
         ${extraWhere}
       GROUP BY iv.debtor_code
     )
@@ -387,8 +490,9 @@ async function buildSalesVariance(
     ORDER BY ABS(COALESCE(curr.amt, 0) - COALESCE(prev.amt, 0)) DESC
     LIMIT 10
   `;
+  }
 
-  const byCategory = mapToVarianceComponents(customerRows, totalChange);
+  const byCategory = mapToVarianceComponents(varianceRows, totalChange);
 
   return {
     questionType: "sales_variance",
@@ -411,36 +515,83 @@ async function buildSalesVariance(
 async function buildARVariance(
   currentPeriod: RP,
   previousPeriod: RP,
-  filters: ResolvedFilters
+  filters: ResolvedFilters,
+  dimension: string
 ): Promise<VarianceBreakdownResult> {
-  // Outstanding AR at current vs previous period doc_date ranges
-  const totalCurrent = await queryOutstanding(filters);
-
-  // For previous, we approximate by looking at invoices issued in the previous period
-  const prevConds: Prisma.Sql[] = [
-    Prisma.sql`cancelled = false`,
-    Prisma.sql`outstanding > 0`,
-    Prisma.sql`doc_date >= ${previousPeriod.dateFrom} AND doc_date <= ${previousPeriod.dateTo}`,
+  const baseConds: Prisma.Sql[] = [
+    Prisma.sql`ar.cancelled = false`,
+    Prisma.sql`ar.outstanding > 0`,
   ];
   if (filters.debtorCodes?.length) {
-    prevConds.push(Prisma.sql`debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
+    baseConds.push(Prisma.sql`ar.debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
   }
-  const prevWhere = Prisma.sql`WHERE ${Prisma.join(prevConds, " AND ")}`;
-  const prevRows = await prisma.$queryRaw<{ amount: number }[]>`
-    SELECT COALESCE(SUM(outstanding), 0)::float AS amount FROM ar_invoice ${prevWhere}
+  if (filters.salesAgents?.length) {
+    baseConds.push(Prisma.sql`ar.sales_agent IN (${Prisma.join(filters.salesAgents)})`);
+  }
+  if (filters.branchCodes?.length) {
+    baseConds.push(Prisma.sql`ar.branch_code IN (${Prisma.join(filters.branchCodes)})`);
+  }
+  const baseWhere = Prisma.sql`WHERE ${Prisma.join(baseConds, " AND ")}`;
+  const previousCutoff = previousPeriod.dateTo;
+
+  const totalRows = await prisma.$queryRaw<
+    { total_previous: number; total_current: number }[]
+  >`
+    SELECT
+      COALESCE(SUM(CASE WHEN ar.due_date < ${previousCutoff} THEN ar.outstanding ELSE 0 END), 0)::float AS total_previous,
+      COALESCE(SUM(CASE WHEN ar.due_date < CURRENT_DATE THEN ar.outstanding ELSE 0 END), 0)::float AS total_current
+    FROM ar_invoice ar
+    ${baseWhere}
   `;
-  const totalPrevious = prevRows[0]?.amount ?? 0;
+  const totalPrevious = totalRows[0]?.total_previous ?? 0;
+  const totalCurrent = totalRows[0]?.total_current ?? 0;
 
   const totalChange = totalCurrent - totalPrevious;
   const totalChangePct = totalPrevious !== 0 ? (totalChange / totalPrevious) * 100 : null;
 
-  // By aging bucket
-  const arConds: Prisma.Sql[] = [Prisma.sql`cancelled = false`, Prisma.sql`outstanding > 0`];
-  if (filters.debtorCodes?.length) {
-    arConds.push(Prisma.sql`debtor_code IN (${Prisma.join(filters.debtorCodes)})`);
-  }
-  const arWhere = Prisma.sql`WHERE ${Prisma.join(arConds, " AND ")}`;
+  if (dimension === "customer") {
+    const customerRows = await prisma.$queryRaw<
+      { label: string; current_val: number; previous_val: number }[]
+    >`
+      WITH customer_overdue AS (
+        SELECT
+          ar.debtor_code,
+          d.company_name AS label,
+          COALESCE(SUM(CASE
+            WHEN ar.due_date < ${previousCutoff} THEN ar.outstanding ELSE 0
+          END), 0)::float AS previous_val,
+          COALESCE(SUM(CASE
+            WHEN ar.due_date < CURRENT_DATE THEN ar.outstanding ELSE 0
+          END), 0)::float AS current_val
+        FROM ar_invoice ar
+        JOIN debtor d ON ar.debtor_code = d.acc_no
+        ${baseWhere}
+        GROUP BY ar.debtor_code, d.company_name
+      )
+      SELECT label, current_val, previous_val
+      FROM customer_overdue
+      WHERE current_val > previous_val
+      ORDER BY current_val - previous_val DESC
+      LIMIT 10
+    `;
 
+    return {
+      questionType: "ar_variance",
+      metric: "outstanding_amount",
+      totalCurrent,
+      totalPrevious,
+      totalChange,
+      totalChangePct,
+      byCategory: mapToVarianceComponents(customerRows, totalChange),
+      byDepartment: [],
+      topDriverTransactions: [],
+      currentPeriod: toPeriodInfo(currentPeriod),
+      previousPeriod: toPeriodInfo(previousPeriod),
+      filters: filters.applied,
+    };
+  }
+
+  // By aging bucket
   const bucketRows = await prisma.$queryRaw<{ label: string; current_val: number }[]>`
     SELECT
       CASE
@@ -451,8 +602,9 @@ async function buildARVariance(
         ELSE '90+ days'
       END AS label,
       SUM(outstanding)::float AS current_val
-    FROM ar_invoice
-    ${arWhere}
+    FROM ar_invoice ar
+    ${baseWhere}
+      AND ar.due_date < CURRENT_DATE
     GROUP BY label
   `;
 

@@ -16,7 +16,7 @@ import path from "node:path";
 
 const webDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const envPath = path.join(webDir, ".env");
-const sqlPath = path.join(webDir, "prisma", "finsight_schema.sql");
+const sqlPath = path.resolve(webDir, process.argv[2] ?? "prisma/finsight_schema.sql");
 
 if (!existsSync(envPath)) {
   console.error("web/.env not found. Run `npm run setup` first.");
@@ -30,7 +30,7 @@ if (!match) {
   process.exit(1);
 }
 
-console.log("Applying prisma/finsight_schema.sql via DIRECT_URL …");
+console.log(`Applying ${path.relative(webDir, sqlPath)} via DIRECT_URL …`);
 execFileSync(
   "npx",
   ["prisma", "db", "execute", "--url", match[1], "--file", sqlPath],

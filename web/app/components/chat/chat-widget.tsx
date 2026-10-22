@@ -1,6 +1,15 @@
 "use client";
 
-import { ArrowUp, MessageCircle, RotateCcw, Square, SquarePen, X } from "lucide-react";
+import {
+  ArrowUp,
+  Maximize2,
+  MessageCircle,
+  Minimize2,
+  RotateCcw,
+  Square,
+  SquarePen,
+  X,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { memo, useEffect, useRef, useState } from "react";
 import { claimFirstVisit, useTour } from "../tour/tour-context";
@@ -14,7 +23,7 @@ import { useChat } from "./use-chat";
 // Pages that render inside the signed-in app shell. Keep in sync with
 // PROTECTED_PREFIXES in lib/supabase/proxy.ts. The chat API itself does not
 // check auth, so the widget must never appear on public pages.
-const APP_ROUTES = ["/home", "/dashboard", "/assistant", "/insights", "/reports", "/settings"];
+const APP_ROUTES = ["/home", "/dashboard", "/assistant", "/forecast", "/reports", "/settings"];
 
 const SUGGESTIONS = [
   "Which customer has the highest sales?",
@@ -32,6 +41,15 @@ const WALKTHROUGH_QUESTION = "Walk me through this dashboard";
 const WALKTHROUGH_ON_FIRST_VISIT = CHAT_MOCK_ENABLED || CHAT_ENDPOINT !== DEFAULT_CHAT_ENDPOINT;
 
 const MAX_INPUT_HEIGHT = 112;
+const CHAT_BUTTON_SIZE = 56;
+const VIEWPORT_MARGIN = 20;
+const PANEL_GAP = 12;
+
+type Position = { x: number; y: number };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), Math.max(min, max));
+}
 
 function TypingDots({ spaced }: { spaced: boolean }) {
   return (
@@ -107,11 +125,49 @@ function ChatDock() {
     },
   });
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
+  const [position, setPosition] = useState<Position | null>(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [dragging, setDragging] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true); // is the log scrolled to the bottom?
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  // Start in the existing bottom-right position and keep the launcher inside
+  // the viewport when the window is resized or the device rotates.
+  useEffect(() => {
+    function syncViewport() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setViewport({ width, height });
+      setPosition((current) => {
+        const initial = current ?? {
+          x: width - VIEWPORT_MARGIN - CHAT_BUTTON_SIZE,
+          y: height - VIEWPORT_MARGIN - CHAT_BUTTON_SIZE,
+        };
+
+        return {
+          x: clamp(initial.x, VIEWPORT_MARGIN, width - VIEWPORT_MARGIN - CHAT_BUTTON_SIZE),
+          y: clamp(initial.y, VIEWPORT_MARGIN, height - VIEWPORT_MARGIN - CHAT_BUTTON_SIZE),
+        };
+      });
+    }
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
 
   // Opening the panel: focus the input and jump to the latest message.
   useEffect(() => {
@@ -144,6 +200,7 @@ function ChatDock() {
 
   function close() {
     setOpen(false);
+    setExpanded(false);
     buttonRef.current?.focus();
   }
 
@@ -154,16 +211,121 @@ function ChatDock() {
     if (inputRef.current) inputRef.current.style.height = "auto";
   }
 
+  const panelStyle = (() => {
+    if (!position || viewport.width === 0 || viewport.height === 0) return undefined;
+
+    if (expanded) {
+      const width = Math.min(960, viewport.width - VIEWPORT_MARGIN * 2);
+      const height = Math.min(720, viewport.height - VIEWPORT_MARGIN * 2);
+      return {
+        left: (viewport.width - width) / 2,
+        top: (viewport.height - height) / 2,
+        width,
+        height,
+      };
+    }
+
+    const panelWidth = Math.min(384, viewport.width - VIEWPORT_MARGIN * 2);
+    const panelHeight = Math.min(544, viewport.height - 128);
+    const alignFromLeft = position.x + CHAT_BUTTON_SIZE / 2 < viewport.width / 2;
+    const preferredLeft = alignFromLeft
+      ? position.x
+      : position.x + CHAT_BUTTON_SIZE - panelWidth;
+    const openBelow = position.y + CHAT_BUTTON_SIZE / 2 < viewport.height / 2;
+    const preferredTop = openBelow
+      ? position.y + CHAT_BUTTON_SIZE + PANEL_GAP
+      : position.y - PANEL_GAP - panelHeight;
+
+    return {
+      left: clamp(
+        preferredLeft,
+        VIEWPORT_MARGIN,
+        viewport.width - VIEWPORT_MARGIN - panelWidth
+      ),
+      top: clamp(
+        preferredTop,
+        VIEWPORT_MARGIN,
+        viewport.height - VIEWPORT_MARGIN - panelHeight
+      ),
+    };
+  })();
+
   return (
-    <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-40 flex flex-col-reverse items-end gap-3 print:hidden">
+    <>
       <button
         ref={buttonRef}
         type="button"
         aria-label={open ? "Close assistant" : "Open assistant"}
         aria-expanded={open}
         aria-controls="chat-panel"
-        onClick={() => (open ? close() : setOpen(true))}
-        className="grid h-14 w-14 place-items-center rounded-full bg-brand-navy text-white shadow-lg shadow-brand-navy/30 transition hover:bg-brand-navy-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue active:scale-95 motion-reduce:transition-none"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          dragRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            originX: rect.left,
+            originY: rect.top,
+            moved: false,
+          };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+
+          const deltaX = event.clientX - drag.startX;
+          const deltaY = event.clientY - drag.startY;
+          if (!drag.moved && Math.hypot(deltaX, deltaY) < 5) return;
+
+          drag.moved = true;
+          setDragging(true);
+          event.preventDefault();
+          setPosition({
+            x: clamp(
+              drag.originX + deltaX,
+              VIEWPORT_MARGIN,
+              window.innerWidth - VIEWPORT_MARGIN - CHAT_BUTTON_SIZE
+            ),
+            y: clamp(
+              drag.originY + deltaY,
+              VIEWPORT_MARGIN,
+              window.innerHeight - VIEWPORT_MARGIN - CHAT_BUTTON_SIZE
+            ),
+          });
+        }}
+        onPointerUp={(event) => {
+          const drag = dragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          suppressNextClickRef.current = drag.moved;
+          dragRef.current = null;
+          setDragging(false);
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+          setDragging(false);
+        }}
+        onClick={() => {
+          if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false;
+            return;
+          }
+          if (open) {
+            close();
+          } else {
+            setOpen(true);
+          }
+        }}
+        style={position ? { left: position.x, top: position.y } : undefined}
+        className={`fixed z-40 grid h-14 w-14 touch-none select-none place-items-center rounded-full bg-brand-navy text-white shadow-lg shadow-brand-navy/30 transition hover:bg-brand-navy-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue active:scale-95 motion-reduce:transition-none print:hidden ${
+          position
+            ? dragging
+              ? "cursor-grabbing"
+              : "cursor-grab"
+            : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))]"
+        }`}
       >
         {open ? <X aria-hidden="true" className="h-6 w-6" /> : <MessageCircle aria-hidden="true" className="h-6 w-6" />}
       </button>
@@ -176,7 +338,12 @@ function ChatDock() {
           onKeyDown={(event) => {
             if (event.key === "Escape") close();
           }}
-          className="chat-pop flex h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-brand-navy/20"
+          style={panelStyle}
+          className={`chat-pop fixed z-40 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-brand-navy/20 transition-[width,height,left,top] duration-200 motion-reduce:transition-none print:hidden ${
+            expanded
+              ? ""
+              : "h-[min(34rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-2.5rem))]"
+          }`}
         >
           <header className="flex items-center gap-3 bg-brand-navy px-4 py-3 text-white">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/15">
@@ -197,6 +364,20 @@ function ChatDock() {
                 <SquarePen aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setExpanded((current) => !current)}
+              aria-label={expanded ? "Restore chat size" : "Expand chat"}
+              aria-pressed={expanded}
+              title={expanded ? "Restore size" : "Expand"}
+              className="grid h-8 w-8 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+            >
+              {expanded ? (
+                <Minimize2 aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <Maximize2 aria-hidden="true" className="h-4 w-4" />
+              )}
+            </button>
             <button
               type="button"
               onClick={close}
@@ -313,7 +494,7 @@ function ChatDock() {
           </form>
         </section>
       )}
-    </div>
+    </>
   );
 }
 

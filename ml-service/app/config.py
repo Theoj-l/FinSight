@@ -14,6 +14,21 @@ class Settings(BaseSettings):
     # Directory holding trained model artifacts (gitignored).
     models_dir: str = "models"
 
+    # Which trained anomaly model to serve: <models_dir>/anomaly/<version>/.
+    anomaly_model_version: str = "v1"
+
+    # Which forecast model to run: <models_dir>/forecast/<version>/config.json.
+    forecast_model_version: str = "v1"
+
+    # Series fitted in parallel (threads) by a forecast run. Prophet fits mostly
+    # wait on a Stan subprocess, so this can exceed the CPU count.
+    forecast_jobs: int = 8
+
+    # Supabase Postgres, session pooler (port 5432). Anomaly scoring and
+    # forecasting read the ledger here and write their results back
+    # (anomaly_alert / anomaly_run, forecast_value / forecast_run).
+    database_url: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

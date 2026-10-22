@@ -45,7 +45,7 @@ export async function resolveFilters(
   let debtorCodes: string[] | null = null;
   let salesAgents: string[] | null = null;
   let itemGroups: string[] | null = null;
-  let branchCodes: string[] | null = null;
+  const branchCodes: string[] | null = null;
 
   // ── Department / Business Unit ──────────────────────────────────────────
   const deptFilter = f.department ?? f.business_unit;

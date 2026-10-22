@@ -60,6 +60,33 @@ def _norm_seasonality():
 _SEAS = _norm_seasonality()
 _BRANCH_CODES = [b[0] for b in C.BRANCHES]
 _BRANCH_W = np.array([0.5, 0.3, 0.2])
+_BU = {b.code: b for b in C.BUSINESS_UNITS}
+
+
+def regular_day(y: int, m: int) -> date:
+    """The day recurring opex / payroll / depreciation are posted each month."""
+    return date(y, m, min(26, calendar.monthrange(y, m)[1]))
+
+
+def _years_elapsed(y: int, m: int) -> float:
+    return (y - C.START.year) + (m - 1) / 12.0
+
+
+def expected_revenue(bu: str, y: int, m: int) -> float:
+    """Noise-free monthly revenue for a business unit (trend x seasonality)."""
+    b = _BU[bu]
+    annual = b.rev_2021 * ((1 + b.growth) ** _years_elapsed(y, m))
+    return annual / 12.0 * _SEAS[b.seasonality][m - 1]
+
+
+def expected_opex(acc: str, y: int, m: int) -> float:
+    """Noise-free monthly amount of a cash-settled opex account."""
+    base = C.OPEX_2021_MONTHLY[acc] * (1 + C.OPEX_GROWTH) ** _years_elapsed(y, m)
+    if acc == "6210":  # utilities: higher mid-year
+        base *= 1.0 + 0.12 * _SEAS["strong"][m - 1] - 0.12
+    if acc == "6500" and m in C.AUDIT_MONTHS:
+        base += C.AUDIT_SPIKE
+    return base
 
 
 class Keys:
@@ -160,6 +187,11 @@ def simulate(rng, masters, plan):
                         items_by_bu, iv_rows, ivdtl_rows, ar_rows, ar_index, payments)
         _monthly_expenses(rng, y, m, L, plan)
         _period_end(rng, y, m, L)
+        # Injected journals (anomalies + decoys) are posted inside their own month
+        # with the same conventions as normal postings of that kind.
+        for spec in plan.extra_gl_for(ym):
+            L.post(spec["date"], spec["jtype"], spec["stype"], spec.get("ref"),
+                   spec["desc"], spec["lines"])
         for hook in plan.post_hooks.get(ym, []):
             hook(L)
 
@@ -175,12 +207,30 @@ def simulate(rng, masters, plan):
         ar["local_payment_amt"] = _r2(ar["local_payment_amt"])
         ar["outstanding"] = _r2(ar["local_net_total"] - ar["local_payment_amt"])
 
-    # ---- Injected GL-only anomalies ----------------------------
-    for spec in plan.extra_gl:
-        L.post(spec["date"], spec["jtype"], "J", spec.get("ref"), spec["desc"], spec["lines"])
+    _renumber_in_date_order(L.gl, rng)
 
     return dict(gl_dtl=L.gl, iv=iv_rows, iv_dtl=ivdtl_rows, ar_invoice=ar_rows,
                 _ledger=L)
+
+
+def _renumber_in_date_order(gl: list[dict], rng) -> None:
+    """Re-key journals so gl_trx_id / gl_dtl_key follow trans_date, as they would
+    in a real ledger. Journals are posted out of date order (receipts are
+    scheduled after the monthly loop), so without this the keys would reveal
+    posting order. Ties within a day are broken randomly; lines stay grouped
+    by journal in their original order. Runs after every other draw, so it does
+    not perturb the rest of the simulation."""
+    trx_date: dict[int, date] = {}
+    for r in gl:
+        trx_date.setdefault(r["gl_trx_id"], r["trans_date"])
+    trx_ids = list(trx_date)
+    tiebreak = rng.permutation(len(trx_ids))
+    order = sorted(range(len(trx_ids)), key=lambda i: (trx_date[trx_ids[i]], tiebreak[i]))
+    new_id = {trx_ids[i]: n for n, i in enumerate(order, start=1)}
+    gl.sort(key=lambda r: (new_id[r["gl_trx_id"]], r["gl_dtl_key"]))
+    for k, r in enumerate(gl, start=1):
+        r["gl_trx_id"] = new_id[r["gl_trx_id"]]
+        r["gl_dtl_key"] = k
 
 
 def _schedule_payment(rng, ar, meta, plan, payments, opening=False):
@@ -211,10 +261,9 @@ def _schedule_payment(rng, ar, meta, plan, payments, opening=False):
 def _generate_sales(rng, y, m, L, masters, plan, cust_by_bu, cust_codes,
                     items_by_bu, iv_rows, ivdtl_rows, ar_rows, ar_index, payments):
     ym = y * 100 + m
-    years_elapsed = (y - C.START.year) + (m - 1) / 12.0
+    month_seq = 0   # invoice numbers run across all BUs so doc_no is unique
     for b in C.BUSINESS_UNITS:
-        annual = b.rev_2021 * ((1 + b.growth) ** years_elapsed)
-        target = annual / 12.0 * _SEAS[b.seasonality][m - 1]
+        target = expected_revenue(b.code, y, m)
         target *= rng.lognormal(0.0, C.REVENUE_MONTHLY_NOISE)
         target *= plan.revenue_mult.get((b.code, ym), 1.0)
         if target < 1000:
@@ -223,13 +272,14 @@ def _generate_sales(rng, y, m, L, masters, plan, cust_by_bu, cust_codes,
         inv_vals = _split_amount(target, n_inv, rng, b.invoice_cv)
         dates = _weekday_dates(y, m, rng, n_inv)
         margin = plan.margin_override.get((b.code, ym), b.gross_margin)
-        for seq, (v, doc_d) in enumerate(zip(inv_vals, dates, strict=True), start=1):
+        for v, doc_d in zip(inv_vals, dates, strict=True):
             if v < 100:
                 continue
+            month_seq += 1
             pool = cust_by_bu[b.code] if (cust_by_bu[b.code] and rng.random() < 0.7) else cust_codes
             cust = rng.choice(pool)
             cmeta = debtor_meta_lookup(masters, cust)
-            doc_no = f"IV{ym}{seq:04d}"
+            doc_no = f"IV{ym}{month_seq:04d}"
             doc_key = L.keys.n("iv")
             n_lines = int(rng.integers(1, 5))
             line_vals = _split_amount(v, n_lines, rng, 0.5)
@@ -263,7 +313,7 @@ def _generate_sales(rng, y, m, L, masters, plan, cust_by_bu, cust_codes,
                 local_total_cost=total_cost, cancelled=False))
 
             # GL: revenue recognition + cost accrual (one balanced journal)
-            gl_date = plan.gl_trans_date(b.code, ym, seq, doc_d)
+            gl_date = plan.gl_trans_date(b.code, ym, month_seq, doc_d)
             L.post(gl_date, "SALES", "I", doc_no, f"{b.name} sales {doc_no}", [
                 ("1200", "CP", net_total),
                 (b.rev_code, b.code, -ex_tax),
@@ -292,10 +342,8 @@ def debtor_meta_lookup(masters, acc):
 
 
 def _monthly_expenses(rng, y, m, L, plan):
-    y * 100 + m
-    yrs = (y - C.START.year) + (m - 1) / 12.0
-    day = date(y, m, min(26, calendar.monthrange(y, m)[1]))
-    grow = (1 + C.OPEX_GROWTH) ** yrs
+    day = regular_day(y, m)
+    grow = (1 + C.OPEX_GROWTH) ** _years_elapsed(y, m)
 
     # Salaries
     step = grow * (1.03 if m >= C.SALARY_STEP_MONTH else 1.0)
@@ -307,14 +355,8 @@ def _monthly_expenses(rng, y, m, L, plan):
         ("1010", "CP", -_r2(s6100 + s6110))])
 
     # Other operating expenses (cash)
-    for acc in ["6200", "6210", "6220", "6300", "6500", "6510", "6520",
-                "6600", "6700", "6800", "6900"]:
-        base = C.OPEX_2021_MONTHLY[acc] * grow
-        if acc == "6210":  # utilities: higher mid-year
-            base *= 1.0 + 0.12 * _SEAS["strong"][m - 1] - 0.12
-        if acc == "6500" and m in C.AUDIT_MONTHS:
-            base += C.AUDIT_SPIKE
-        amt = _r2(base * rng.lognormal(0, C.OPEX_MONTHLY_NOISE))
+    for acc in C.CASH_OPEX_ACCOUNTS:
+        amt = _r2(expected_opex(acc, y, m) * rng.lognormal(0, C.OPEX_MONTHLY_NOISE))
         L.post(day, "PAYMENT", "P", None, f"Expense {acc}",
                [(acc, "CP", amt), ("1010", "CP", -amt)])
 

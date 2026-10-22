@@ -1,0 +1,1 @@
+export const FILTER_CONTROL = "h-11 min-w-0 w-full rounded-lg border border-brand-navy/20 bg-white px-3 text-sm text-foreground shadow-sm focus:outline-2 focus:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-50";

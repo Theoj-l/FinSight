@@ -25,9 +25,11 @@ web/
   app/
     api/            route handlers (the "backend"), incl. chat/classify (Gemini)
     auth/           server actions (login/signup/signout) + email confirm route
-    (auth)/         login + signup pages (shared card layout)
-    dashboard/      protected page — KPI cards, revenue/expense/margin charts
-    page.tsx        landing page
+    (auth)/         card-based sign-in and account creation pages
+    home/           signed-in overview, dated KPIs and threshold notifications
+    assistant/      conversational workspace (in development)
+    dashboard/      detailed financial dashboard
+    page.tsx        public landing page; signed-in users go to Home
   lib/
     db.ts           Prisma client singleton
     ml-client.ts    typed client for ml-service
@@ -43,7 +45,8 @@ ml-service/
     security.py
     routers/
   training/         offline scripts/notebooks that produce model artifacts
-  models/           trained artifacts (gitignored)
+  models/           committed model artifacts (anomaly/v1/, forecast/v1/); ship in the image
+  DEPLOY.md         Railway deployment: API service + monthly forecast cron
   tests/
 ```
 
@@ -114,21 +117,32 @@ In the Supabase dashboard:
 
 - **Authentication → URL Configuration** — set Site URL to `http://localhost:3000`
   (add the deployed URL later).
-- **Authentication → Sign In / Providers → Email** — for local dev, turn
-  **"Confirm email" off** so sign-up logs you straight in. When you turn it back
-  on, point the confirmation email template at
-  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
-  (handled by `web/app/auth/confirm/route.ts`).
+- Public account creation remains available pending the team's access-policy decision.
+  The app does not change hosted Supabase Auth settings. Keep the Email provider
+  and **Allow new users to sign up** enabled to support `/signup`.
+- Landing-page entry links go to `/login` by default. Users can choose **Create an
+  account** from the sign-in card. Registration validates email and an eight-character
+  minimum password, then uses the existing Supabase signup flow.
+- With email confirmation enabled, users return to sign-in with an inbox notice.
+  Configure the confirmation email template with
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`.
+  With confirmation disabled, a new session redirects to `/home`.
+- No password-reset link is shown because the app has no complete reset flow.
 
 Protected routes are listed in `web/lib/supabase/proxy.ts`: `/home`, `/dashboard`,
 `/assistant`, `/insights`, `/reports`, and `/settings`. Successful sign-in defaults to `/home`;
 an explicit local return path is preserved. The FinSight logo and Home navigation
 item return to the overview.
 
-Home reads the latest company-wide ledger KPIs and uses the same per-account,
-browser-local thresholds as the dashboard. Each KPI shows its reporting month
-and comparison month. Only unfavorable threshold breaches create notifications.
-Notifications and monitoring sit side by side on desktop and stack on mobile.
+Home reads the latest company-wide ledger KPIs and the shared financial rules
+stored in the database. Its financial notification source is saved in Settings;
+a temporary dashboard source selection does not change that policy. Each KPI
+shows its reporting month and comparison basis. Only unfavorable deviations
+exceeding an enabled metric's tolerance create financial notifications.
+Notifications occupy the full width below the financial snapshot on Home; there
+is no separate monitoring coverage card. Anomaly freshness and availability
+appear in the notification footer, while financial coverage notices sit with the
+snapshot.
 The notification panel previews two items, with View all / Show fewer controls
 and a bounded scroll area. Items are marked viewed when visible; users can clear
 one or all viewed items without clearing unread items outside the preview. Notification,
@@ -143,13 +157,42 @@ while open and on return, using its loaded KPI data; refresh Home for updated
 financial data. These preferences do not schedule email or push notifications.
 
 The overview's load time is separate from the reporting period
-and does not represent a ledger sync time. Anomaly monitoring is shown as not
-connected until an anomaly results feed is available.
+and does not represent a ledger sync time. Anomaly notifications use the latest
+successfully scored month and expand to show reasons and supporting records.
 
 Assistant is accessible from the sidebar and Home shortcuts. Its page currently
 shows the planned conversational experience; the existing question classifier
-does not yet provide financial answers. Forecasting will run in the backend and
-can supply dated predictions to the assistant and financial views once connected.
+does not yet provide financial answers. The dashboard now reads stored forecast
+estimates; opening a page never trains or scores a model.
+
+### Financial comparisons and shared settings
+
+The dashboard's **Compare against** selector applies **Default — Previous month**,
+**Budget**, **Auto forecast**, or **Manual forecast** to the KPI cards, compatible
+charts, and P&L. Source and Net/Gross switches use preloaded data and native URL
+history, without a server navigation. Actual ledger amounts stay unchanged.
+Planned future months can be selected; missing actuals and variances remain
+unavailable. The initial dashboard month remains the latest actual month.
+
+Settings adds **Threshold Settings** and **Budgets & Forecasts**. Rules are shared
+company-wide; notification frequency and inbox history remain browser-local.
+Budgets reuse `budget` / `budget_pbalance`; manual revenue/profit estimates are
+stored separately. Blank means unavailable, while `0` is an explicit value.
+Budget subtotals require their component groups to be populated, including
+explicit zeros. Multiple scenarios are never added together; choose a scenario
+on the dashboard and separately save Home's scenario when using Budget alerts.
+
+Auto comparisons support operating revenue and final profit only. Historical
+references prefer archived forecasts issued before the target month, otherwise
+use clearly labelled causal rolling backtests. Missing department coverage is
+unavailable. Forecast origin and limitations are expandable; accuracy/ranges
+remain available on Forecast. Branch-attributed ledger comparisons remain
+unsupported. Invoice/category breakdowns show actuals with coverage notes.
+
+See the [implementation and test report](docs/financial-comparison-implementation-report.md)
+for the before/after comparison, calculation examples, edge cases, and results.
+Run `npm run build --prefix web -- --webpack` before the focused browser command;
+it uses the compiled CSS. Run these sequentially, since a build replaces those assets.
 
 ### Database
 
@@ -163,11 +206,29 @@ Workflow when the schema changes:
 
 ```bash
 cd web
-# 1. edit prisma/finsight_schema.sql
-npm run db:apply      # runs the SQL against Supabase (via DIRECT_URL)
+# Fresh database only: create the full schema
+npm run db:apply
 npm run db:pull       # regenerate schema.prisma from the DB
 npm run db:generate   # regenerate the typed client
 ```
+
+For an existing database, use an additive upgrade instead of replaying the
+full schema. The financial comparison upgrade has been applied to the configured
+database. Apply it separately in another environment before running
+the updated web app:
+
+```bash
+cd web
+npm run db:apply -- prisma/financial-comparison.sql
+npm run db:pull
+npm run db:generate
+```
+
+`financial-comparison.sql` is idempotent and only adds the shared settings/manual
+forecast structures, constraints and RLS. Prisma models are introspected, not
+hand-maintained. Existing ledger, budgets and model outputs are retained.
+`npm run verify:financial:db --prefix web` performs real reads/writes inside a
+deliberately rolled-back transaction and checks table fingerprints afterwards.
 
 `npm run db:studio` opens a browser DB viewer. `db:pull` keeps the `generator`
 block, so the `binaryTargets` the Docker / Vercel images need survives
@@ -187,6 +248,45 @@ python -m datagen --load    # generate, validate, load
 
 See [ml-service/datagen/DATA_MODEL.md](ml-service/datagen/DATA_MODEL.md) for the
 business model, every table's meaning, the embedded patterns, and the anomalies.
+
+### Anomaly alerts
+
+`ml-service` scores the ledger and stores the results in two tables,
+`anomaly_alert` (current alerts) and `anomaly_run` (one row per scoring run).
+The dashboard reads them with Prisma through
+[web/app/dashboard/data/anomalies.ts](web/app/dashboard/data/anomalies.ts) and
+never calls the model. Alerts are refreshed:
+
+- automatically after `python -m datagen --load`
+- by `python -m app.anomaly.score` (from `ml-service/`; what a nightly cron runs)
+- by `POST /anomalies/rescore` on ml-service (`mlClient.rescoreAnomalies()` from `web/`)
+
+The served model, `ml-service/models/anomaly/v1/`, is committed, so scoring
+works straight after a clone and the deployed image carries exactly the model
+evaluated in its `REPORT.md`. To change it, retrain
+(`python -m training.anomaly.train`, ~90 s, deterministic), re-run
+`python -m training.anomaly.evaluate`, and commit the folder. How the model
+works: [ml-service/training/anomaly/METHODOLOGY.md](ml-service/training/anomaly/METHODOLOGY.md).
+
+### Forecasts
+
+`ml-service` forecasts revenue, cost and net profit per department 12 months
+ahead, and stores each run in `forecast_run` / `forecast_value`, together with a
+24-month backtest that gives the accuracy and the band. The dashboard reads them
+through [web/app/dashboard/data/forecast.ts](web/app/dashboard/data/forecast.ts)
+(`getForecast(scope)`; contract in
+[web/app/dashboard/README.md](web/app/dashboard/README.md#forecasts)) and never
+calls the model. Forecasts are refreshed:
+
+- automatically after `python -m datagen --load`
+- by `python -m app.forecast.run` (from `ml-service/`; what the monthly cron runs)
+- by `POST /forecast/run` on ml-service (`mlClient.runForecast()` from `web/`)
+
+The selected forecaster (`ml-service/models/forecast/v1/config.json`) was chosen
+by backtesting baselines, Holt-Winters and Prophet. Results are in its
+`REPORT.md`, and the method in
+[ml-service/training/forecast/METHODOLOGY.md](ml-service/training/forecast/METHODOLOGY.md).
+Deploying to Railway: [ml-service/DEPLOY.md](ml-service/DEPLOY.md).
 
 ## Run the Application
 
@@ -214,7 +314,7 @@ To stop, press `Ctrl+C`.
 | End-to-end — Playwright     | `web/e2e/`                            | `npm run test:e2e --prefix web` |
 | ML service — pytest         | `ml-service/tests/`                   | `pytest` (with the venv active) |
 
-First Playwright run only: `npx playwright install chromium` in `web/`.
+First Playwright run only: `npx playwright install chromium webkit firefox` in `web/`.
 
 **CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the `web/`
 lint, typecheck, Vitest and Playwright suites on every push to `main` and every
@@ -277,6 +377,34 @@ changing either value. All other config is read at container start from the
 on `$PORT`, default 80) are separate on purpose — keep them in sync when the
 build changes.
 
+#### `ml-service` on Railway: anomaly scoring
+
+The image already contains the trained model (`models/anomaly/v1/`), so nothing
+is trained on Railway. Set these variables on the service:
+
+| Variable | Value |
+| -------- | ----- |
+| `ML_SERVICE_TOKEN` | same value as in `web` |
+| `DATABASE_URL` | Supabase **session pooler** URL (port 5432), the same as in `ml-service/.env`. Not the transaction pooler (6543): a scoring run takes a session-level lock. |
+
+- **Memory:** a scoring run peaks at about 500 MB. Give the service at least 1 GB.
+- **Nightly refresh:** add a second Railway service from the same repo and Root
+  Directory. Set its start command to `python -m app.anomaly.score` and give it a
+  cron schedule, for example `0 18 * * *` (02:00 Singapore; Railway cron runs in
+  UTC). It needs `DATABASE_URL` only. A run takes 5–15 s, then exits; exit code 0
+  means the alerts were refreshed.
+- `web/` reads the alerts from Supabase, not from this service. It needs
+  `ML_SERVICE_URL` only for `mlClient.rescoreAnomalies()`.
+
+Check a deploy:
+
+```bash
+curl https://<ml-service-domain>/health
+curl -X POST -H "x-ml-service-token: <token>" https://<ml-service-domain>/anomalies/rescore
+# {"run_id": …, "scored_through": 202608, "n_alerts": 57, …}
+# 503 means DATABASE_URL is missing; 401 means the token does not match.
+```
+
 ## Common Commands
 
 | Command                             | What it does                              |
@@ -290,6 +418,8 @@ build changes.
 | `npm run lint --prefix web`         | Lint the web app                          |
 | `npm test --prefix web`             | Web unit tests (Vitest)                   |
 | `npm run test:e2e --prefix web`     | Web end-to-end tests (Playwright)         |
+| `npm run test:anomalies:browser --prefix web` | Comparison, Settings and anomaly browser checks (controlled auth/API) |
+| `npm run verify:financial:db --prefix web` | Real financial save/read checks; rolls back all verification writes |
 | `pytest` (in `ml-service/`)         | Run ML service tests                      |
 | `ruff check .` (in `ml-service/`)   | Lint the ML service                       |
 

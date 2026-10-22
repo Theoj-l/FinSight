@@ -34,11 +34,14 @@ describe("login", () => {
   it("rejects missing credentials without hitting Supabase", async () => {
     const result = await login(undefined, form({ email: "", password: "" }));
 
-    expect(result).toEqual({ error: "Email and password are required." });
+    expect(result).toEqual({
+      error: "Check the highlighted fields and try again.",
+      fieldErrors: { email: "Enter a valid email address.", password: "Enter your password." },
+    });
     expect(signInWithPassword).not.toHaveBeenCalled();
   });
 
-  it("returns the Supabase error message on failed sign-in", async () => {
+  it("maps Supabase errors to a safe message", async () => {
     signInWithPassword.mockResolvedValueOnce({
       error: { message: "Invalid login credentials" },
     });
@@ -48,7 +51,7 @@ describe("login", () => {
       form({ email: "a@b.com", password: "secret12" }),
     );
 
-    expect(result).toEqual({ error: "Invalid login credentials" });
+    expect(result).toEqual({ error: "Unable to sign in. Check your email and password and try again." });
     expect(redirect).not.toHaveBeenCalled();
   });
 
@@ -84,33 +87,50 @@ describe("login", () => {
   });
 });
 
-describe("signup", () => {
-  it("requires a password of at least 8 characters", async () => {
-    const result = await signup(
-      undefined,
-      form({ email: "a@b.com", password: "short" }),
-    );
+describe("authentication validation and failures", () => {
+  it("rejects malformed email before contacting Supabase", async () => {
+    const result = await login(undefined, form({ email: "invalid", password: "secret12" }));
+    expect(result?.fieldErrors?.email).toBe("Enter a valid email address.");
+    expect(signInWithPassword).not.toHaveBeenCalled();
+  });
 
-    expect(result).toEqual({ error: "Password must be at least 8 characters." });
+  it("trims email without changing the password", async () => {
+    signInWithPassword.mockResolvedValueOnce({ error: null });
+    await expect(login(undefined, form({ email: "  a@b.com  ", password: " secret12 " }))).rejects.toThrow("NEXT_REDIRECT:/home");
+    expect(signInWithPassword).toHaveBeenCalledWith({ email: "a@b.com", password: " secret12 " });
+  });
+
+  it("does not expose unexpected provider failures", async () => {
+    signInWithPassword.mockRejectedValueOnce(new Error("internal host and credentials"));
+    expect(await login(undefined, form({ email: "a@b.com", password: "secret12" }))).toEqual({
+      error: "Unable to sign in. Check your email and password and try again.",
+    });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+
+});
+
+describe("signup", () => {
+  it("validates email and password before contacting Supabase", async () => {
+    const result = await signup(undefined, form({ email: "bad", password: "short" }));
+    expect(result?.fieldErrors).toEqual({ email: "Enter a valid email address.", password: "Use at least 8 characters." });
     expect(signUp).not.toHaveBeenCalled();
   });
-
-  it("sends the user to confirm their email when no session is returned", async () => {
-    signUp.mockResolvedValueOnce({ data: { session: null }, error: null });
-
-    await expect(
-      signup(undefined, form({ email: "a@b.com", password: "secret12" })),
-    ).rejects.toThrow("NEXT_REDIRECT:/login?checkEmail=1");
+  it("returns a safe error without exposing provider details", async () => {
+    signUp.mockResolvedValueOnce({ error: { message: "internal details" } });
+    expect(await signup(undefined, form({ email: "a@b.com", password: "secret12" }))).toEqual({ error: "Unable to create an account. Please try again or contact your team." });
   });
-
-  it("redirects straight to Home when a session exists", async () => {
-    signUp.mockResolvedValueOnce({
-      data: { session: { access_token: "t" } },
-      error: null,
-    });
-
-    await expect(
-      signup(undefined, form({ email: "a@b.com", password: "secret12" })),
-    ).rejects.toThrow("NEXT_REDIRECT:/home");
+  it("handles provider failures safely", async () => {
+    signUp.mockRejectedValueOnce(new Error("internal details"));
+    expect(await signup(undefined, form({ email: "a@b.com", password: "secret12" }))).toEqual({ error: "Unable to create an account. Please try again or contact your team." });
+  });
+  it("directs users to check their inbox when confirmation is needed", async () => {
+    signUp.mockResolvedValueOnce({ data: { session: null }, error: null });
+    await expect(signup(undefined, form({ email: "a@b.com", password: "secret12" }))).rejects.toThrow("NEXT_REDIRECT:/login?checkEmail=1");
+  });
+  it("opens Home when Supabase creates an authenticated session", async () => {
+    signUp.mockResolvedValueOnce({ data: { session: { access_token: "test" } }, error: null });
+    await expect(signup(undefined, form({ email: "a@b.com", password: "secret12" }))).rejects.toThrow("NEXT_REDIRECT:/home");
   });
 });

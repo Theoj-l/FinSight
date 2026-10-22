@@ -11,7 +11,7 @@ const navigation = [
   { label: "Home", href: "/home", icon: House },
   { label: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { label: "Assistant", href: "/assistant", icon: MessageSquare },
-  { label: "Insights", href: "/insights", icon: Lightbulb },
+  { label: "Forecast", href: "/forecast", icon: Lightbulb },
   { label: "Reports", href: "/reports", icon: FileText },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

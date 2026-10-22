@@ -11,20 +11,24 @@ export type DashboardScope = {
 };
 export type FilterOptions = {
   periods: number[];
-  units: { code: string; label: string }[];
+  defaultPeriod?: number;
+  units: { code: string; label: string; businessType?: string | null }[];
   branches: { code: string; label: string }[];
 };
-export type FilterSelection = { periodStart: string; periodEnd: string; units: string[]; branches: string[] };
+export type FilterSelection = { businessType?: string; periodStart: string; periodEnd: string; units: string[]; branches: string[] };
 export type SearchParams = Record<string, string | string[] | undefined>;
 export const BRANCH_LEDGER_MESSAGE = "Branch-level balances and budgets are not available yet. A verified link between branches and ledger entries is required. Select All Branches to view profit, costs and the P&L.";
 
 export function parseDashboardFilters(params: SearchParams, options: FilterOptions): { selection: FilterSelection; scope: DashboardScope; error?: string } {
   const values = (value: string | string[] | undefined) => value === undefined ? [] : Array.isArray(value) ? value : [value];
-  const periodStart = typeof params.periodStart === "string" ? params.periodStart : typeof params.period === "string" ? params.period : String(options.periods[0] ?? "");
+  const periodStart = typeof params.periodStart === "string" ? params.periodStart : typeof params.period === "string" ? params.period : String(options.defaultPeriod ?? options.periods[0] ?? "");
   const periodEnd = typeof params.periodEnd === "string" ? params.periodEnd : periodStart;
   const units = values(params.unit).filter(Boolean);
   const branches = values(params.branch).filter(Boolean);
+  const businessType = typeof params.businessType === "string" ? params.businessType : "";
+  const groupedUnits = options.units.filter(u => u.businessType === businessType).map(u => u.code);
   const selection = {
+    businessType,
     periodStart,
     periodEnd,
     units,
@@ -39,7 +43,7 @@ export function parseDashboardFilters(params: SearchParams, options: FilterOptio
     periodEnd: end,
     periodNumbers,
     trendPeriodNumbers: start === end ? options.periods.filter(period => period <= end).slice(0, 6).sort((first, second) => first - second) : periodNumbers,
-    ...(units.length ? { departmentIds: units } : {}),
+    ...(units.length || businessType ? { departmentIds: units.length ? units : groupedUnits } : {}),
     ...(branches.length ? { branchCodes: branches, branchCode: branches[0] } : {}),
   };
   let error: string | undefined;
@@ -48,6 +52,9 @@ export function parseDashboardFilters(params: SearchParams, options: FilterOptio
   else if (!options.periods.includes(start) || !options.periods.includes(end) || start > end || periodNumbers.length === 0) error = "The selected reporting period is unavailable. Choose a period from the list.";
   else if (units.some(unit => !options.units.some(option => option.code === unit))) error = "The selected business unit is unavailable. Choose a unit from the list.";
   else if (branches.some(branch => !options.branches.some(option => option.code === branch))) error = "The selected branch is unavailable. Choose a branch from the list.";
+  if (Array.isArray(params.businessType) || (businessType && !["Machining", "Bulk"].includes(businessType))) error = "Unknown business type.";
+  else if (businessType && !groupedUnits.length) error = "No business units are available for this business type.";
+  else if (businessType && units.some(u => !groupedUnits.includes(u))) error = "Select business units within the chosen business type.";
   return { selection, scope, error };
 }
 

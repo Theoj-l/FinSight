@@ -14,7 +14,7 @@ export default async function SettingsPage() {
 
   return (
     <AppPage email={email}>
-      <PageHeading eyebrow="Workspace preferences" title="Settings" description="Manage your account, notifications, and display preferences." />
+      <PageHeading eyebrow="Workspace preferences" title="Settings" description="Manage your account, notifications, shared thresholds, budgets, and forecasts." />
       <SettingsPanel email={email} userId={user.id} />
     </AppPage>
   );

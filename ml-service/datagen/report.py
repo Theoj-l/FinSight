@@ -25,7 +25,9 @@ def summary(t: dict, seed: int) -> str:
 
     L = []
     L.append("# TSH Group synthetic dataset — summary\n")
-    L.append(f"- Generated with seed `{seed}`, phase {C.PHASE}")
+    mode = t.get("_meta", {}).get("anomalies", "canonical")
+    L.append(f"- Generated with seed `{seed}`, phase {C.PHASE}, dataset v{C.DATASET_VERSION}, "
+             f"anomalies `{mode}`")
     L.append(f"- Window: {C.START} .. {C.AS_OF}  ({C.CURRENCY})")
     L.append("- period_no convention: `YYYYMM` (e.g. 202503 = March 2025)\n")
 
@@ -104,11 +106,23 @@ def summary(t: dict, seed: int) -> str:
     # Anomalies
     L.append("## Injected anomalies (labels in `datagen.anomaly_log`)\n")
     log = t["_anomaly_log"]
-    L.append("| id | category | subtype | severity | periods | where |")
-    L.append("|----|----------|---------|----------|---------|-------|")
+    L.append("| id | category | subtype | severity | difficulty | periods | dept | account | customer |")
+    L.append("|----|----------|---------|----------|------------|---------|------|---------|----------|")
     for a in log:
-        where = a.get("affected_dept") or a.get("affected_customer") or a.get("affected_account") or ""
         L.append(f"| {a['anomaly_id']} | {a['category']} | {a['subtype']} | "
-                 f"{a['severity']} | {a['period_start']}–{a['period_end']} | {where} |")
+                 f"{a['severity']} | {a.get('difficulty', '')} | "
+                 f"{a['period_start']}–{a['period_end']} | {a.get('affected_dept') or ''} | "
+                 f"{a.get('affected_account') or ''} | {a.get('affected_customer') or ''} |")
     L.append("")
+    decoys = t.get("_decoy_log") or []
+    if decoys:
+        kinds: dict[str, int] = {}
+        for d in decoys:
+            kinds[d["kind"]] = kinds.get(d["kind"], 0) + 1
+        L.append("## Unlabelled look-alikes (decoys, `decoy_log.csv`)\n")
+        L.append("Normal business events that superficially resemble anomalies; "
+                 "they are deliberately **not** labelled.\n")
+        for k, v in sorted(kinds.items()):
+            L.append(f"- `{k}`: {v}")
+        L.append("")
     return "\n".join(L)

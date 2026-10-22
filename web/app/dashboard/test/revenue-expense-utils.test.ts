@@ -19,8 +19,8 @@ describe("revenue expense utilities", () => {
       { period_no: 202402, home_dr: 300, home_cr: 50, gl_mast: { acc_type: "EX" } },
       { period_no: 202401, home_dr: 1, home_cr: 99, gl_mast: { acc_type: "OI" } },
     ])).toEqual([
-      { period: "2024-01", revenue: 0, expenses: 0 },
-      { period: "2024-02", revenue: 500, expenses: 250 },
+      { period: "2024-01", periodNo: 202401, revenue: 0, expenses: 0 },
+      { period: "2024-02", periodNo: 202402, revenue: 500, expenses: 250 },
     ]);
   });
 

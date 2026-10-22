@@ -108,6 +108,17 @@ Use `prisma` from `web/lib/db.ts` for database queries.
 
 Do not query Prisma from client components.
 
+## Dashboard Data Performance
+
+Keep dashboard data pulls small and database-driven:
+
+- Run independent dashboard loaders concurrently or stream panels with Suspense; never create a sequential query waterfall.
+- Aggregate large tables such as `pbalance` and `iv_dtl` in PostgreSQL before returning data to the server component. Do not load raw ledger or invoice-detail rows when the UI needs grouped totals.
+- Select only the columns required by the DTO and preserve active dashboard filters in every query.
+- Cache low-change metadata such as filter options and `pl_format` with bounded revalidation. Do not cache user-specific financial results without including the complete scope in the cache key.
+- Do not query dashboard panels when filter parsing has already failed.
+- Keep server-only Prisma access in dashboard data modules and pass plain serialized DTOs to client components.
+
 Use either:
 
 1. A Server Component that queries Prisma directly for initial page data, or
