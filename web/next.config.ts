@@ -4,7 +4,10 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   // Minimal self-contained server bundle for the production Docker image
   // (web/Dockerfile copies .next/standalone and runs `node server.js`).
-  output: "standalone",
+  // Not on Vercel's own build: standalone output is ignored there, and with Next 16.3 it
+  // crashes the build ("ENOENT .next/next-server.js.nft.json") because Vercel's adapter
+  // makes Turbopack skip the file the standalone step then tries to read.
+  output: process.env.VERCEL ? undefined : "standalone",
 
   // This repo has a lockfile at the root (for dev tooling) and one here.
   // Pin the workspace root to web/ so Turbopack — and output-file tracing
