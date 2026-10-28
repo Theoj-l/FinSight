@@ -1,0 +1,36 @@
+# DECOMMISSIONED: we dropped Railway because of its inability to stay reliable.
+#
+# This is the job that used to deploy ml-service to Railway from the Deploy workflow.
+# It lives here, outside .github/workflows/, so GitHub never runs it. It is kept only as a
+# record of how the deploy worked (and in case a Railway-style host is wanted again).
+#
+# The ML service's scheduled jobs now run on GitHub Actions instead:
+#   .github/workflows/ml-forecast.yml    (monthly forecast)
+#   .github/workflows/ml-anomalies.yml   (nightly anomaly rescore)
+# See ml-service/DEPLOY.md.
+#
+# To use it again: move this file back into .github/workflows/, add the RAILWAY_TOKEN
+# repository secret, and rotate any secret that was ever stored in Railway (it disclosed a
+# security incident on 2026-10-21).
+name: Deploy ML service to Railway (decommissioned)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  ml-service:
+    needs: checks
+    runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      # Upload the whole repo, not just ml-service/ — the Railway service's
+      # own Root Directory setting ("/ml-service") expects to find that
+      # folder inside what it receives, the same way it would from a normal
+      # git-triggered deploy.
+      - run: railway up --service=FinSight

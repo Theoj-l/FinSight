@@ -1,31 +1,22 @@
 name: Deploy
 
-# Manual only — Vercel's and Railway's own git-triggered auto-deploy are both
-# disabled (web/vercel.json git.deploymentEnabled: false, and Railway's Auto
-# Deploy toggle is off). This is the only thing that ships a deployment, and
-# it only ships once checks.yml (the same checks ci.yml runs) passes.
+# Manual only — Vercel's own git-triggered auto-deploy is disabled
+# (web/vercel.json git.deploymentEnabled: false). This is the only thing that ships a
+# deployment, and it only ships once checks.yml (the same checks ci.yml runs) passes.
+#
+# This deploys the web app only. The ML service has no server to deploy: its scheduled jobs
+# run on GitHub Actions (ml-forecast.yml, ml-anomalies.yml). The old Railway deploy job is
+# kept for reference in .github/archive/railway-deploy.yml.
 on:
   workflow_dispatch:
-    inputs:
-      target:
-        description: What to deploy
-        type: choice
-        # ml-service is no longer deployed by default: its scheduled jobs run in GitHub
-        # Actions (ml-forecast.yml, ml-anomalies.yml). Picking "both" or "ml-service" still
-        # runs the Railway deploy, which needs RAILWAY_TOKEN.
-        options: [web, both, ml-service]
-        default: web
 
 jobs:
   checks:
     uses: ./.github/workflows/checks.yml
 
   web:
+    # Runs only if the checks job succeeded (the default for `needs`).
     needs: checks
-    # `success()` is required here: once a job has a custom `if:`, that
-    # expression replaces (not adds to) the default "needs job succeeded"
-    # check, so without it this would still run after checks fails.
-    if: ${{ success() && (inputs.target == 'both' || inputs.target == 'web') }}
     runs-on: ubuntu-latest
     # No working-directory: the Vercel project's Root Directory is "web", so the
     # CLI must run from the repo root or it looks for web/web/package.json.
@@ -43,18 +34,3 @@ jobs:
       # `vercel deploy` lets Vercel detect Dockerfile.vercel at the project
       # root (web/) and build+push the container instead.
       - run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-  ml-service:
-    needs: checks
-    if: ${{ success() && (inputs.target == 'both' || inputs.target == 'ml-service') }}
-    runs-on: ubuntu-latest
-    container: ghcr.io/railwayapp/cli:latest
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-      # Upload the whole repo, not just ml-service/ — the Railway service's
-      # own Root Directory setting ("/ml-service") expects to find that
-      # folder inside what it receives, the same way it would from a normal
-      # git-triggered deploy.
-      - run: railway up --service=FinSight
