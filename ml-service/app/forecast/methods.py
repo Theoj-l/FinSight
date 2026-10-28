@@ -1,9 +1,16 @@
 """The forecasting methods, behind one function:
 
-    forecast(y, h, method, params, first_period) -> np.ndarray of length h
+    forecast(y, h, method, params, first_period, skip=None) -> np.ndarray of length h
 
 `y` is a complete monthly series (oldest first) whose first month is
 `first_period`; the forecasts are for the h months after its last value.
+
+`skip` marks months to leave out of the fit: the months the anomaly model
+flagged (forecast v2, METHODOLOGY.md §6). Prophet fits on the remaining months
+directly, since it handles gaps. The other methods need an unbroken series, so
+a skipped month is replaced by the same calendar month in the neighbouring
+years (`fill_skipped`). If skipping would leave under two years of history,
+nothing is skipped.
 
     naive          last month, repeated                                  baseline
     snaive         same month last year                                  baseline
@@ -43,12 +50,16 @@ def effective_method(method: str, n: int) -> str:
 
 
 def forecast(y: np.ndarray, h: int, method: str, params: dict | None = None,
-             first_period: int | None = None) -> np.ndarray:
+             first_period: int | None = None, skip: np.ndarray | None = None) -> np.ndarray:
     y = np.asarray(y, dtype=float)
     if len(y) == 0:
         raise ValueError("cannot forecast an empty series")
     params = params or {}
+    if skip is not None and (not np.any(skip) or len(y) - int(np.sum(skip)) < 2 * SEASON):
+        skip = None
     method = effective_method(method, len(y))
+    if skip is not None and method != "prophet":
+        y = fill_skipped(y, np.asarray(skip, dtype=bool))
     if method == "naive":
         return np.full(h, y[-1])
     if method == "snaive":
@@ -62,11 +73,24 @@ def forecast(y: np.ndarray, h: int, method: str, params: dict | None = None,
     elif method == "prophet":
         if first_period is None:
             raise ValueError("prophet needs first_period to date the series")
-        out = _prophet(y, h, first_period, **params)
+        out = _prophet(y, h, first_period, skip=skip, **params)
     else:
         raise ValueError(f"unknown forecasting method {method!r}")
     # A model that blows up (non-finite output) is replaced by the seasonal naive.
     return out if np.all(np.isfinite(out)) else _snaive(y, h)
+
+
+def fill_skipped(y: np.ndarray, skip: np.ndarray) -> np.ndarray:
+    """Replace each skipped month with the mean of the same calendar month one
+    year either side (when those are kept); failing that, the mean of the kept
+    months next to it. Only months up to the last one in `y` are used."""
+    out = y.copy()
+    for i in np.flatnonzero(skip):
+        same_month = [y[j] for j in (i - SEASON, i + SEASON) if 0 <= j < len(y) and not skip[j]]
+        neighbours = [y[j] for j in (i - 1, i + 1) if 0 <= j < len(y) and not skip[j]]
+        if same_month or neighbours:
+            out[i] = float(np.mean(same_month or neighbours))
+    return out
 
 
 def _snaive(y: np.ndarray, h: int) -> np.ndarray:
@@ -98,7 +122,7 @@ def _holt_winters(y: np.ndarray, h: int, trend: str | None = "add", damped: bool
 
 def _prophet(y: np.ndarray, h: int, first_period: int,
              seasonality_mode: Literal["additive", "multiplicative"] = "additive",
-             changepoint_prior_scale: float = 0.05) -> np.ndarray:
+             changepoint_prior_scale: float = 0.05, skip: np.ndarray | None = None) -> np.ndarray:
     _quiet_prophet()
     from prophet import Prophet
 
@@ -107,7 +131,10 @@ def _prophet(y: np.ndarray, h: int, first_period: int,
     m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False,
                 seasonality_mode=seasonality_mode, changepoint_prior_scale=changepoint_prior_scale,
                 uncertainty_samples=0)
-    m.fit(pd.DataFrame({"ds": ds[:len(y)], "y": y}))
+    history = pd.DataFrame({"ds": ds[:len(y)], "y": y})
+    if skip is not None:
+        history = history[~np.asarray(skip, dtype=bool)]      # Prophet fits through the gaps
+    m.fit(history)
     return m.predict(pd.DataFrame({"ds": ds[len(y):]}))["yhat"].to_numpy(dtype=float)
 
 

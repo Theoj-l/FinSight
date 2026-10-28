@@ -1,14 +1,17 @@
 """Evaluate the forecasters on the held-out test window, once.
 
-    python -m training.forecast.evaluate            # test seeds 41-50 + the showcase dataset
+    python -m training.forecast.evaluate            # test seeds 51-60 + the showcase dataset
     python -m training.forecast.evaluate --quick    # 2 test seeds (smoke test)
 
 Compared on the test window (2025-09 .. 2026-08): every baseline, the tuned
 Holt-Winters and the tuned Prophet (settings chosen by train.py on the
-validation window), and the selected production model.
+validation window), and the selected production model. From v2 the models fit
+with anomalous months masked, and two references show what that changed: the
+v1 production model (no masking) on the same fresh test companies, and the
+selected model on v1's test companies (41-50).
 
 Writes next to config.json:
-    REPORT.md        the results (METHODOLOGY.md §8 explains how to read it)
+    REPORT.md        the results (METHODOLOGY.md §9 explains how to read it)
     metrics.json     every number in the report
     comparison.csv   test rows, alongside the validation rows written by train.py
 """
@@ -42,15 +45,34 @@ def _k(x) -> str:
     return "–" if x is None or x != x else f"S${x / 1000:,.0f}k"
 
 
-def test_candidates(model: ForecastModel) -> list[tuple[str, str, dict[str, E.Spec]]]:
-    """(family, label, specs) for every model compared on the test window."""
-    out = [(c.family, c.label, C.specs(c.spec, c.spec)) for c in C.BASELINES]
+V1_MODEL = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "models", "forecast", "v1")
+V1_FAMILY = "v1"
+
+
+def test_candidates(model: ForecastModel) -> list[tuple[str, str, dict[str, E.Spec], bool]]:
+    """(family, label, specs, masked) for every model compared on the test window."""
+    masked = model.anomaly_mask
+    out = [(c.family, c.label, C.specs(c.spec, c.spec), masked) for c in C.BASELINES]
     for fam in ("holt_winters", "prophet"):
         best = model.meta["family_best"].get(fam)
         if best:
             s = C.spec_from_dict(best["spec"])
-            out.append((fam, best["candidate"], C.specs(s, s)))
+            out.append((fam, best["candidate"], C.specs(s, s), masked))
+    v1 = v1_model()
+    if masked and v1 is not None:
+        out.append((V1_FAMILY, v1_label(v1), v1.specs, False))
     return out
+
+
+def v1_model() -> ForecastModel | None:
+    try:
+        return ForecastModel.load(os.path.abspath(V1_MODEL))
+    except (FileNotFoundError, RuntimeError):
+        return None
+
+
+def v1_label(v1: ForecastModel) -> str:
+    return f"v1 production model, no masking: {v1.meta['selected']['candidate']}"
 
 
 def company_h1(fc: pd.DataFrame) -> pd.DataFrame:
@@ -73,24 +95,36 @@ def main(argv=None) -> int:
     target = float(meta.get("target_mape", M.TARGET_MAPE))
     t0 = time.time()
 
-    print(f"· series: {len(test_seeds)} test seeds + showcase {show} ({bench.MODE}), "
-          f"stress test ({bench.STRESS_MODE})")
-    series = bench.series_many(test_seeds + [show], jobs=args.jobs)
-    stress_series = bench.series_many(test_seeds, mode=bench.STRESS_MODE, jobs=args.jobs)
+    v1_seeds = list(bench.V1_TEST_SEEDS[:2] if args.quick else bench.V1_TEST_SEEDS)
+    use_mask = model.anomaly_mask
+
+    def mask(c: bench.Company):
+        return c.mask if use_mask else None
+
+    print(f"· series and anomaly masks: {len(test_seeds)} test seeds + showcase {show} ({bench.MODE}), "
+          f"stress test ({bench.STRESS_MODE}), v1's test seeds")
+    cos = bench.companies(test_seeds + [show], jobs=args.jobs)
+    stress_cos = bench.companies(test_seeds, mode=bench.STRESS_MODE, jobs=args.jobs)
+    v1_cos = bench.companies(v1_seeds, jobs=args.jobs) if use_mask else {}
 
     cands = test_candidates(model)
     sel_specs = model.specs
     print(f"· test-window backtest of {len(cands)} models; selected = {selected}")
-    tasks = [(dict(seed=s, family=f, candidate=lbl), series[s], sp)
-             for f, lbl, sp in sorted(cands, key=lambda c: c[0] != "prophet") for s in [*test_seeds, show]]
+    tasks = [(dict(seed=s, family=f, candidate=lbl), cos[s].pl, sp, cos[s].mask if m else None)
+             for f, lbl, sp, m in sorted(cands, key=lambda c: c[0] not in ("prophet", V1_FAMILY))
+             for s in [*test_seeds, show]]
     fc = bench.backtest_many(tasks, "test", jobs=args.jobs)
     snaive = C.specs(E.Spec("snaive"), E.Spec("snaive"))
     stress = bench.backtest_many(
-        [(dict(seed=s, family=f, candidate=lbl), stress_series[s], sp)
+        [(dict(seed=s, family=f, candidate=lbl), stress_cos[s].pl, sp, mask(stress_cos[s]))
          for f, lbl, sp in [("selected", selected, sel_specs), ("baseline", "snaive", snaive)]
          for s in test_seeds], "test", jobs=args.jobs)
-    direct = bench.backtest_many([(dict(seed=s), series[s], sel_specs) for s in test_seeds], "test",
-                                 jobs=args.jobs, company_only=True)
+    direct = bench.backtest_many([(dict(seed=s), cos[s].pl, sel_specs, mask(cos[s])) for s in test_seeds],
+                                 "test", jobs=args.jobs, company_only=True)
+    # v2 on the companies v1 was tested on, for a like-for-like comparison
+    on_v1_seeds = bench.backtest_many(
+        [(dict(seed=s), v1_cos[s].pl, sel_specs, v1_cos[s].mask) for s in v1_seeds], "test",
+        jobs=args.jobs) if v1_cos else None
 
     test = fc[fc["seed"].isin(test_seeds)]
     showcase = fc[fc["seed"] == show]
@@ -99,13 +133,16 @@ def main(argv=None) -> int:
 
     # -- comparison.csv rows ------------------------------------------------
     cmp = [compare.rows(d[d["candidate"] == lbl], family=f, candidate=lbl, split="test", data=bench.MODE)
-           for f, lbl, _ in cands for d in (test, showcase)]
+           for f, lbl, _, _ in cands for d in (test, showcase)]
     cmp += [compare.rows(stress[stress["candidate"] == lbl], family=f, candidate=lbl, split="test",
                          data=bench.STRESS_MODE, dept_level=False)
             for f, lbl in (("baseline", "snaive"), (meta["selected"]["family"], selected))]
     direct_rows = compare.rows(direct.assign(dept_no="ALL"), family=meta["selected"]["family"],
                                candidate=selected, split="test", data=bench.MODE, dept_level=False)
     cmp.append(direct_rows.assign(level="company_direct"))
+    if on_v1_seeds is not None:
+        cmp.append(compare.rows(on_v1_seeds, family=meta["selected"]["family"], candidate=selected,
+                                split="test", data=bench.MODE, dept_level=False))
     cmp_df = pd.concat(cmp, ignore_index=True)
     compare.write(mdir, cmp_df, replace_split="test")
 
@@ -146,7 +183,23 @@ def main(argv=None) -> int:
                     "direct": h1_mape(direct[direct["horizon"] == 1])}
     stress_h1 = M.score_frame(company_h1(stress), ["candidate", "metric"])
 
-    labels = {lbl: (f, lbl) for f, lbl, _ in cands}
+    # -- what changed from v1 -------------------------------------------------------
+    v1 = v1_model()
+    versus_v1 = None
+    if on_v1_seeds is not None and v1 is not None:
+        v1_metrics = json.load(open(os.path.join(os.path.abspath(V1_MODEL), "metrics.json")))
+        v1_row = test[test["candidate"] == v1_label(v1)]
+        versus_v1 = {
+            "v1_on_v1_seeds": {t: v1_metrics["headline"][t] for t in TARGETS},
+            "v2_on_v1_seeds": check(on_v1_seeds),
+            "v1_on_test_seeds": check(v1_row),
+            "v2_on_test_seeds": headline,
+            "v1_seeds": v1_seeds,
+            "v1_published_seeds": v1_metrics["test_seeds"],
+        }
+    masked = {s: len(cos[s].mask) for s in [*test_seeds, show]} if use_mask else {}
+
+    labels = {lbl: (f, lbl) for f, lbl, _, _ in cands}
     metrics = dict(
         model_version=meta["model_version"], selected=selected, target_mape=target,
         test_seeds=test_seeds, showcase_seed=show, window=bench.WINDOWS["test"], passed=passed,
@@ -155,6 +208,7 @@ def main(argv=None) -> int:
         fixed_origin=dict(origin=first_origin, rows=fixed.to_dict("records")),
         departments_h1=depts.to_dict("records"), profit_by_month=by_month.to_dict("records"),
         bottom_up_vs_direct=bu_vs_direct, stress=stress_h1.to_dict("records"),
+        anomaly_mask=use_mask, masked_cells=masked, versus_v1=versus_v1,
         seconds=round(time.time() - t0, 1),
     )
     with open(os.path.join(mdir, "metrics.json"), "w") as f:
@@ -181,6 +235,8 @@ def report(meta, m, h1, horizons, fixed, depts, by_month, stress, labels) -> str
     def name(lbl: str) -> str:
         f, _ = labels.get(lbl, ("", lbl))
         star = " **(selected)**" if lbl == sel else ""
+        if f == V1_FAMILY:
+            return f"*Reference:* `{lbl}`"
         return f"{fam_label.get(f, f)}: `{lbl}`{star}"
 
     L = [f"# Forecast model {meta['model_version']} — test report", "",
@@ -190,7 +246,28 @@ def report(meta, m, h1, horizons, fixed, depts, by_month, stress, labels) -> str
          f"Test window {m['window'][0]}–{m['window'][1]}, rolling origin, test seeds {seeds} "
          f"({bench.MODE} mode) and the showcase dataset (seed {m['showcase_seed']}, the data in Supabase).",
          f"Trained {meta['created_at']} at git `{meta['git_sha']}`. "
-         "How to read this report: `training/forecast/METHODOLOGY.md` §8.", ""]
+         "How to read this report: `training/forecast/METHODOLOGY.md` §9.", ""]
+    if m.get("anomaly_mask"):
+        cells = m["masked_cells"]
+        L += [f"Months the anomaly model flagged are left out of every fit "
+              f"({sum(cells.values()) / len(cells):.0f} unit-month cells per company on average).", ""]
+
+    vs = m.get("versus_v1")
+    if vs:
+        def row(label, d):
+            return (f"| {label} | " + " | ".join(_pct(d[t]["mape"]) for t in TARGETS)
+                    + f" | {_pct(d['profit']['wape'])} |")
+        v1s = compare.seeds_label(vs["v1_seeds"])
+        L += ["## 0. What changed from v1", "",
+              "v2 leaves months flagged by the anomaly model out of every fit. v1's test companies had "
+              f"already been seen before v2 was designed, so v2 is reported on fresh companies ({seeds}). "
+              "1-month-ahead MAPE, company level:", "",
+              "| | Revenue | Cost | Profit | Profit WAPE |", "|---|--:|--:|--:|--:|",
+              row(f"v1, test companies {compare.seeds_label(vs['v1_published_seeds'])} (as published)",
+                  vs["v1_on_v1_seeds"]),
+              row(f"**v2**, test companies {v1s} (same companies as v1)", vs["v2_on_v1_seeds"]),
+              row(f"v1 model, fresh test companies {seeds}", vs["v1_on_test_seeds"]),
+              row(f"**v2, fresh test companies {seeds} (the reported result)**", vs["v2_on_test_seeds"]), ""]
 
     L += ["## 1. Target check (US3.5): 1-month-ahead MAPE ≤ "
           f"{target:.0f}%, company level", "",
@@ -270,11 +347,18 @@ def report(meta, m, h1, horizons, fixed, depts, by_month, stress, labels) -> str
     L.append("")
 
     bd = m["bottom_up_vs_direct"]
+    gap = bd["direct"]["profit"] - bd["bottom_up"]["profit"]
+    if abs(gap) < 0.5:
+        finding = "The two are almost equal, so summing departments costs nothing."
+    elif gap > 0:
+        why = (" With masking, a company-level model must drop a whole month whenever any unit is "
+               "flagged, so it loses far more history than the unit models do.")
+        finding = "Bottom-up is the more accurate of the two." + (why if m.get("anomaly_mask") else "")
+    else:
+        finding = "The direct model is more accurate here; bottom-up is kept so that every filter adds up."
     L += ["## 7. Bottom-up vs a direct company-level model (selected method, 1-month-ahead MAPE)", "",
           "Stored forecasts are per department and summed (bottom-up), so any filter adds up. This checks "
-          "what that costs against forecasting the company total directly. The two are almost equal "
-          "because an additive model is close to linear in its input: the sum of the departments' fits "
-          "is nearly the fit of the sum.", "",
+          "what that costs against forecasting the company total directly. " + finding, "",
           "| | Revenue | Cost | Profit |", "|---|--:|--:|--:|",
           "| Bottom-up (production) | " + " | ".join(_pct(bd["bottom_up"].get(t), 2) for t in TARGETS) + " |",
           "| Direct company total | " + " | ".join(_pct(bd["direct"].get(t), 2) for t in TARGETS) + " |", ""]
@@ -290,7 +374,8 @@ def report(meta, m, h1, horizons, fixed, depts, by_month, stress, labels) -> str
     L.append("")
 
     L += ["## 9. Validation (how the model was chosen)", "",
-          meta["selection_rule"][0].upper() + meta["selection_rule"][1:] + ".", "",
+          ("Every candidate was fitted with anomalous months masked. " if meta.get("anomaly_mask") else "")
+          + meta["selection_rule"][0].upper() + meta["selection_rule"][1:] + ".", "",
           "| Candidate | Revenue | Cost | Profit | Worst |", "|---|--:|--:|--:|--:|"]
     for lbl, v in meta["validation_company_h1_mape"].items():
         star = " **(selected)**" if lbl == sel else ""

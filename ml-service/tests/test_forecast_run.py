@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings, get_settings
+from app.forecast import anomaly_mask as AM
 from app.forecast import run as forecast_run
 from app.forecast import series as S
 from app.forecast.model import ForecastModel
@@ -18,7 +19,8 @@ from app.main import app
 from app.routers import forecast as forecast_router
 from datagen.pipeline import generate
 
-SERVED_MODEL = os.path.join(os.path.dirname(__file__), os.pardir, "models", "forecast", "v1")
+MODELS = os.path.join(os.path.dirname(__file__), os.pardir, "models")
+SERVED_MODEL = os.path.join(MODELS, "forecast", "v2")
 
 
 @pytest.fixture(scope="module")
@@ -27,18 +29,44 @@ def served_model():
 
 
 @pytest.fixture(scope="module")
-def pl():
-    return S.from_tables(generate(20260901))
+def tables():
+    return generate(20260901)
 
 
 @pytest.fixture(scope="module")
-def result(served_model, pl):
-    return forecast_run.forecast_ledger(served_model, pl, today=date(2026, 10, 12), n_jobs=8)
+def pl(tables):
+    return S.from_tables(tables)
+
+
+@pytest.fixture(scope="module")
+def mask(tables):
+    return AM.from_tables(tables, os.path.join(MODELS, "anomaly", "v1"))
+
+
+@pytest.fixture(scope="module")
+def result(served_model, pl, mask):
+    return forecast_run.forecast_ledger(served_model, pl, today=date(2026, 10, 12), n_jobs=8, mask=mask)
 
 
 def test_served_model_names_a_method_for_every_base_metric(served_model):
     assert set(served_model.specs) == {"revenue", "cost", "other_income"}
     assert served_model.horizon == 12
+    assert served_model.anomaly_mask
+
+
+def test_summary_records_what_was_masked(result, mask):
+    info = result.summary["anomaly_mask"]
+    assert info["enabled"] and info["cells"] == len(mask) > 0
+    assert {(c["dept_no"], c["metric"], c["period_no"]) for c in info["masked"]} == set(mask)
+
+
+def test_a_v1_model_ignores_the_mask(pl, mask):
+    v1 = forecast_run.load_model(os.path.join(MODELS, "forecast", "v1"))
+    quick = ForecastModel({**v1.meta, "backtest_origins": 0})
+    with_mask = forecast_run.forecast_ledger(quick, pl, today=date(2026, 10, 12), mask=mask)
+    without = forecast_run.forecast_ledger(quick, pl, today=date(2026, 10, 12))
+    assert with_mask.forecast.equals(without.forecast)
+    assert with_mask.summary["anomaly_mask"] == {"enabled": False, "cells": 0, "masked": []}
 
 
 def test_forecast_starts_after_the_last_closed_month(result):

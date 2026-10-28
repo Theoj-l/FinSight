@@ -11,6 +11,11 @@ only, and with the selected model (models/forecast/<version>/config.json):
     forecast from the data before it), so the dashboard can show how accurate
     the forecast has been on this ledger and draw the band around it.
 
+From model v2, months the anomaly model flagged (the `anomaly_alert` table) are
+left out of every fit, so a one-off event does not distort the forecasts after
+it. Run anomaly scoring before forecasting; if it has never run, nothing is
+masked and the run says so in its summary.
+
 Both go to `forecast_value` under a new `forecast_run`. Earlier runs are kept,
 so past forecasts can be audited against what happened.
 """
@@ -31,9 +36,11 @@ from psycopg.types.json import Jsonb
 from app.config import Settings, get_settings
 from app.periods import add_months, closed_through, periods_between
 
+from . import anomaly_mask as AM
 from . import engine as E
 from . import metrics as M
 from . import series as S
+from .anomaly_mask import Mask
 from .model import ForecastModel
 
 TZ = ZoneInfo("Asia/Singapore")
@@ -79,8 +86,11 @@ def load_model(path: str) -> ForecastModel:
     return ForecastModel.load(path)
 
 
-def forecast_ledger(model: ForecastModel, pl: pd.DataFrame, today: date, n_jobs: int = 1) -> Result:
-    """Everything a run computes, without touching the database."""
+def forecast_ledger(model: ForecastModel, pl: pd.DataFrame, today: date, n_jobs: int = 1,
+                    mask: Mask | None = None) -> Result:
+    """Everything a run computes, without touching the database. `mask` is used
+    only if the model asks for it (v2+)."""
+    mask = mask if model.anomaly_mask else None
     data_through = int(pl["period_no"].max())
     through = closed_through(data_through, today)
     pl = S.truncate(pl, through)
@@ -88,19 +98,19 @@ def forecast_ledger(model: ForecastModel, pl: pd.DataFrame, today: date, n_jobs:
         raise ValueError(f"no closed month to forecast from (ledger ends {data_through})")
     first = int(pl["period_no"].min())
 
-    fc = E.forecast_from(pl, model.specs, [through], model.horizon, n_jobs)
+    fc = E.forecast_from(pl, model.specs, [through], model.horizon, n_jobs, mask)
 
     start = max(add_months(through, -model.backtest_origins), add_months(first, MIN_HISTORY - 1))
     origins = periods_between(start, add_months(through, -1)) if start < through else []
-    bt = E.forecast_from(pl, model.specs, origins, model.horizon, n_jobs) if origins else fc.iloc[0:0]
+    bt = E.forecast_from(pl, model.specs, origins, model.horizon, n_jobs, mask) if origins else fc.iloc[0:0]
     bt = E.attach_actuals(bt, pl)
     bt = bt[bt["period_no"] <= through].reset_index(drop=True)
 
     return Result(forecast=fc, backtest=bt, data_through=data_through, history_through=through,
-                  summary=summarize(model, bt, through))
+                  summary=summarize(model, bt, through, mask))
 
 
-def summarize(model: ForecastModel, bt: pd.DataFrame, through: int) -> dict:
+def summarize(model: ForecastModel, bt: pd.DataFrame, through: int, mask: Mask | None = None) -> dict:
     """Company-level accuracy of 1-month-ahead forecasts over the last 12 closed months."""
     target = float(model.meta.get("target_mape", M.TARGET_MAPE))
     recent = bt[(bt["horizon"] == 1) & (bt["period_no"] > add_months(through, -ACCURACY_MONTHS))]
@@ -116,6 +126,8 @@ def summarize(model: ForecastModel, bt: pd.DataFrame, through: int) -> dict:
         target_mape=target, accuracy=accuracy,
         backtest=dict(first_origin=int(bt["origin"].min()) if not bt.empty else None,
                       last_origin=int(bt["origin"].max()) if not bt.empty else None),
+        anomaly_mask=dict(enabled=model.anomaly_mask, cells=len(mask or ()),
+                          masked=AM.describe(mask) if mask else []),
     )
 
 
@@ -133,7 +145,8 @@ def run(database_url: str, model: ForecastModel, triggered_by: str, today: date 
                 "insert into forecast_run (triggered_by, model_version) values (%s, %s) returning run_id",
                 (triggered_by, model.version)).fetchone()[0]  # type: ignore[index]
             try:
-                res = forecast_ledger(model, S.from_postgres(conn), today, n_jobs)
+                mask = AM.from_postgres(conn) if model.anomaly_mask else None
+                res = forecast_ledger(model, S.from_postgres(conn), today, n_jobs, mask)
                 with conn.transaction():
                     _copy_values(conn, run_id, res)
                     conn.execute(

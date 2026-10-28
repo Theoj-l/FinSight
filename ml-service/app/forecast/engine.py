@@ -10,6 +10,10 @@ including the origin only, and forecasts the h months after it. A list of
 origins is a rolling-origin backtest; a single origin at the last closed
 month is the live forecast.
 
+`mask` (forecast v2) is a set of (dept_no, metric, period_no) cells to leave out
+of the fits: the months the anomaly model flagged (app/forecast/anomaly_mask.py).
+Only cells up to each origin matter, so it never lets later data in.
+
 `n_jobs` fits series in parallel threads. A Prophet fit spends most of its
 time waiting on a Stan subprocess, so threads speed up the live run without
 the memory cost of extra processes. The result does not depend on n_jobs.
@@ -24,6 +28,7 @@ from joblib import Parallel, delayed
 
 from app.periods import add_months
 
+from .anomaly_mask import Mask
 from .methods import effective_method, forecast
 from .series import BASE
 
@@ -43,7 +48,8 @@ class Spec:
         return f"{self.method}({', '.join(f'{k}={v}' for k, v in sorted(self.params.items()))})"
 
 
-def _one(dept: str, g: pd.DataFrame, metric: str, spec: Spec, origin: int, h: int) -> list[tuple]:
+def _one(dept: str, g: pd.DataFrame, metric: str, spec: Spec, origin: int, h: int,
+         mask: Mask | None = None) -> list[tuple]:
     hist = g[g["period_no"] <= origin]
     if hist.empty:
         return []
@@ -51,7 +57,8 @@ def _one(dept: str, g: pd.DataFrame, metric: str, spec: Spec, origin: int, h: in
     if not np.any(y):
         yhat, used = np.zeros(h), "zero"        # nothing ever posted: forecast nothing
     else:
-        yhat = forecast(y, h, spec.method, spec.params, int(hist["period_no"].iloc[0]))
+        skip = np.array([(dept, metric, int(p)) in mask for p in hist["period_no"]]) if mask else None
+        yhat = forecast(y, h, spec.method, spec.params, int(hist["period_no"].iloc[0]), skip)
         used = effective_method(spec.method, len(y))
     if metric in NON_NEGATIVE:
         yhat = np.maximum(yhat, 0.0)
@@ -59,9 +66,9 @@ def _one(dept: str, g: pd.DataFrame, metric: str, spec: Spec, origin: int, h: in
 
 
 def base_forecasts(pl: pd.DataFrame, metric: str, spec: Spec, origins: list[int], h: int,
-                   n_jobs: int = 1) -> pd.DataFrame:
+                   n_jobs: int = 1, mask: Mask | None = None) -> pd.DataFrame:
     """Forecast one base metric (revenue, cost, other_income) for every department and origin."""
-    tasks = [(str(dept), g.sort_values("period_no"), metric, spec, origin, h)
+    tasks = [(str(dept), g.sort_values("period_no"), metric, spec, origin, h, mask)
              for dept, g in pl.groupby("dept_no", sort=True) for origin in origins]
     if n_jobs == 1:
         parts = [_one(*t) for t in tasks]
@@ -71,10 +78,10 @@ def base_forecasts(pl: pd.DataFrame, metric: str, spec: Spec, origins: list[int]
 
 
 def forecast_from(pl: pd.DataFrame, specs: dict[str, Spec], origins: list[int], h: int,
-                  n_jobs: int = 1) -> pd.DataFrame:
+                  n_jobs: int = 1, mask: Mask | None = None) -> pd.DataFrame:
     """Revenue, cost and derived profit per department for each origin.
     `specs` maps each BASE metric to the method that forecasts it."""
-    base = {m: base_forecasts(pl, m, specs[m], origins, h, n_jobs) for m in BASE}
+    base = {m: base_forecasts(pl, m, specs[m], origins, h, n_jobs, mask) for m in BASE}
     key = ["dept_no", "origin", "horizon", "period_no"]
     p = base["revenue"][key + ["yhat"]].rename(columns={"yhat": "rev"})
     p = p.merge(base["cost"][key + ["yhat"]].rename(columns={"yhat": "cost"}), on=key)

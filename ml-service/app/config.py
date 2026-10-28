@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     anomaly_model_version: str = "v1"
 
     # Which forecast model to run: <models_dir>/forecast/<version>/config.json.
-    forecast_model_version: str = "v1"
+    forecast_model_version: str = "v2"
 
     # Series fitted in parallel (threads) by a forecast run. Prophet fits mostly
     # wait on a Stan subprocess, so this can exceed the CPU count.

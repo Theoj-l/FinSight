@@ -1,0 +1,424 @@
+{
+  "model_version": "v2",
+  "created_at": "2026-10-28T13:36:09",
+  "git_sha": "6c0d363-dirty",
+  "versions": {
+    "python": "3.14.7",
+    "dataset": "1.1",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "statsmodels": "0.15.0",
+    "prophet": "1.5.0"
+  },
+  "quick": false,
+  "specs": {
+    "revenue": {
+      "method": "holt_winters",
+      "params": {
+        "trend": null,
+        "damped": false,
+        "seasonal": "add"
+      }
+    },
+    "cost": {
+      "method": "holt_winters",
+      "params": {
+        "trend": null,
+        "damped": false,
+        "seasonal": "add"
+      }
+    },
+    "other_income": {
+      "method": "mean12",
+      "params": {}
+    }
+  },
+  "selected": {
+    "family": "holt_winters",
+    "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+    "spec": {
+      "method": "holt_winters",
+      "params": {
+        "trend": null,
+        "damped": false,
+        "seasonal": "add"
+      }
+    },
+    "val_mape": {
+      "revenue": 3.349,
+      "cost": 2.943,
+      "profit": 15.232
+    },
+    "val_worst": 15.232
+  },
+  "family_best": {
+    "baseline": {
+      "family": "baseline",
+      "candidate": "snaive",
+      "spec": {
+        "method": "snaive",
+        "params": {}
+      },
+      "val_mape": {
+        "revenue": 7.188,
+        "cost": 6.861,
+        "profit": 18.739
+      },
+      "val_worst": 18.739
+    },
+    "holt_winters": {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": null,
+          "damped": false,
+          "seasonal": "add"
+        }
+      },
+      "val_mape": {
+        "revenue": 3.349,
+        "cost": 2.943,
+        "profit": 15.232
+      },
+      "val_worst": 15.232
+    },
+    "prophet": {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "additive",
+          "changepoint_prior_scale": 0.01
+        }
+      },
+      "val_mape": {
+        "revenue": 3.67,
+        "cost": 3.011,
+        "profit": 18.113
+      },
+      "val_worst": 18.113
+    }
+  },
+  "selection_rule": "one candidate forecasts revenue and cost; the one with the lowest worst company-level 1-month-ahead validation MAPE across revenue, cost and profit, pooled over the validation seeds; ties go to the simpler family",
+  "horizon": 12,
+  "backtest_origins": 24,
+  "target_mape": 15.0,
+  "anomaly_mask": true,
+  "anomaly_mask_rule": "months the anomaly model flags are left out of every fit: a business-unit alert masks that unit's revenue and cost, a Corporate account alert masks Corporate cost; customer alerts mask nothing",
+  "anomaly_model": "models/anomaly/v1",
+  "masked_cells_per_validation_company": {
+    "31": 63,
+    "32": 69,
+    "33": 58,
+    "34": 75,
+    "35": 57,
+    "36": 61,
+    "37": 80,
+    "38": 71,
+    "39": 61,
+    "40": 69
+  },
+  "benchmark": {
+    "mode": "canonical",
+    "stress_mode": "random",
+    "history_end": 202408,
+    "windows": {
+      "validation": [
+        202409,
+        202508
+      ],
+      "test": [
+        202509,
+        202608
+      ]
+    },
+    "seeds": {
+      "validation": [
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40
+      ],
+      "test": [
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60
+      ],
+      "v1_test": [
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "showcase": 20260901
+    }
+  },
+  "candidates": [
+    {
+      "family": "baseline",
+      "candidate": "naive",
+      "spec": {
+        "method": "naive",
+        "params": {}
+      }
+    },
+    {
+      "family": "baseline",
+      "candidate": "snaive",
+      "spec": {
+        "method": "snaive",
+        "params": {}
+      }
+    },
+    {
+      "family": "baseline",
+      "candidate": "snaive_growth",
+      "spec": {
+        "method": "snaive_growth",
+        "params": {}
+      }
+    },
+    {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=None)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": null,
+          "damped": false,
+          "seasonal": "add"
+        }
+      }
+    },
+    {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=False, seasonal=mul, trend=None)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": null,
+          "damped": false,
+          "seasonal": "mul"
+        }
+      }
+    },
+    {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=False, seasonal=add, trend=add)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": "add",
+          "damped": false,
+          "seasonal": "add"
+        }
+      }
+    },
+    {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=False, seasonal=mul, trend=add)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": "add",
+          "damped": false,
+          "seasonal": "mul"
+        }
+      }
+    },
+    {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=True, seasonal=add, trend=add)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": "add",
+          "damped": true,
+          "seasonal": "add"
+        }
+      }
+    },
+    {
+      "family": "holt_winters",
+      "candidate": "holt_winters(damped=True, seasonal=mul, trend=add)",
+      "spec": {
+        "method": "holt_winters",
+        "params": {
+          "trend": "add",
+          "damped": true,
+          "seasonal": "mul"
+        }
+      }
+    },
+    {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "additive",
+          "changepoint_prior_scale": 0.01
+        }
+      }
+    },
+    {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.1, seasonality_mode=additive)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "additive",
+          "changepoint_prior_scale": 0.1
+        }
+      }
+    },
+    {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.5, seasonality_mode=additive)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "additive",
+          "changepoint_prior_scale": 0.5
+        }
+      }
+    },
+    {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.01, seasonality_mode=multiplicative)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "multiplicative",
+          "changepoint_prior_scale": 0.01
+        }
+      }
+    },
+    {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.1, seasonality_mode=multiplicative)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "multiplicative",
+          "changepoint_prior_scale": 0.1
+        }
+      }
+    },
+    {
+      "family": "prophet",
+      "candidate": "prophet(changepoint_prior_scale=0.5, seasonality_mode=multiplicative)",
+      "spec": {
+        "method": "prophet",
+        "params": {
+          "seasonality_mode": "multiplicative",
+          "changepoint_prior_scale": 0.5
+        }
+      }
+    }
+  ],
+  "validation_company_h1_mape": {
+    "holt_winters(damped=False, seasonal=add, trend=None)": {
+      "revenue": 3.349,
+      "cost": 2.943,
+      "profit": 15.232
+    },
+    "holt_winters(damped=False, seasonal=add, trend=add)": {
+      "revenue": 3.265,
+      "cost": 2.828,
+      "profit": 15.91
+    },
+    "holt_winters(damped=True, seasonal=add, trend=add)": {
+      "revenue": 3.289,
+      "cost": 2.879,
+      "profit": 16.029
+    },
+    "holt_winters(damped=True, seasonal=mul, trend=add)": {
+      "revenue": 2.931,
+      "cost": 2.562,
+      "profit": 16.24
+    },
+    "holt_winters(damped=False, seasonal=mul, trend=None)": {
+      "revenue": 3.328,
+      "cost": 2.862,
+      "profit": 16.538
+    },
+    "holt_winters(damped=False, seasonal=mul, trend=add)": {
+      "revenue": 2.816,
+      "cost": 2.368,
+      "profit": 16.769
+    },
+    "prophet(changepoint_prior_scale=0.01, seasonality_mode=additive)": {
+      "revenue": 3.67,
+      "cost": 3.011,
+      "profit": 18.113
+    },
+    "prophet(changepoint_prior_scale=0.1, seasonality_mode=additive)": {
+      "revenue": 3.696,
+      "cost": 3.047,
+      "profit": 18.463
+    },
+    "prophet(changepoint_prior_scale=0.5, seasonality_mode=additive)": {
+      "revenue": 3.993,
+      "cost": 3.439,
+      "profit": 18.468
+    },
+    "snaive": {
+      "revenue": 7.188,
+      "cost": 6.861,
+      "profit": 18.739
+    },
+    "prophet(changepoint_prior_scale=0.01, seasonality_mode=multiplicative)": {
+      "revenue": 3.329,
+      "cost": 2.684,
+      "profit": 18.886
+    },
+    "snaive_growth": {
+      "revenue": 3.443,
+      "cost": 2.915,
+      "profit": 18.909
+    },
+    "prophet(changepoint_prior_scale=0.1, seasonality_mode=multiplicative)": {
+      "revenue": 3.382,
+      "cost": 2.697,
+      "profit": 20.124
+    },
+    "prophet(changepoint_prior_scale=0.5, seasonality_mode=multiplicative)": {
+      "revenue": 3.77,
+      "cost": 2.978,
+      "profit": 21.425
+    },
+    "naive": {
+      "revenue": 5.56,
+      "cost": 5.323,
+      "profit": 26.288
+    }
+  },
+  "timings": {
+    "backtest_s": 607.0,
+    "total_s": 607.7
+  },
+  "command": "python -m training.forecast.train"
+}

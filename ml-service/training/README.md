@@ -45,16 +45,20 @@ time windows, rolling origin, candidates, selection rule, metrics):
 
 ```bash
 cd ml-service && source venv/bin/activate
-python -m training.forecast.train       # ~9 min  -> models/forecast/v1/config.json (+ validation rows of comparison.csv)
-python -m training.forecast.evaluate    # ~3 min  -> models/forecast/v1/REPORT.md, metrics.json, comparison.csv
+python -m training.forecast.train       # ~10 min -> models/forecast/v2/config.json (+ validation rows of comparison.csv)
+python -m training.forecast.evaluate    # ~5 min  -> models/forecast/v2/REPORT.md, metrics.json, comparison.csv
+python -m training.forecast.train --no-mask --out /tmp/nomask   # the same selection without anomaly masking
 ```
 
 The forecasters are refitted on the live ledger at every run, so the artifact
 is the *choice* of method and settings (`config.json`), not fitted weights.
+v2 scores every simulated company with the anomaly model (`models/anomaly/v1`)
+and leaves the flagged months out of the fits. `models/forecast/v1/` is the
+previous, unmasked model, kept for comparison and as a rollback.
 
 | File | Role |
 |---|---|
-| `bench.py` | seed roles (shared with the anomaly model), time windows, rolling-origin backtest |
+| `bench.py` | seed roles (validation shared with the anomaly model; fresh test companies 51–60 for v2), time windows, anomaly masks, rolling-origin backtest |
 | `candidates.py` | the baselines, Holt-Winters and Prophet settings compared |
 | `compare.py` | the shared comparison format (`comparison.csv`) other models' results are appended to |
 | `train.py` | validation backtest of every candidate; picks the production model |

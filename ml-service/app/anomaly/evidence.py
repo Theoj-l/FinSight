@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ def record(source: str, row: pd.Series, **extra) -> dict | None:
     key = {"ledger": "gl_dtl_key", "invoice": "doc_key", "sales_invoice": "doc_key"}[source]
     if key not in row or pd.isna(row[key]):
         return None
-    result = {"id": str(int(row[key])), "source": source}
+    result: dict[str, Any] = {"id": str(int(row[key])), "source": source}
     fields = {
         "ledger": [
             "trans_date",
@@ -68,7 +69,7 @@ def build_evidence(
         ]
     elif kind == "acc":
         current = current[(current.dept_no == "CP") & (current.acc_no == key)]
-    details = rules.reason_details(kind, r) or [
+    details: list[dict[str, Any]] = rules.reason_details(kind, r) or [
         {"code": "model_pattern", "text": "Unusual combination of model signals; review related records."}
     ]
     findings, records = [], {}
@@ -76,7 +77,7 @@ def build_evidence(
         code = detail["code"]
         selected = current
         support = code in ("duplicate_posting", "round_month_end", "new_account_pair", "overdue_invoices")
-        refs = []
+        refs: list[str] = []
 
         def add(source, row, _refs=refs, **extra):
             rec = record(source, row, **extra)
@@ -186,7 +187,9 @@ def build_evidence(
                     ].local_sub_total.sum()
                     add("sales_invoice", inv, unit_amount=float(amount))
 
-        comparison = {"actual": None, "baseline": None, "unit": "SGD", "periods": [], "label": ""}
+        comparison: dict[str, Any] = {
+            "actual": None, "baseline": None, "unit": "SGD", "periods": [], "label": ""
+        }
         chart = None
         history = []
         unit_rows = (
