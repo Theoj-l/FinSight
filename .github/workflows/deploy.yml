@@ -2,7 +2,8 @@ name: Deploy
 
 # Manual only — Vercel's own git-triggered auto-deploy is disabled
 # (web/vercel.json git.deploymentEnabled: false). This is the only thing that ships a
-# deployment, and it only ships once checks.yml (the same checks ci.yml runs) passes.
+# deployment, and it only ships once ci.yml (the same checks that run on every push and
+# pull request) passes.
 #
 # This deploys the web app only. The ML service has no server to deploy: its scheduled jobs
 # run on GitHub Actions (ml-forecast.yml, ml-anomalies.yml). The old Railway deploy job is
@@ -11,12 +12,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  checks:
-    uses: ./.github/workflows/checks.yml
+  ci:
+    uses: ./.github/workflows/ci.yml
 
   web:
-    # Runs only if the checks job succeeded (the default for `needs`).
-    needs: checks
+    # Runs only if the CI job succeeded (the default for `needs`).
+    needs: ci
     runs-on: ubuntu-latest
     # No working-directory: the Vercel project's Root Directory is "web", so the
     # CLI must run from the repo root or it looks for web/web/package.json.

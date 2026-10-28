@@ -18,11 +18,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  checks:
-    uses: ./.github/workflows/checks.yml
+  ci:
+    uses: ./.github/workflows/ci.yml
 
   ml-service:
-    needs: checks
+    needs: ci
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
     env:
