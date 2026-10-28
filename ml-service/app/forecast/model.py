@@ -42,6 +42,11 @@ class ForecastModel:
     def backtest_origins(self) -> int:
         return int(self.meta.get("backtest_origins", DEFAULT_BACKTEST_ORIGINS))
 
+    @property
+    def anomaly_mask(self) -> bool:
+        """v2+: leave months the anomaly model flagged out of every fit."""
+        return bool(self.meta.get("anomaly_mask", False))
+
     def save(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, CONFIG_FILE), "w") as f:

@@ -3,8 +3,9 @@
     python -m training.forecast.train            # validation seeds 31-40, every candidate (~10 min)
     python -m training.forecast.train --quick    # 2 seeds, 2 Prophet settings (smoke test)
 
-Steps (METHODOLOGY.md §6):
-  1. generate the validation seeds (canonical mode) and build their monthly series
+Steps (METHODOLOGY.md §7):
+  1. generate the validation seeds (canonical mode), build their monthly series, and
+     score each with the anomaly model to get the months to mask (v2; --no-mask skips it)
   2. rolling-origin backtest of every candidate over the validation window
   3. score each candidate at company level (departments summed) and per department
   4. pick the best settings within each family, and the overall best, which becomes
@@ -33,7 +34,7 @@ from training.anomaly.train import git_sha
 from . import bench, compare
 from . import candidates as C
 
-MODEL_VERSION = "v1"
+MODEL_VERSION = "v2"
 DEFAULT_OUT = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "models", "forecast",
                            MODEL_VERSION)
 TARGETS = ("revenue", "cost", "profit")
@@ -82,19 +83,25 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--jobs", type=int, default=-1, help="parallel backtests (joblib n_jobs)")
     ap.add_argument("--quick", action="store_true", help="2 seeds, 2 Prophet settings (smoke test)")
+    ap.add_argument("--no-mask", action="store_true",
+                    help="do not mask anomalous months (reproduces v1's fitting, for comparison)")
     args = ap.parse_args(argv)
+    use_mask = not args.no_mask
     out = os.path.abspath(args.out)
     seeds = bench.VAL_SEEDS[:2] if args.quick else bench.VAL_SEEDS
     cands = C.BASELINES + C.HOLT_WINTERS + (C.PROPHET[:2] if args.quick else C.PROPHET)
     t0 = time.time()
 
-    print(f"· series for {len(seeds)} validation seeds ({bench.MODE})")
-    series = bench.series_many(seeds, jobs=args.jobs)
+    print(f"· series and anomaly masks for {len(seeds)} validation seeds ({bench.MODE})")
+    cos = bench.companies(seeds, jobs=args.jobs)
+    masked_cells = {s: len(cos[s].mask) for s in seeds}
+    print(f"  masked cells per company: {masked_cells}" if use_mask else "  masking off")
 
     print(f"· rolling-origin backtest of {len(cands)} candidates over {bench.WINDOWS['validation']}")
     # Slowest first (Prophet) so the parallel pool stays busy.
     ordered = sorted(cands, key=lambda c: -FAMILY_RANK[c.family])
-    tasks = [(dict(seed=s, family=c.family, candidate=c.label), series[s], C.specs(c.spec, c.spec))
+    tasks = [(dict(seed=s, family=c.family, candidate=c.label), cos[s].pl, C.specs(c.spec, c.spec),
+              cos[s].mask if use_mask else None)
              for c in ordered for s in seeds]
     fc = bench.backtest_many(tasks, "validation", jobs=args.jobs)
     backtest_s = round(time.time() - t0, 1)
@@ -117,8 +124,15 @@ def main(argv=None) -> int:
                        "company-level 1-month-ahead validation MAPE across revenue, cost and profit, "
                        "pooled over the validation seeds; ties go to the simpler family",
         horizon=bench.HORIZON, backtest_origins=24, target_mape=15.0,
+        anomaly_mask=use_mask,
+        anomaly_mask_rule="months the anomaly model flags are left out of every fit: a business-unit "
+                          "alert masks that unit's revenue and cost, a Corporate account alert masks "
+                          "Corporate cost; customer alerts mask nothing",
+        anomaly_model="models/anomaly/v1",
+        masked_cells_per_validation_company=masked_cells if use_mask else None,
         benchmark=dict(mode=bench.MODE, stress_mode=bench.STRESS_MODE, history_end=bench.HISTORY_END,
                        windows=bench.WINDOWS, seeds=dict(validation=list(seeds), test=list(bench.TEST_SEEDS),
+                                                         v1_test=list(bench.V1_TEST_SEEDS),
                                                          showcase=bench.SHOWCASE_SEED)),
         candidates=[dict(family=c.family, candidate=c.label, spec=C.spec_to_dict(c.spec)) for c in cands],
         validation_company_h1_mape={r.candidate: {t: round(float(getattr(r, t)), 3) for t in TARGETS}

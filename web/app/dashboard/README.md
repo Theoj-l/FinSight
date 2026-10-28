@@ -149,6 +149,10 @@ Each series has:
 - **Freshness.** Forecasts change only when ml-service runs: the monthly cron,
   after a `datagen --load`, or `mlClient.runForecast()`. They are safe to cache
   with the page.
+- **Anomalous months are left out (model v2).** The forecast ignores the months
+  the anomaly model flagged, so a one-off event does not distort it. The run's
+  `forecast_run.summary.anomaly_mask` lists them if you want to show which months
+  were excluded.
 
 ### For the assistant (US3.7)
 

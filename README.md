@@ -45,7 +45,7 @@ ml-service/
     security.py
     routers/
   training/         offline scripts/notebooks that produce model artifacts
-  models/           committed model artifacts (anomaly/v1/, forecast/v1/); ship in the image
+  models/           committed model artifacts (anomaly/v1/, forecast/v2/ + v1/); ship in the image
   DEPLOY.md         Railway deployment: API service + monthly forecast cron
   tests/
 ```
@@ -282,8 +282,10 @@ calls the model. Forecasts are refreshed:
 - by `python -m app.forecast.run` (from `ml-service/`; what the monthly cron runs)
 - by `POST /forecast/run` on ml-service (`mlClient.runForecast()` from `web/`)
 
-The selected forecaster (`ml-service/models/forecast/v1/config.json`) was chosen
-by backtesting baselines, Holt-Winters and Prophet. Results are in its
+The selected forecaster (`ml-service/models/forecast/v2/config.json`) was chosen
+by backtesting baselines, Holt-Winters and Prophet. From v2 it leaves the months
+the anomaly model flagged out of its fits, so run anomaly scoring before
+forecasting (the crons do: anomaly nightly, forecast monthly an hour later). Results are in its
 `REPORT.md`, and the method in
 [ml-service/training/forecast/METHODOLOGY.md](ml-service/training/forecast/METHODOLOGY.md).
 Deploying to Railway: [ml-service/DEPLOY.md](ml-service/DEPLOY.md).
