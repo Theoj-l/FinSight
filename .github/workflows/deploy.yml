@@ -10,8 +10,11 @@ on:
       target:
         description: What to deploy
         type: choice
-        options: [both, web, ml-service]
-        default: both
+        # ml-service is no longer deployed by default: its scheduled jobs run in GitHub
+        # Actions (ml-forecast.yml, ml-anomalies.yml). Picking "both" or "ml-service" still
+        # runs the Railway deploy, which needs RAILWAY_TOKEN.
+        options: [web, both, ml-service]
+        default: web
 
 jobs:
   checks:

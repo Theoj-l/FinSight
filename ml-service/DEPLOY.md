@@ -1,4 +1,44 @@
-# Deploying ml-service to Railway
+# Running and deploying ml-service
+
+## Scheduled runs on GitHub Actions (current setup)
+
+The dashboard, the Forecast page and the chatbot read the `anomaly_*` and `forecast_*`
+tables straight from Supabase; they never call this service. What the service does is
+fill those tables on a schedule, so the schedules run as GitHub Actions workflows on
+GitHub-hosted runners. No server has to stay up.
+
+| Workflow | Runs | Command |
+|---|---|---|
+| `.github/workflows/ml-forecast.yml` | 02:00 SGT on the 2nd of each month (`0 18 1 * *` UTC) | `python -m app.forecast.run` |
+| `.github/workflows/ml-anomalies.yml` | 02:00 SGT every night (`0 18 * * *` UTC); optional | `python -m app.anomaly.score` |
+
+Both can also be started by hand: **Actions → the workflow → Run workflow**. That is how
+to fill the tables for the first time. A scheduled run can start a few minutes late, and
+GitHub switches scheduled workflows off after 60 days without repository activity (a push
+or a manual run turns them back on). A failed run shows red in the Actions tab.
+
+**One-time setup**
+
+1. Add the repository secret **`ML_DATABASE_URL`** (Settings → Secrets and variables →
+   Actions): the Supabase **session pooler** URL, port **5432**. Not the transaction pooler
+   (6543): the jobs take a session-level lock. This is the same value as `DIRECT_URL` in
+   `web/.env`, which is the `postgres` account, so anyone who gets the secret has full
+   access to the database. A role limited to what the jobs need (read the ledger tables,
+   write `anomaly_run`, `anomaly_alert`, `forecast_run`, `forecast_value`) would be safer.
+2. Run **ML forecast** once by hand and check that Supabase has a new `forecast_run` row
+   with `status = 'ok'`.
+
+Nothing on Vercel needs `ML_SERVICE_URL` or `ML_SERVICE_TOKEN` any more. The web app's
+`/api/ml/health` route answers with an error status because there is no server to ask; nothing else in the app calls it.
+
+The rest of this file describes hosting the FastAPI service and the crons on Railway. It
+is kept for reference (for example if a manual `POST /forecast/run` endpoint is wanted
+again); the Railway configs are no longer used. Railway reported a security incident on
+2026-10-21: if any secret was ever stored there, rotate it.
+
+---
+
+# Deploying ml-service to Railway (not in use)
 
 ml-service ships as one Docker image (`Dockerfile`, final stage `runner`). On
 Railway that image runs as up to three services from the same repo:

@@ -1,0 +1,50 @@
+name: ML anomaly rescore
+
+# Refreshes anomaly_run / anomaly_alert in Supabase: the data behind the dashboard's
+# "Anomalies to review" panel, the home page alerts and the chatbot's anomaly answers.
+# It runs the same command Railway's cron used to (`python -m app.anomaly.score`), on a
+# GitHub-hosted runner, so no server has to stay up.
+#
+# Schedule: nightly at 18:00 UTC = 02:00 SGT. Cron times in GitHub Actions are UTC, and a
+# run can start a few minutes late when GitHub is busy. Optional: if the ledger only
+# changes at month end, delete the schedule and run it by hand instead
+# (Actions -> ML anomaly rescore -> Run workflow).
+#
+# Needs one repository secret: ML_DATABASE_URL (see ml-service/DEPLOY.md).
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ml-anomalies
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rescore:
+    name: Score the ledger for anomalies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ml-service
+    env:
+      DATABASE_URL: ${{ secrets.ML_DATABASE_URL }}
+      MPLCONFIGDIR: /tmp/matplotlib
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Score the ledger
+        run: python -m app.anomaly.score
