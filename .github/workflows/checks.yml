@@ -10,7 +10,10 @@ on:
 jobs:
   web:
     name: web · lint · types · unit · e2e
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: that now points at Ubuntu 26.04, where Playwright's
+    # WebKit build cannot start (it needs libicu74, which 24.04 has and 26.04 does not).
+    # Move this forward when the Playwright version in web/package.json supports it.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
