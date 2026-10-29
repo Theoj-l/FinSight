@@ -384,10 +384,10 @@ build changes.
 The image already contains the trained model (`models/anomaly/v1/`), so nothing
 is trained on Railway. Set these variables on the service:
 
-| Variable | Value |
-| -------- | ----- |
-| `ML_SERVICE_TOKEN` | same value as in `web` |
-| `DATABASE_URL` | Supabase **session pooler** URL (port 5432), the same as in `ml-service/.env`. Not the transaction pooler (6543): a scoring run takes a session-level lock. |
+| Variable           | Value                                                                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ML_SERVICE_TOKEN` | same value as in `web`                                                                                                                                      |
+| `DATABASE_URL`     | Supabase **session pooler** URL (port 5432), the same as in `ml-service/.env`. Not the transaction pooler (6543): a scoring run takes a session-level lock. |
 
 - **Memory:** a scoring run peaks at about 500 MB. Give the service at least 1 GB.
 - **Nightly refresh:** add a second Railway service from the same repo and Root
@@ -409,21 +409,21 @@ curl -X POST -H "x-ml-service-token: <token>" https://<ml-service-domain>/anomal
 
 ## Common Commands
 
-| Command                             | What it does                              |
-| ----------------------------------- | ----------------------------------------- |
-| `npm run dev`                       | Run both services with hot reload         |
-| `npm run docker:dev`                | Same, in containers (hot reload)          |
-| `npm run docker:up` / `docker:down` | Start / stop the production images        |
-| `npm run db:apply --prefix web`     | Apply `finsight_schema.sql` to Supabase   |
-| `npm run db:pull --prefix web`      | Re-introspect `schema.prisma` from the DB |
-| `npm run db:studio --prefix web`    | Open the Prisma DB viewer                 |
-| `npm run lint --prefix web`         | Lint the web app                          |
-| `npm test --prefix web`             | Web unit tests (Vitest)                   |
-| `npm run test:e2e --prefix web`     | Web end-to-end tests (Playwright)         |
+| Command                                       | What it does                                                          |
+| --------------------------------------------- | --------------------------------------------------------------------- |
+| `npm run dev`                                 | Run both services with hot reload                                     |
+| `npm run docker:dev`                          | Same, in containers (hot reload)                                      |
+| `npm run docker:up` / `docker:down`           | Start / stop the production images                                    |
+| `npm run db:apply --prefix web`               | Apply `finsight_schema.sql` to Supabase                               |
+| `npm run db:pull --prefix web`                | Re-introspect `schema.prisma` from the DB                             |
+| `npm run db:studio --prefix web`              | Open the Prisma DB viewer                                             |
+| `npm run lint --prefix web`                   | Lint the web app                                                      |
+| `npm test --prefix web`                       | Web unit tests (Vitest)                                               |
+| `npm run test:e2e --prefix web`               | Web end-to-end tests (Playwright)                                     |
 | `npm run test:anomalies:browser --prefix web` | Comparison, Settings and anomaly browser checks (controlled auth/API) |
-| `npm run verify:financial:db --prefix web` | Real financial save/read checks; rolls back all verification writes |
-| `pytest` (in `ml-service/`)         | Run ML service tests                      |
-| `ruff check .` (in `ml-service/`)   | Lint the ML service                       |
+| `npm run verify:financial:db --prefix web`    | Real financial save/read checks; rolls back all verification writes   |
+| `pytest` (in `ml-service/`)                   | Run ML service tests                                                  |
+| `ruff check .` (in `ml-service/`)             | Lint the ML service                                                   |
 
 ## Git Conventions
 
@@ -459,3 +459,5 @@ git diff
 git add .
 git commit -m "type: short description"
 ```
+
+Deployment edit
