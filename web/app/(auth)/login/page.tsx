@@ -1,15 +1,11 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/require-user";
 import { login } from "@/app/auth/actions";
 import { AuthForm } from "@/app/auth/auth-form";
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) redirect("/home");
+  if (await getSessionUser()) redirect("/home");
 
   const next = typeof params.next === "string" ? params.next : undefined;
   const notice = params.checkEmail

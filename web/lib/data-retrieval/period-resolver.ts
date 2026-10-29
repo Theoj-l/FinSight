@@ -61,9 +61,11 @@ export function periodNosToDateRange(periodNos: number[]): {
   const first = parseYyyymm(sorted[0]);
   const last = parseYyyymm(sorted[sorted.length - 1]);
 
-  const from = new Date(first.year, first.month - 1, 1);
+  // UTC midnights: these bound `date` columns in SQL. Local-time dates shift a
+  // day on a machine east of UTC (Singapore: 1 Aug local = 31 Jul 16:00 UTC).
+  const from = new Date(Date.UTC(first.year, first.month - 1, 1));
   // Last day of the last month
-  const to = new Date(last.year, last.month, 0);
+  const to = new Date(Date.UTC(last.year, last.month, 0));
   return { from, to };
 }
 
@@ -209,7 +211,7 @@ function buildResult(periodNos: number[]): ResolvedPeriod {
     label: periodLabels(periodNos),
     dateFrom: from,
     dateTo: to,
-    dateToExclusive: new Date(last.year, last.month, 1),
+    dateToExclusive: new Date(Date.UTC(last.year, last.month, 1)),
   };
 }
 

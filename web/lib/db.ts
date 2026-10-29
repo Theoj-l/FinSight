@@ -1,7 +1,12 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { pgPoolConfig } from "./pg-pool-config";
 
 /**
  * Prisma client singleton.
+ *
+ * Queries go through node-postgres (@prisma/adapter-pg): one network round trip
+ * per query instead of several. See lib/pg-pool-config.ts.
  *
  * Next.js hot-reloads server modules in dev, which would otherwise open a new
  * connection pool on every change. Cache the client on globalThis in dev.
@@ -17,6 +22,7 @@ if (cached && !compatible) void cached.$disconnect().catch(() => undefined);
 export const prisma =
   (compatible ? cached : undefined) ??
   new PrismaClient({
+    adapter: new PrismaPg(pgPoolConfig(process.env.DATABASE_URL)),
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 

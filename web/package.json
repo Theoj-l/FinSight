@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.20.0",
+    "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.2.1",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
@@ -38,6 +39,7 @@
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "esbuild": "^0.25.12",

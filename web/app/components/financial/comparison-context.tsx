@@ -1,6 +1,6 @@
 "use client";
 import { SingleSelect } from "@/app/dashboard/components/single-select";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, use, useContext, useMemo, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   SOURCES,
@@ -16,35 +16,64 @@ type Context = {
   series: SourceSeries | null;
   error?: string;
 };
-const FinancialContext = createContext<Context | null>(null);
-export const useFinancialComparison = () => useContext(FinancialContext);
-export function FinancialProvider({
-  bundle,
-  error,
-  children,
-}: {
-  bundle: FinancialBundle | null;
-  error?: string;
-  children?: ReactNode;
-}) {
-  const query = useSearchParams();
-  const raw = query.get("comparison") ?? "previous";
-  const source = isSource(raw) ? raw : "previous";
-  const budget = query.get("budgetId");
-  const invalid = !isSource(raw)
+/** What the server loaded for the comparison: the bundle, or why it is missing. */
+export type FinancialResult = { bundle: FinancialBundle | null; error?: string };
+type Shared = {
+  result: FinancialResult | PromiseLike<FinancialResult>;
+  raw: string;
+  budget: string | null;
+};
+const FinancialContext = createContext<Shared | null>(null);
+const pending = (value: Shared["result"]): value is PromiseLike<FinancialResult> =>
+  typeof (value as PromiseLike<FinancialResult>).then === "function";
+/**
+ * The selected comparison, or null outside a FinancialProvider. While the
+ * server is still loading the bundle this suspends, so callers sit below their
+ * own <Suspense>: each panel waits for it on its own instead of the whole page.
+ */
+export function useFinancialComparison(): Context | null {
+  const shared = useContext(FinancialContext);
+  if (!shared) return null;
+  const { bundle, error } = pending(shared.result) ? use(shared.result) : shared.result;
+  const source = isSource(shared.raw) ? shared.raw : "previous";
+  const invalid = !isSource(shared.raw)
     ? "The selected comparison source is invalid."
-    : source === "budget" && budget && !bundle?.budgetSources[budget]
+    : source === "budget" && shared.budget && !bundle?.budgetSources[shared.budget]
       ? "The selected budget scenario is unavailable."
       : undefined;
   const series =
     !invalid && bundle
-      ? source === "budget" && budget
-        ? bundle.budgetSources[budget]
+      ? source === "budget" && shared.budget
+        ? bundle.budgetSources[shared.budget]
         : bundle.sources[source]
       : null;
+  return { bundle, source, series, error: error ?? invalid };
+}
+/**
+ * `result` is the server's (unawaited) load, so the dashboard panels start
+ * their own queries at the same time instead of after it. A loaded `bundle`
+ * can be passed directly instead (tests, fixtures).
+ */
+export function FinancialProvider({
+  bundle = null,
+  error,
+  result,
+  children,
+}: {
+  bundle?: FinancialBundle | null;
+  error?: string;
+  result?: PromiseLike<FinancialResult>;
+  children?: ReactNode;
+}) {
+  const query = useSearchParams();
+  const raw = query.get("comparison") ?? "previous";
+  const budget = query.get("budgetId");
   // Profit-mode/history changes must not broadcast a fresh comparison context
   // to every chart/card when their financial inputs are unchanged.
-  const value = useMemo(() => ({ bundle, source, series, error: error ?? invalid }), [bundle, source, series, error, invalid]);
+  const value = useMemo(
+    () => ({ result: result ?? { bundle, error }, raw, budget }),
+    [result, bundle, error, raw, budget],
+  );
   return (
     <FinancialContext.Provider value={value}>
       {children}
@@ -151,7 +180,7 @@ export function ActualOnlyComparisonNote({
 }: {
   children: ReactNode;
 }) {
-  const context = useFinancialComparison();
-  if (!context) return null;
+  // Only needs to know a comparison is on screen, not its data: never waits.
+  if (!useContext(FinancialContext)) return null;
   return <p className="mt-2 px-1 text-xs text-muted">{children}</p>;
 }

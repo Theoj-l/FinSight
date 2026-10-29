@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, FileBarChart, FileText, PieChart, ShieldCheck } from "lucide-react";
-import { AppPage, PageHeading } from "@/app/components/app-page";
+import { PageHeading } from "@/app/components/app-page";
 import { requireUser } from "@/lib/auth/require-user";
 
 export const metadata: Metadata = {
@@ -22,10 +22,10 @@ const recentReports = [
 ];
 
 export default async function ReportsPage() {
-  const user = await requireUser("/reports");
+  await requireUser("/reports");
 
   return (
-    <AppPage email={user.email ?? "Finance user"}>
+    <>
       <PageHeading
         eyebrow="Reporting library"
         title="Reports"
@@ -70,6 +70,6 @@ export default async function ReportsPage() {
         </div>
         <div className="flex items-center gap-2 border-t border-slate-100 bg-brand-blue-light/30 px-6 py-3 text-xs text-muted"><ShieldCheck aria-hidden="true" className="h-4 w-4 text-brand-blue" /> Reports use the same governed data shown in your dashboard.</div>
       </section>
-    </AppPage>
+    </>
   );
 }

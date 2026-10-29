@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import { AppShell } from "./app-sidebar";
 
-export function AppPage({ email, children }: { email: string; children: ReactNode }) {
-  return <AppShell email={email}>{children}</AppShell>;
-}
+// The sidebar shell is rendered once by app/(app)/layout.tsx, so pages under
+// app/(app)/ render only their own content.
 
 export function PageHeading({
   eyebrow,

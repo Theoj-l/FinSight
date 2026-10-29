@@ -74,8 +74,6 @@ export async function getFinancialBundle(
   if (!scope.trendPeriodNumbers && !scope.periodNumbers)
     for (let i = 5; i > 0; i--) periods.unshift(addMonth(period, -i));
   periods.sort((a, b) => a - b);
-  const activeUnits = await activeBusinessUnits();
-  const selectedUnits = scope.departmentIds?.length ? scope.departmentIds.filter(d => activeUnits.includes(d)) : activeUnits;
   const departmentSql = scope.departmentIds?.length
     ? Prisma.sql`AND p.dept_no IN (${Prisma.join(scope.departmentIds)})`
     : Prisma.empty;
@@ -88,8 +86,10 @@ export async function getFinancialBundle(
       "This comparison source could not be loaded. Refresh to retry. Actual ledger values remain available.";
     return [];
   };
-  const [settings, actual, budgets, manual, scenarios, forecast] =
+  // One parallel batch: each read is a network round trip to the database.
+  const [activeUnits, settings, actual, budgets, manual, scenarios, forecast] =
     await Promise.all([
+      activeBusinessUnits(),
       Promise.resolve().then(() => getFinancialSettings()),
       Promise.resolve().then(() => prisma.$queryRaw<
         Balance[]
@@ -127,6 +127,7 @@ export async function getFinancialBundle(
         )
         ).catch(() => unavailable("auto")),
     ]);
+  const selectedUnits = scope.departmentIds?.length ? scope.departmentIds.filter(d => activeUnits.includes(d)) : activeUnits;
   const departments = [...new Set(selectedUnits)].sort();
   const types: (keyof Components)[] = ["RE", "CS", "OI", "EX"];
   const components = (rows: Balance[], p: number, budget = false): Components =>

@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
-import { AppPage, PageHeading } from "@/app/components/app-page";
-import { createClient } from "@/lib/supabase/server";
+import { PageHeading } from "@/app/components/app-page";
+import { requireUser } from "@/lib/auth/require-user";
 import { DashboardFilters } from "@/app/dashboard/components/dashboard-filters";
 import { getFilterOptions } from "@/app/dashboard/data/filter-options";
 import { getForecast } from "@/app/dashboard/data/forecast";
 import { BRANCH_LEDGER_MESSAGE, parseDashboardFilters, type FilterOptions, type SearchParams } from "@/app/dashboard/data/dashboard-scope";
-import { ForecastView } from "./components/forecast-view";
-import { ForecastLoading } from "./components/forecast-loading";
+import { ForecastView } from "@/app/forecast/components/forecast-view";
+import { ForecastLoading } from "@/app/forecast/components/forecast-loading";
 
 export const metadata: Metadata = {
   title: "Forecast | FinSight",
@@ -16,9 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ForecastPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/forecast");
+  await requireUser("/forecast");
 
   const optionsResult = await getFilterOptions()
     .then(options => ({ options, error: undefined as string | undefined }))
@@ -35,12 +32,12 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
   const filterError = optionsResult.error ?? selectionError;
 
   return (
-    <AppPage email={user.email ?? "Finance user"}>
+    <>
       <PageHeading eyebrow="Decision support" title="Forecast" description="Compare closed-month performance with forward-looking projections for the selected reporting scope." />
       <DashboardFilters key={JSON.stringify(selection)} destination="/forecast" tourId="forecast-filters" hidePeriod options={optionsResult.options} selection={selection} error={filterError}>
         {filterError ? null : <Suspense fallback={<ForecastLoading />}><ForecastPanel scope={scope} /></Suspense>}
       </DashboardFilters>
-    </AppPage>
+    </>
   );
 }
 

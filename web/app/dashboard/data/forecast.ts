@@ -88,9 +88,8 @@ export async function getForecastStatus(): Promise<ForecastStatus | null> {
  */
 export async function getForecast(scope: DashboardScope = {}, options: ForecastOptions = {}): Promise<ForecastData | null> {
   const department = ledgerDepartment(scope);
-  const run = await latestRun();
+  const [run, active] = await Promise.all([latestRun(), activeBusinessUnits()]);
   if (!run || run.history_through === null) return null;
-  const active = await activeBusinessUnits();
   const units = scope.departmentIds?.length ? scope.departmentIds.filter(d => active.includes(d)) : active;
   const status = toStatus({ ...run, history_through: run.history_through });
   const through = status.historyThrough;

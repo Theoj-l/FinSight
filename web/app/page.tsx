@@ -3,14 +3,10 @@ import { FeatureCarousel } from "@/app/components/feature-carousel";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/require-user";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) redirect("/home");
+  if (await getSessionUser()) redirect("/home");
 
   return (
     <div className={styles.page}>
