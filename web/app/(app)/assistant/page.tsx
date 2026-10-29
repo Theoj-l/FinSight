@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BarChart3, CalendarDays, MessageSquare, TrendingUp } from "lucide-react";
-import { AppPage, PageHeading } from "@/app/components/app-page";
+import { PageHeading } from "@/app/components/app-page";
 import { requireUser } from "@/lib/auth/require-user";
 
 export const metadata: Metadata = {
@@ -16,10 +16,10 @@ const examples = [
 ];
 
 export default async function AssistantPage() {
-  const user = await requireUser("/assistant");
+  await requireUser("/assistant");
 
   return (
-    <AppPage email={user.email ?? "Finance user"}>
+    <>
       <PageHeading
         eyebrow="Conversational workspace"
         title="Assistant"
@@ -57,6 +57,6 @@ export default async function AssistantPage() {
         <CalendarDays aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-blue" />
         <div><h2 className="text-sm font-semibold text-brand-navy">Clear dates for every answer</h2><p className="mt-1 text-sm leading-6 text-muted">The planned assistant will distinguish reported results from forecasts, with the reporting or prediction period and the date the answer or forecast was generated.</p></div>
       </aside>
-    </AppPage>
+    </>
   );
 }

@@ -34,11 +34,13 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: getUser() revalidates the token with Supabase — do not replace
-  // with getSession(), which trusts the cookie as-is.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // IMPORTANT: getClaims() verifies the token's signature against the project's
+  // signing keys (locally; the keys are fetched once and cached) and refreshes
+  // an expiring session. Do not replace it with getSession(), which trusts the
+  // cookie as-is. getUser() is also safe but calls Supabase Auth on every
+  // request, which this proxy runs on (each navigation and prefetch).
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const { pathname } = request.nextUrl;
   const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));

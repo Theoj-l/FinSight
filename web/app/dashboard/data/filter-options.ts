@@ -2,18 +2,22 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import type { FilterOptions } from "./dashboard-scope";
 
+type Period = { period_no: number };
+
 export async function getFilterOptions(includePlans = false): Promise<FilterOptions> {
-  const [periods, units, branches] = await Promise.all([
-    prisma.pbalance.findMany({ distinct: ["period_no"], select: { period_no: true }, orderBy: { period_no: "desc" } }),
+  // SQL DISTINCT, not findMany({ distinct }): Prisma applies `distinct` after
+  // fetching every row (16k+ forecast rows for ~40 months). All six reads run
+  // in one parallel batch.
+  const optional = (read: () => Promise<Period[]>) => includePlans ? Promise.resolve().then(read).catch(() => []) : Promise.resolve([]);
+  const [periods, units, branches, ...planned] = await Promise.all([
+    prisma.$queryRaw<Period[]>`SELECT DISTINCT period_no FROM pbalance ORDER BY period_no DESC`,
     prisma.dept.findMany({ select: { dept_no: true, description: true, segment: true }, orderBy: { dept_no: "asc" } }),
     // Include inactive branches so historical reports remain accessible.
     prisma.branch.findMany({ select: { branch_code: true, branch_name: true }, orderBy: { branch_code: "asc" } }),
+    optional(() => prisma.$queryRaw<Period[]>`SELECT DISTINCT f.period_no FROM forecast_value f JOIN forecast_run r ON r.run_id = f.run_id WHERE r.status = 'ok'`),
+    optional(() => prisma.$queryRaw<Period[]>`SELECT DISTINCT period_no FROM financial_manual_forecast`),
+    optional(() => prisma.$queryRaw<Period[]>`SELECT DISTINCT period_no FROM budget_pbalance`),
   ]);
-  const planned = includePlans ? await Promise.all([
-    Promise.resolve().then(() => prisma.forecast_value.findMany({ distinct: ["period_no"], select: { period_no: true }, where: { forecast_run: { status: "ok" } } })).catch(() => []),
-    Promise.resolve().then(() => prisma.financial_manual_forecast.findMany({ distinct: ["period_no"], select: { period_no: true } })).catch(() => []),
-    Promise.resolve().then(() => prisma.budget_pbalance.findMany({ distinct: ["period_no"], select: { period_no: true } })).catch(() => []),
-  ]) : [];
   return {
     periods: [...new Set([...periods, ...planned.flat()].map(row => row.period_no))].filter(p => p >= 100001 && p <= 999912 && p % 100 >= 1 && p % 100 <= 12).sort((a, b) => b - a),
     ...(includePlans && periods.length ? { defaultPeriod: periods[0].period_no } : {}),

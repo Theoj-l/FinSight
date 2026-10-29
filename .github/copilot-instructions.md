@@ -73,9 +73,15 @@ All dashboard-specific UI components must be created in:
 
 `web/app/dashboard/components`
 
-Keep the route page at:
+Keep the route page (and its `loading.tsx` skeleton) at:
 
-`web/app/dashboard/page.tsx`
+`web/app/(app)/dashboard/page.tsx`
+
+The `(app)` route group holds the route entry files of every signed-in page
+(home, dashboard, assistant, forecast, reports, settings). Its `layout.tsx`
+renders the sidebar once, so it stays mounted between pages; pages render only
+their own content (no sidebar wrapper). The group name is not part of the URL.
+Every page there needs a `loading.tsx` so navigation shows feedback at once.
 
 Recommended component organization:
 
@@ -106,6 +112,10 @@ that require Recharts, browser events, state, or client-side interaction.
 
 Use `prisma` from `web/lib/db.ts` for database queries.
 
+In pages and layouts, get the user with `requireUser()` / `getSessionUser()` from
+`web/lib/auth/require-user.ts`. They verify the session JWT locally, with no
+round trip to Supabase Auth on each page load.
+
 Do not query Prisma from client components.
 
 ## Dashboard Data Performance
@@ -115,6 +125,7 @@ Keep dashboard data pulls small and database-driven:
 - Run independent dashboard loaders concurrently or stream panels with Suspense; never create a sequential query waterfall.
 - Aggregate large tables such as `pbalance` and `iv_dtl` in PostgreSQL before returning data to the server component. Do not load raw ledger or invoice-detail rows when the UI needs grouped totals.
 - Select only the columns required by the DTO and preserve active dashboard filters in every query.
+- Use SQL `SELECT DISTINCT` (`$queryRaw`) for distinct values. Prisma's `findMany({ distinct })` fetches every row and de-duplicates in Node.
 - Cache low-change metadata such as filter options and `pl_format` with bounded revalidation. Do not cache user-specific financial results without including the complete scope in the cache key.
 - Do not query dashboard panels when filter parsing has already failed.
 - Keep server-only Prisma access in dashboard data modules and pass plain serialized DTOs to client components.

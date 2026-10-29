@@ -1,11 +1,9 @@
 import { FinancialComparisonBoundary } from "@/app/components/financial/comparison-boundary";
 import { ComparisonSelector } from "@/app/components/financial/comparison-context";
-import { getChartAnomaly } from "./data/anomalies";
-import { previousCalendarMonths } from "./data/anomaly-evidence";
-import { redirect } from "next/navigation";
+import { getChartAnomaly } from "@/app/dashboard/data/anomalies";
+import { previousCalendarMonths } from "@/app/dashboard/data/anomaly-evidence";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { AppPage } from "@/app/components/app-page";
+import { requireUser } from "@/lib/auth/require-user";
 import { TourTarget } from "@/app/components/tour/tour-target";
 import {
   AnomaliesPanel,
@@ -19,27 +17,32 @@ import {
   RevenueByBusinessTypePanel,
   RevenueByGroupPanel,
   RevenueExpensePanel,
-} from "./components/dashboard-panels";
-import { DashboardFilters } from "./components/dashboard-filters";
-import { getFilterOptions } from "./data/filter-options";
+} from "@/app/dashboard/components/dashboard-panels";
+import { DashboardFilters } from "@/app/dashboard/components/dashboard-filters";
+import { getFilterOptions } from "@/app/dashboard/data/filter-options";
 import {
   parseDashboardFilters,
   type FilterOptions,
   type SearchParams,
-} from "./data/dashboard-scope";
+} from "@/app/dashboard/data/dashboard-scope";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   // proxy.ts already guards this route; this is defence in depth.
-  if (!user) redirect("/login?next=/dashboard");
+  const user = await requireUser("/dashboard");
+  const params = await searchParams;
+  const requested =
+    typeof params.anomaly === "string" ? params.anomaly : undefined;
+  // Started now so it runs alongside the filter options; used only if they load.
+  const pendingTarget = requested
+    ? getChartAnomaly(
+        requested,
+        typeof params.reason === "string" ? params.reason : undefined,
+      ).catch(() => null)
+    : null;
 
   const optionsResult = await getFilterOptions(true)
     .then((options) => ({ options, error: undefined as string | undefined }))
@@ -52,22 +55,13 @@ export default async function DashboardPage({
         error: "Reporting filters could not be loaded. Please retry.",
       };
     });
-  const params = await searchParams;
   const {
     selection,
     scope,
     error: selectionError,
   } = parseDashboardFilters(params, optionsResult.options);
   const filterError = optionsResult.error ?? selectionError;
-  const requested =
-    typeof params.anomaly === "string" ? params.anomaly : undefined;
-  const target =
-    requested && !filterError
-      ? await getChartAnomaly(
-          requested,
-          typeof params.reason === "string" ? params.reason : undefined,
-        ).catch(() => null)
-      : null;
+  const target = pendingTarget && !filterError ? await pendingTarget : null;
   const focus =
     target &&
     !scope.branchCodes?.length &&
@@ -90,7 +84,7 @@ export default async function DashboardPage({
     : scope;
 
   return (
-    <AppPage email={user.email ?? "Finance user"}>
+    <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-blue">
@@ -120,7 +114,9 @@ export default async function DashboardPage({
         >
           {!filterError && (
             <TourTarget id="comparison-source">
-              <ComparisonSelector />
+              <Suspense fallback={<div role="status" aria-label="Loading comparison sources" className="mt-5 h-28 animate-pulse rounded-xl border border-brand-navy/15 bg-white" />}>
+                <ComparisonSelector />
+              </Suspense>
             </TourTarget>
           )}
           {filterError ? null : (
@@ -274,6 +270,6 @@ export default async function DashboardPage({
           </div>
         </DashboardFilters>
       </FinancialComparisonBoundary>
-    </AppPage>
+    </>
   );
 }

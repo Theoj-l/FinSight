@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { AppPage } from "@/app/components/app-page";
 import { requireUser } from "@/lib/auth/require-user";
 import { getAnomalyAlerts, getAnomalyStatus } from "@/app/dashboard/data/anomalies";
 import { getFinancialBundle } from "@/lib/financial/data";
 import { comparisonKpis } from "@/lib/financial/presentation";
-import { HomeOverview } from "./home-overview";
+import { HomeOverview } from "@/app/home/home-overview";
 
 export const metadata: Metadata = {
   title: "Home | FinSight",
@@ -24,8 +23,6 @@ export default async function HomePage() {
   ]);
 
   return (
-    <AppPage email={user.email ?? "Finance user"}>
-      <HomeOverview userId={user.id} data={result.data} error={result.error} loadedAt={new Date().toISOString()} anomalyResult={anomalyResult} />
-    </AppPage>
+    <HomeOverview userId={user.id} data={result.data} error={result.error} loadedAt={new Date().toISOString()} anomalyResult={anomalyResult} />
   );
 }
