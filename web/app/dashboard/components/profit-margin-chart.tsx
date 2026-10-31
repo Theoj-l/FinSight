@@ -62,7 +62,7 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
     window.history.pushState(null, "", `${window.location.pathname}?${query}${window.location.hash}`);
   }
   return (
-    <section aria-labelledby="profit-margin-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="profit-margin-title" className="surface rounded-2xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="profit-margin-title" className="text-lg font-semibold text-brand-navy">
           {name} Profit and Margin
@@ -93,8 +93,8 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
             <ComposedChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
               <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
-              <YAxis yAxisId="currency" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
-              <YAxis yAxisId="percentage" orientation="right" tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
+              <YAxis padding={{ top: 12 }} yAxisId="currency" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
+              <YAxis padding={{ top: 12 }} yAxisId="percentage" orientation="right" tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
               <ComparisonHover source={financial?.source} measures={[
                 { label: `${name} profit`, actualKey: gross ? "grossProfit" : "netProfit", comparisonKey: "referenceProfit" },
                 { label: `${name} margin`, actualKey: gross ? "grossMarginPct" : "netMarginPct", comparisonKey: "referenceMargin", percentage: true },

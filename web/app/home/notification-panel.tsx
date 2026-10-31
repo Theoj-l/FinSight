@@ -7,6 +7,11 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Bell, CheckCheck, ChevronDown, X } from "lucide-react";
 import { formatPercentage } from "@/app/dashboard/data/kpi-presentation";
+import { AskAssistantButton } from "@/app/components/chat/ask-assistant";
+import { formatWhole } from "@/app/components/financial/kpi-card";
+import { ANOMALY_KIND_LABEL } from "@/app/dashboard/data/anomalies-utils";
+import { formatPeriod } from "@/app/dashboard/data/revenue-expense-utils";
+import { useCurrency } from "@/lib/currency-context";
 import type { NotificationEntry } from "@/lib/notifications";
 import { reportingMonth, timestamp } from "./overview-data";
 import type { useHomeAlerts } from "./use-home-alerts";
@@ -20,6 +25,7 @@ function NotificationRow({ alert, entry, markViewed, clear, period, dashboardHre
   period: string; priorPeriod: string; dashboardHref: string;
 }) {
   const row = useRef<HTMLLIElement>(null);
+  const fx = useCurrency();
   useEffect(() => {
     if (entry.viewedAt || !row.current) return;
     const observer = new IntersectionObserver(entries => {
@@ -32,18 +38,31 @@ function NotificationRow({ alert, entry, markViewed, clear, period, dashboardHre
     return () => observer.disconnect();
   }, [alert.id, entry.viewedAt, markViewed]);
 
-  if (alert.type === "anomaly") return <li ref={row} className="space-y-2">
-    <div className="flex items-center justify-between gap-3 text-xs text-muted"><span>{entry.viewedAt ? "Viewed" : "New"} · Anomaly detected · Notified {timestamp(entry.notifiedAt)}</span><button type="button" onClick={clear} aria-label={`Clear ${alert.anomaly.unitLabel} anomaly notification`} className="rounded p-2 hover:bg-slate-100"><X aria-hidden="true" className="h-4 w-4" /></button></div>
-    <AnomalyAlert alert={alert.anomaly} />
-  </li>;
+  const fresh = !entry.viewedAt;
+  const badge = <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${fresh ? "bg-brand-red text-white" : "bg-slate-100 text-muted"}`}>{fresh ? "New" : "Viewed"}</span>;
 
-  if (alert.type === "financial") return <li ref={row} className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
-    <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase text-amber-800">{entry.viewedAt ? "Viewed" : "New"} · Financial deviation</p><h3 className="mt-1 text-sm font-semibold text-slate-900">{alert.metric.label} · Unfavorable deviation</h3></div><button type="button" onClick={clear} aria-label={`Clear ${alert.metric.label} notification`} className="rounded p-2 hover:bg-white"><X aria-hidden="true" className="h-4 w-4" /></button></div>
-    <p className="mt-2 text-sm text-slate-600">{formatPercentage(alert.value)} vs {alert.label}. Allowed unfavorable deviation: {alert.comparison.tolerance}%.</p>
-    <p className="mt-2 text-xs text-muted">Reporting month: {reportingMonth(period)} · Notified {timestamp(entry.notifiedAt)}</p>
-    {alert.comparison.note && <details className="mt-2 text-xs text-muted"><summary className="cursor-pointer">Reference origin</summary>{alert.comparison.note}</details>}
-    <Link href={`${dashboardHref}${dashboardHref.includes("?") ? "&" : "?"}comparison=${alert.source}${alert.budgetId ? `&budgetId=${encodeURIComponent(alert.budgetId)}` : ""}#kpi-heading`} className="mt-3 inline-block text-xs font-semibold text-brand-navy underline">Review financial comparison →</Link>
-  </li>;
+  if (alert.type === "anomaly") {
+    const a = alert.anomaly;
+    const question = `Explain the anomaly flagged for ${a.unitLabel} (${ANOMALY_KIND_LABEL[a.kind].toLowerCase()}) in ${reportingMonth(formatPeriod(a.periodNo))}${a.reasons.length ? `. The model's reasons: ${a.reasons.slice(0, 3).join("; ")}` : ""}. What could cause it and what should I check?`;
+    return <li ref={row} className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-xs text-muted"><span className="flex items-center gap-2">{badge}<span className="font-semibold text-status-watch">Anomaly detected</span><span>· Notified {timestamp(entry.notifiedAt)}</span></span><span className="flex items-center gap-1"><AskAssistantButton question={question} /><button type="button" onClick={clear} aria-label={`Clear ${a.unitLabel} anomaly notification`} className="rounded-lg p-2 hover:bg-slate-100"><X aria-hidden="true" className="h-4 w-4" /></button></span></div>
+      <AnomalyAlert alert={a} />
+    </li>;
+  }
+
+  if (alert.type === "financial") {
+    const ratio = alert.metric.id.endsWith("Margin") || alert.metric.id === "expenseRatio";
+    const show = (value: string | null) => value === null ? "—" : ratio ? `${Number(value).toFixed(2)}%` : formatWhole(value, fx);
+    const month = reportingMonth(period);
+    const question = `Why did ${alert.metric.label.toLowerCase()} move ${formatPercentage(alert.value)} against ${alert.label.toLowerCase()} in ${month} (${show(alert.comparison.actual)} vs ${show(alert.comparison.reference)})? It is beyond the ${alert.comparison.tolerance}% threshold.`;
+    return <li ref={row} className="rounded-xl border border-brand-red/25 bg-[linear-gradient(135deg,rgba(254,242,242,0.95),rgba(255,255,255,0.85))] p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3"><div><p className="flex items-center gap-2 text-[11px] font-semibold uppercase text-status-bad">{badge}<span aria-hidden="true" className="h-2 w-2 rounded-full bg-brand-red" />Unfavourable</p><h3 className="mt-1.5 text-sm font-semibold text-slate-900">{alert.metric.label}: <span className="tabular-nums">{show(alert.comparison.actual)}</span> <span className="font-normal text-muted">vs {show(alert.comparison.reference)}</span></h3></div><button type="button" onClick={clear} aria-label={`Clear ${alert.metric.label} notification`} className="rounded-lg p-2 hover:bg-white"><X aria-hidden="true" className="h-4 w-4" /></button></div>
+      <p className="mt-2 text-sm text-slate-700"><strong className="text-status-bad">{formatPercentage(alert.value)}</strong> against {alert.label}. Your threshold allows {alert.comparison.tolerance}% unfavourable movement.</p>
+      <p className="mt-2 text-xs text-muted">Reporting month: {month} · Notified {timestamp(entry.notifiedAt)}</p>
+      {alert.comparison.note && <details className="mt-2 text-xs text-muted"><summary className="cursor-pointer">Reference origin</summary>{alert.comparison.note}</details>}
+      <div className="mt-3 flex flex-wrap items-center gap-3"><Link href={`${dashboardHref}${dashboardHref.includes("?") ? "&" : "?"}comparison=${alert.source}${alert.budgetId ? `&budgetId=${encodeURIComponent(alert.budgetId)}` : ""}#kpi-heading`} className="text-xs font-semibold text-brand-navy underline">Review financial comparison →</Link><AskAssistantButton question={question} /></div>
+    </li>;
+  }
 
   return null;
 }
@@ -59,11 +78,11 @@ export function NotificationPanel({ notifications, period, priorPeriod, dashboar
   const emptyMessage = !preferences.enabled ? "Notifications are paused in Settings." : !period && !anomalyAvailable ? "Notifications unavailable until financial data is loaded." : !evaluable && !anomalyAvailable ? "No enabled threshold checks have a calculable comparison." : pendingCount ? "New alerts are waiting for your next notification update." : "No notifications to review.";
 
   return (
-    <section aria-labelledby="home-attention" className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section aria-labelledby="home-attention" className="glass min-w-0 overflow-hidden rounded-2xl">
       <div className="flex flex-wrap items-center gap-2 p-6 sm:p-7">
         <h2 id="home-attention" className="min-w-0 flex-1">
           <div className="flex w-full items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700"><Bell aria-hidden="true" className="h-5 w-5" /></span>
+            <span className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-xl ${unreadCount ? "bg-status-bad-soft text-status-bad" : "bg-brand-blue-light text-brand-navy"}`}><Bell aria-hidden="true" className="h-5 w-5" />{ready && unreadCount > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand-red px-1 text-[10px] font-bold text-white ring-2 ring-white">{unreadCount}</span>}</span>
             <span className="min-w-0 flex-1"><span className="block font-semibold text-brand-navy">Notifications{ready && alerts.length > 0 ? ` (${alerts.length})` : ""}</span><span className="mt-0.5 block text-xs font-normal text-muted">{!ready ? "Loading…" : unreadCount ? `${unreadCount} unread · Requires attention` : alerts.length ? "All notifications viewed" : !preferences.enabled ? "Paused" : !period && !anomalyAvailable ? "Data unavailable" : !evaluable && !anomalyAvailable ? "No checks available" : pendingCount ? `${pendingCount} scheduled` : "No notifications"}</span></span>
           </div>
         </h2>

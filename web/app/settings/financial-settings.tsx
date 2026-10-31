@@ -137,6 +137,13 @@ function ThresholdEditor({ data }: { data: Metadata }) {
         tolerance trigger attention. Margin/ratio tolerances measure relative
         percentage change, not percentage points.
       </p>
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-brand-blue-light/50 px-3 py-2 text-xs text-brand-navy">
+        <span className="font-semibold">Traffic lights:</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-emerald-500" />Favourable</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-400" />Unfavourable, within the tolerance</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-brand-red" />Beyond the tolerance</span>
+        <span className="text-muted">With a 0% tolerance, any unfavourable change is red.</span>
+      </p>
       <form
         className="mt-5"
         onSubmit={async (e) => {

@@ -67,7 +67,7 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
 
   return (
     <div className="mt-8 grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-2 shadow-sm xl:sticky xl:top-24">
+      <aside className="surface h-fit rounded-2xl p-2 xl:sticky xl:top-24">
         {[
           ["account", "Account", UserRound],
           ["preferences", "Preferences", Palette],
@@ -83,7 +83,7 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
       </aside>
 
       <div className="space-y-6">
-        <section id="account" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section id="account" className="surface scroll-mt-28 rounded-2xl p-5 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-blue-light text-brand-navy"><UserRound aria-hidden="true" className="h-5 w-5" /></span><div><h2 className="font-semibold text-brand-navy">Account details</h2><p className="mt-0.5 text-sm text-muted">Your profile information and regional defaults.</p></div></div>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <label className="text-sm font-medium text-slate-700">Display name<input defaultValue="Finance team" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 font-normal text-foreground outline-none transition focus:border-brand-blue focus:ring-3 focus:ring-brand-blue/10" /></label>
@@ -93,7 +93,7 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
           </div>
         </section>
 
-        <section id="preferences" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section id="preferences" className="surface scroll-mt-28 rounded-2xl p-5 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-blue-light text-brand-navy"><Palette aria-hidden="true" className="h-5 w-5" /></span><div><h2 className="font-semibold text-brand-navy">Preferences</h2><p className="mt-0.5 text-sm text-muted">Choose how FinSight presents information to you.</p></div></div>
           <div className="mt-5 divide-y divide-slate-100">
             {rows.map((row) => (
@@ -105,7 +105,7 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
           </div>
         </section>
 
-        <section id="notifications" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section id="notifications" className="surface scroll-mt-28 rounded-2xl p-5 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-blue-light text-brand-navy"><Bell aria-hidden="true" className="h-5 w-5" /></span><div><h2 className="font-semibold text-brand-navy">Notifications</h2><p className="mt-0.5 text-sm text-muted">Control when new issues appear in your Home notification panel.</p></div></div>
           <div className="mt-5 flex items-center justify-between gap-6 border-b border-slate-100 pb-5">
             <div><h3 className="text-sm font-medium text-slate-800">Attention alerts</h3><p className="mt-0.5 text-sm leading-5 text-muted">Notify me about unfavorable KPI changes outside my configured thresholds.</p></div>
@@ -123,7 +123,7 @@ export function SettingsPanel({ email, userId }: { email: string; userId: string
 
         <FinancialSettings />
 
-        <section id="security" className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section id="security" className="surface scroll-mt-28 rounded-2xl p-5 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><LockKeyhole aria-hidden="true" className="h-5 w-5" /></span><div><h2 className="font-semibold text-brand-navy">Security</h2><p className="mt-0.5 text-sm text-muted">Your account is protected by Supabase authentication.</p></div></div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4"><div className="flex items-center gap-3"><Check aria-hidden="true" className="h-5 w-5 text-emerald-700" /><div><p className="text-sm font-medium text-emerald-900">Account access is active</p><p className="text-xs text-emerald-700">Your session is securely managed and refreshed automatically.</p></div></div></div>
         </section>

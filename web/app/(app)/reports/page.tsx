@@ -37,7 +37,7 @@ export default async function ReportsPage() {
         <h2 id="report-types" className="sr-only">Report types</h2>
         <div className="grid gap-4 lg:grid-cols-3">
           {reportTypes.map(({ title, description, icon: Icon, accent }) => (
-            <article key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <article key={title} className="surface rounded-2xl p-5">
               <div className={`grid h-10 w-10 place-items-center rounded-xl text-white ${accent}`}><Icon aria-hidden="true" className="h-5 w-5" /></div>
               <h3 className="mt-5 font-semibold text-brand-navy">{title}</h3>
               <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
@@ -47,7 +47,7 @@ export default async function ReportsPage() {
         </div>
       </section>
 
-      <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="surface mt-6 overflow-hidden rounded-2xl">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
           <div><h2 className="font-semibold text-brand-navy">Recent reports</h2><p className="mt-0.5 text-sm text-muted">Your latest prepared reporting packs.</p></div>
           <div className="flex items-center gap-2 text-xs text-muted"><CalendarDays aria-hidden="true" className="h-4 w-4" /> Updated 12 Sep 2026</div>

@@ -42,7 +42,7 @@ export function RevenueExpenseChart({
   const periods = focus ? [...new Set([...previousCalendarMonths(focus.alert.periodNo), ...focus.finding.comparison.periods])].sort((a, b) => a - b) : financial?.series ? Object.keys(financial.series).map(Number).sort((a, b) => a - b) : data.map(p => p.periodNo);
   const chartData = periods.map(periodNo => ({ ...(data.find(p => p.periodNo === periodNo) ?? { periodNo, period: formatPeriod(periodNo), revenue: null, expenses: null }), ...(financial?.series?.[periodNo] ? chartValues(financial.series[periodNo]) : {}), modelRevenue: focus?.finding.history.find(h => h.periodNo === periodNo)?.value ?? null }));
   return (
-    <section aria-labelledby="revenue-expense-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="revenue-expense-title" className="surface rounded-2xl p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="revenue-expense-title" className="text-lg font-semibold text-brand-navy">
@@ -75,7 +75,7 @@ export function RevenueExpenseChart({
             <ComposedChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
               <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
-              <YAxis tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
+              <YAxis padding={{ top: 12 }} tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <ComparisonHover source={financial?.source} measures={[{ label: "Revenue", actualKey: "revenue", comparisonKey: "referenceRevenue" }, { label: "Expenses", actualKey: "expenses", comparisonKey: "referenceExpenses" }]} model={focus ? {label: "Model revenue (includes other income)", key: "modelRevenue"} : undefined} />
               <Legend content={<ComparisonLegend />} />
               {financial && <Line dataKey="referenceRevenue" name="Revenue comparison" {...comparisonStyle("monetary")} />}

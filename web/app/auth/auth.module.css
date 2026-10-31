@@ -7,14 +7,14 @@
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--color-app-surface);
+  background: transparent; /* the marble backdrop (globals.css) shows through */
 }
 .graph { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
 .header { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 40px; }
 .back { display: inline-flex; align-items: center; gap: 8px; color: var(--color-muted); font-size: 14px; text-decoration: none; border-radius: 6px; }
 .back svg { width: 16px; height: 16px; }
 .stage { position: relative; z-index: 1; display: flex; flex: 1; align-items: center; justify-content: center; padding: 32px 20px 48px; }
-.card { box-sizing: border-box; width: 100%; max-width: 420px; padding: 32px; border: 1px solid #e1e5f0; border-radius: 20px; background: #fff; box-shadow: 0 16px 48px -20px rgba(31, 42, 121, .22); }
+.card { box-sizing: border-box; width: 100%; max-width: 420px; padding: 32px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 20px; background: linear-gradient(160deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .78)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 24px 56px -24px rgba(31, 42, 121, .32); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%); }
 .logo { display: block; width: 144px; height: auto; margin: 0 auto 24px; }
 .title { margin: 0; text-align: center; font-size: 28px; font-weight: 600; line-height: 1.25; letter-spacing: -.7px; color: var(--color-brand-navy); }
 .subtitle { margin: 10px 0 0; text-align: center; font-size: 14px; line-height: 1.6; color: var(--color-muted); }

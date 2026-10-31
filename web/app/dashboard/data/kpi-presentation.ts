@@ -1,7 +1,7 @@
 import type { Comparison, Metric, Rules, Source } from "@/lib/financial/types";
 import { BASE_CURRENCY, convertAmount, fxSymbol, type FxContext } from "@/lib/currency";
 
-export const metricIds = ["revenue", "grossProfit", "netProfit", "budgetVariance", "grossMargin", "netMargin", "expenseRatio"] as const;
+export const metricIds = ["revenue", "totalExpenses", "grossProfit", "netProfit", "budgetVariance", "grossMargin", "netMargin", "expenseRatio"] as const;
 export type MetricId = typeof metricIds[number];
 export type Change = { absolute: string; percentage: number | null; direction: -1 | 0 | 1 };
 export type KpiMetric = {
@@ -15,6 +15,8 @@ export type KpiMetric = {
   change: Change | null;
   description: string;
   budgetComparison?: Change | null;
+  /** Parts that add up to the value (Total expenses: cost of sales, operating expenses). */
+  breakdown?: { label: string; value: string | null }[];
 };
 export type KpiData = { comparisonSource?: Source; comparisonBudgetId?: string; financialComparisons?: Record<Metric, Comparison>; comparisonLabel?: string; financialRules?: Rules; period: string; priorPeriod: string; metrics: KpiMetric[]; notices: string[] };
 export type Threshold = { enabled: boolean; min: number; max: number };

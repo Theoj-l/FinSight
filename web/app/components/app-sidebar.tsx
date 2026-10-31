@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { BarChart3, ChevronDown, FileText, House, Lightbulb, LogOut, Menu, MessageSquare, Settings, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import { signOut } from "@/app/auth/actions";
+import { useTour } from "@/app/components/tour/tour-context";
 
 const navigation = [
   { label: "Home", href: "/home", icon: House },
@@ -182,6 +183,9 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
   const [navigationPending, setNavigationPending] = useState(false);
   const pathname = usePathname();
   const expanded = hovered || focused;
+  // While a walkthrough runs, wide screens keep a right gutter for its card
+  // (beside the chat button) so it never covers the part being explained.
+  const touring = useTour().state.status !== "idle";
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setNavigationPending(false));
@@ -214,7 +218,7 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
   }
 
   return (
-    <div className="min-h-screen bg-app-surface">
+    <div className="min-h-screen">
       {navigationPending && <div className="fixed inset-x-0 top-0 z-[100] h-1 overflow-hidden bg-brand-blue-light" role="status" aria-label="Loading page"><div className="h-full w-1/3 animate-[navigation-progress_1.1s_ease-in-out_infinite] bg-brand-blue" /></div>}
       <aside
         onMouseEnter={() => setHovered(true)}
@@ -223,14 +227,15 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
         // sidebar (which now stays mounted across pages) would stay expanded.
         onFocus={(event) => { if (event.target.matches(":focus-visible")) setFocused(true); }}
         onBlur={handleBlur}
-        className={`fixed inset-y-0 left-0 z-40 hidden flex-col overflow-visible border-r border-brand-navy/[.08] bg-[linear-gradient(165deg,#f8faff_0%,#edf2fb_55%,#e6eefb_100%)] transition-[width] duration-200 ease-out lg:flex ${
-          expanded ? "w-[280px] shadow-2xl" : "w-[108px]"
+        // Frosted glass: expanded, it floats over the page and blurs what is behind.
+        className={`glass-blur fixed inset-y-0 left-0 z-40 hidden flex-col overflow-visible border-r transition-[width,box-shadow] duration-200 ease-out lg:flex ${
+          expanded ? "w-[280px] shadow-[24px_0_60px_-24px_rgba(31,42,121,0.38)]" : "w-[108px] shadow-[inset_-1px_0_0_rgba(255,255,255,0.6)]"
         }`}
       >
         <SidebarContent email={email} compact={!expanded} onNavigation={startNavigation} />
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
+      <header className="glass-blur sticky top-0 z-40 flex h-16 items-center justify-between border-b px-4 sm:px-6 lg:hidden">
         <Brand />
         <button type="button" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-brand-navy shadow-sm transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand-blue">
           <Menu aria-hidden="true" className="h-5 w-5" />
@@ -240,7 +245,7 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
       {mobileOpen && (
         <div className="fixed inset-0 z-[60] lg:hidden">
           <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="absolute inset-0 bg-brand-navy/35 backdrop-blur-[2px]" />
-          <aside role="dialog" aria-modal="true" aria-label="Navigation" className="sidebar-enter absolute inset-y-0 left-0 flex w-[min(88vw,320px)] flex-col overflow-visible border-r border-brand-navy/10 bg-[linear-gradient(165deg,#f8faff_0%,#edf2fb_55%,#e6eefb_100%)] shadow-2xl">
+          <aside role="dialog" aria-modal="true" aria-label="Navigation" className="glass-blur sidebar-enter absolute inset-y-0 left-0 flex w-[min(88vw,320px)] flex-col overflow-visible border-r shadow-2xl">
             <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="absolute right-3 top-5 z-10 grid h-9 w-9 place-items-center rounded-xl text-brand-navy transition hover:bg-white/80 focus-visible:outline-2 focus-visible:outline-brand-blue">
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
@@ -249,9 +254,10 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
         </div>
       )}
 
-      {/* Fixed offset: the hover-expanded sidebar overlays the page instead of
-          pushing it. Animating this padding re-laid out every chart on each frame. */}
-      <div className="lg:pl-[108px]">
+      {/* Fixed offset: the hover-expanded sidebar floats over the page (frosted)
+          instead of pushing it. Animating this padding re-laid out every chart
+          on each frame. */}
+      <div className={`lg:pl-[108px] ${touring ? "xl:pr-[384px]" : ""}`}>
         <main className="mx-auto min-h-screen w-full max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8 lg:py-9 xl:px-10">{children}</main>
       </div>
     </div>

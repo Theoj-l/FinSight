@@ -24,7 +24,7 @@ export function RevenueByGroupChart({ data = [], error, loading = false }: Reven
   }));
 
   return (
-    <section aria-labelledby="revenue-by-group-title" className="flex h-full flex-col rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="revenue-by-group-title" className="surface flex h-full flex-col rounded-2xl p-6">
       <div>
         <h2 id="revenue-by-group-title" className="text-lg font-semibold text-brand-navy">
           Revenue by Product Group
