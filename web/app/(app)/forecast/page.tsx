@@ -57,5 +57,5 @@ async function ForecastPanel({ scope }: { scope: Parameters<typeof getForecast>[
 }
 
 function EmptyForecast() {
-  return <section className="mt-8 rounded-xl border border-dashed border-brand-navy/20 bg-white p-10 text-center"><h2 className="text-lg font-semibold text-brand-navy">Forecasts are not available yet</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted">A forecast will appear here after the first successful forecast run. Historical dashboard reporting remains available in the meantime.</p></section>;
+  return <section className="surface mt-8 rounded-2xl border-dashed p-10 text-center"><h2 className="text-lg font-semibold text-brand-navy">Forecasts are not available yet</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted">A forecast will appear here after the first successful forecast run. Historical dashboard reporting remains available in the meantime.</p></section>;
 }

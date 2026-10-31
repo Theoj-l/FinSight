@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
+import { SlidersHorizontal } from "lucide-react";
 import { useCurrency } from "@/lib/currency-context";
 import { comparisonKpis } from "@/lib/financial/presentation";
 import { useFinancialComparison } from "@/app/components/financial/comparison-context";
-import {
-  formatAmount,
-  formatPercentage,
-  type KpiData,
-} from "../data/kpi-presentation";
+import { AttentionSummary, HeadlineCard, RatioTile, referenceLabel } from "@/app/components/financial/kpi-card";
+import { reportingMonth } from "@/app/home/overview-data";
+import type { KpiData } from "../data/kpi-presentation";
+
 export function KpiCards({
   data,
   error,
@@ -28,95 +28,51 @@ export function KpiCards({
     return (
       <section
         aria-label="Financial overview"
-        className="mt-8 rounded-xl border p-6"
+        className="surface mt-8 rounded-2xl p-6"
       >
-        <h2 className="text-lg font-semibold">Financial overview</h2>
+        <h2 className="text-lg font-semibold text-brand-navy">Financial overview</h2>
         <p role="status" className="mt-2 text-sm text-muted">
           {message ?? "No financial data is available."}
         </p>
       </section>
     );
-  const flagged = current.metrics.filter((m) => m.comparison?.breach);
+  const reference = referenceLabel(current);
+  const money = current.metrics.filter((m) => m.unit === "money" && m.id !== "budgetVariance");
+  const ratios = current.metrics.filter((m) => m.unit === "ratio");
   return (
-    <section aria-labelledby="kpi-heading" className="mt-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section aria-labelledby="kpi-heading" className="@container mt-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         {/* Left padding keeps the walkthrough badge (top-left corner) off the heading text. */}
-        <div>
-          <h2
-            id="kpi-heading"
-            className="text-xl font-semibold text-brand-navy pl-3"
-          >
+        <div className="pl-5">
+          <h2 id="kpi-heading" className="text-xl font-semibold text-brand-navy">
             Financial overview
           </h2>
           <p className="mt-1 text-sm text-muted">
-            {current.period} · {current.comparisonLabel ?? "Previous month"} ·{" "}
-            {fx.currency}
+            {reportingMonth(current.period)} · compared with {reference} · {fx.currency}
           </p>
         </div>
         <Link
           href="/settings#thresholds"
-          className="inline-flex h-11 items-center justify-center rounded-lg bg-brand-blue px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+          className="glass inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-brand-navy transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
         >
+          <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
           Threshold settings
         </Link>
       </div>
-      <p
-        role="status"
-        className={`mt-4 rounded-lg p-3 text-sm ${flagged.length ? "bg-amber-50 text-amber-900" : "bg-slate-50 text-muted"}`}
-      >
-        {flagged.length
-          ? `Attention needed: ${flagged.map((m) => m.label).join(", ")}.`
-          : "No calculable unfavorable deviations exceed the shared thresholds."}
-      </p>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {current.metrics
-          .filter((m) => m.id !== "budgetVariance")
-          .map((metric) => {
-            const c = metric.comparison;
-            const unfavorable = c?.unfavorable ?? false;
-            return (
-              <article
-                key={metric.id}
-                className={`min-w-0 rounded-xl border border-t-4 bg-white p-5 shadow-sm ${c?.breach ? "border-amber-300 border-t-amber-500" : "border-slate-200 border-t-brand-navy"}`}
-              >
-                <h3 className="text-sm text-muted">{metric.label}</h3>
-                <p className="my-3 break-words text-2xl font-semibold text-brand-navy">
-                  {metric.value === null
-                    ? "Unavailable"
-                    : formatAmount(metric.value, metric.unit, fx)}
-                </p>
-                <p
-                  className={`text-sm font-medium ${!metric.change || metric.change.percentage === null ? "text-muted" : unfavorable ? "text-red-700" : metric.change.direction ? "text-emerald-700" : "text-muted"}`}
-                >
-                  {metric.change?.percentage == null
-                    ? "Percentage comparison unavailable"
-                    : formatPercentage(metric.change.percentage)}
-                  {c?.breach ? " · Attention needed" : ""}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  Reference:{" "}
-                  {metric.prior === null
-                    ? "Unavailable"
-                    : formatAmount(metric.prior, metric.unit, fx)}
-                </p>
-                <details className="mt-3 text-xs text-muted">
-                  <summary className="cursor-pointer">
-                    Calculation & alert basis
-                  </summary>
-                  <p className="mt-2">{metric.description}</p>
-                  <p className="mt-1">
-                    {c?.enabled
-                      ? `Notify only when unfavorable deviation exceeds ${c.tolerance}%.`
-                      : "Attention alerts disabled."}
-                  </p>
-                  {c?.note && <p className="mt-1">{c.note}</p>}
-                </details>
-              </article>
-            );
-          })}
+      <AttentionSummary metrics={current.metrics} />
+      <div className="mt-4 grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-4">
+        {money.map((metric) => (
+          <HeadlineCard key={metric.id} metric={metric} reference={reference} fx={fx} />
+        ))}
+      </div>
+      <h3 className="mt-6 pl-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Ratios</h3>
+      <div className="mt-2 grid gap-3 @3xl:grid-cols-3">
+        {ratios.map((metric) => (
+          <RatioTile key={metric.id} metric={metric} reference={reference} />
+        ))}
       </div>
       {current.notices.length > 0 && (
-        <details className="mt-3 text-xs text-muted">
+        <details className="mt-3 pl-1 text-xs text-muted">
           <summary className="cursor-pointer">
             Comparison availability and origin
           </summary>

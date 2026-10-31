@@ -25,6 +25,14 @@ homeData.financialComparisons = undefined;
 homeData.metrics = homeData.metrics.filter(m => m.id === "revenue");
 const metadata = { rules: financial.rules, notificationSource: "previous", latestPeriod: 202608, departments: [{dept_no:"HL",description:"Heavy Lift",segment:"Bulk"},{dept_no:"TR",description:"Transport",segment:"Bulk"}], accounts: [{acc_no:"4000",description:"Operating revenue",acc_type:"RE"},{acc_no:"5000",description:"Cost of sales",acc_type:"CS"}], budgets:financial.budgets, entries:{"4000":"120","5000":"20"},manual:{revenue:"150",netProfit:"85"},automatic:financial.sources.auto[202608] };
 
+/** Opens the "Anomalies to review" dropdown, then the `index`th unit group; returns that group. */
+async function openAnomalyGroup(panel: Locator, index = 0) {
+  await panel.locator("summary").first().click();
+  const group = panel.locator("[data-anomaly-group]").nth(index);
+  await group.locator("summary").first().click();
+  return group;
+}
+
 async function selectMenuOption(control: Locator, value: string) {
   await control.click();
   await control.page().getByRole("listbox").locator(`[role="option"][data-value="${value}"]`).click();
@@ -108,7 +116,7 @@ test("loads records on expansion, paginates, and opens gross comparison with sco
   await page.goto("/");
   expect(requests).toBe(0);
   const panel=page.getByRole("region",{name:/Anomalies to review/});
-  const row=panel.locator("details").first();
+  const row=(await openAnomalyGroup(panel)).locator("details").first();
   await row.locator("summary").focus(); await page.keyboard.press("Enter");
   await expect(row.getByRole("table")).toBeVisible();
   await expect(row.getByRole("button",{name:"Previous"})).toBeDisabled();
@@ -153,10 +161,12 @@ test("loads records on expansion, paginates, and opens gross comparison with sco
 test("has compact controls and no expense/customer graph actions on mobile", async ({page}) => {
   await page.setViewportSize({width:390,height:844}); await page.goto("/");
   const panel=page.getByRole("region",{name:/Anomalies to review/});
-  await expect(panel.locator("details")).toHaveCount(3);
-  await panel.getByRole("button",{name:"View all 4"}).click(); await expect(panel.locator("details")).toHaveCount(4);
-  const expense=panel.locator("details").nth(1); await expense.locator("summary").click();
-  await expect(expense.getByRole("table")).toBeVisible(); await expect(expense.getByRole("link")).toHaveCount(0);
+  // A compact dropdown: one row per unit once opened.
+  await expect(panel.getByText("4 flags in 4 areas")).toBeVisible();
+  const expense=await openAnomalyGroup(panel, 1);
+  await expect(panel.locator("[data-anomaly-group]")).toHaveCount(4);
+  const month=expense.locator("details").first(); await month.locator("summary").click();
+  await expect(month.getByRole("table")).toBeVisible(); await expect(month.getByRole("link")).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path:test.info().outputPath("anomalies-mobile.png"),fullPage:true});
 });
@@ -164,11 +174,12 @@ test("has compact controls and no expense/customer graph actions on mobile", asy
 test("keeps mixed notification history and clears Home without removing dashboard findings", async ({page}) => {
   await page.goto("/");
   const notifications=page.getByRole("region",{name:/Notifications/});
-  await expect(notifications.getByText(/Financial deviation/)).toBeVisible();
+  await expect(notifications.getByText(/Unfavourable/).first()).toBeVisible();
   await expect(notifications.getByText(/Anomaly detected/).first()).toBeVisible();
   await notifications.getByRole("button",{name:/Clear Heavy Lift anomaly notification/}).click();
   await expect(notifications.getByRole("button",{name:/Clear Heavy Lift anomaly notification/})).toHaveCount(0);
   const panel=page.getByRole("region",{name:/Anomalies to review/});
+  await panel.locator("summary").first().click();
   await expect(panel.locator("summary").filter({hasText:"Heavy Lift"})).toBeVisible();
   await page.reload();
   await expect(notifications.getByRole("button",{name:/Clear Heavy Lift anomaly notification/})).toHaveCount(0);
@@ -180,14 +191,14 @@ test("switches only the graph without dashboard navigation or new requests", asy
   const measure = page.getByRole("combobox", {name:"Profit and margin measure"});
   await expect(measure).toHaveValue("net");
   const panel = page.getByRole("region", {name:/Anomalies to review/});
-  await panel.getByRole("button", {name:"View all 4"}).click();
+  await panel.locator("summary").first().click();
   const documentHandle = await page.locator("h1").elementHandle();
   const requests: string[] = [];
   page.on("request", request => requests.push(request.url()));
   for (const mode of ["gross", "net", "gross"]) {
     await measure.selectOption(mode);
     await expect(page.getByRole("heading", {name:mode === "gross" ? "Gross Profit and Margin" : "Net Profit and Margin"})).toBeVisible();
-    await expect(panel.locator("details")).toHaveCount(4);
+    await expect(panel.locator("[data-anomaly-group]")).toHaveCount(4);
     expect(new URL(page.url()).searchParams.get("period")).toBe("202608");
     expect(new URL(page.url()).searchParams.get("unit")).toBe("HL");
   }
@@ -239,7 +250,8 @@ test("shares all four sources across cards and P&L without requests, with URL hi
   for (const [source, reference, header] of [["budget","120.00","Month Budget"],["auto","180.00","Auto Forecast"],["manual","150.00","Manual Forecast"],["previous","200.00","Previous Month Actual"]]) {
     await selectMenuOption(selector, source);
     if (source === "budget") await selectMenuOption(page.getByRole("combobox",{name:"Budget scenario",exact:true}), "2026");
-    await expect(revenueCard).toContainText(`Reference: S$${reference}`);
+    // Headline cards show whole dollars: "vs budget · S$120".
+    await expect(revenueCard).toContainText(`· S$${Number(reference)}`);
     await expect(pnl.getByRole("columnheader",{name:header,exact:true})).toBeVisible();
     await expect(revenueRow.locator("td").nth(2)).toContainText(reference);
     expect(await revenueRow.locator("td").first().textContent()).toBe(actual);
@@ -248,7 +260,7 @@ test("shares all four sources across cards and P&L without requests, with URL hi
       await expect(pnl.locator('tr[data-metric="operatingExpenses"]').locator("td").nth(2)).toHaveText("—");
     }
     // Home policy stays saved as previous-month, regardless of this selector.
-    await expect(page.getByRole("region",{name:/Notifications/}).getByText(/−50.0% vs Default/)).toBeVisible();
+    await expect(page.getByRole("region",{name:/Notifications/}).getByText(/−50.0%\s*against Default/)).toBeVisible();
     expect(new URL(page.url()).searchParams.get("unit")).toBe("HL");
   }
   expect(requests).toEqual([]);

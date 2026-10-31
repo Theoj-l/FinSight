@@ -48,7 +48,7 @@ function PercentageLabel({ x, y, width, height, value }: { x?: number; y?: numbe
 export function ExpenseByBusinessTypeChart({ data = [], error, onSegmentClick }: ExpenseByBusinessTypeChartProps) {
   const fx = useCurrency();
   return (
-    <section aria-labelledby="expense-by-business-type-title" className="flex h-full flex-col rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="expense-by-business-type-title" className="surface flex h-full flex-col rounded-2xl p-6">
       <div>
         <h2 id="expense-by-business-type-title" className="text-lg font-semibold text-brand-navy">
           Operating Expenses by Business Type

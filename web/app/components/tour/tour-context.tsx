@@ -77,6 +77,22 @@ async function waitForTargets(labels: TourLabelId[], timeoutMs = 6_000): Promise
   }
 }
 
+/**
+ * Wait until the page has finished loading. Next now changes the address as
+ * soon as a page's loading skeleton shows (loading.tsx), before its data, and
+ * every loading placeholder carries role="status" with a "Loading …" label.
+ */
+async function waitForLoaded(timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!document.querySelector('main [role="status"][aria-label^="Loading"]')) return;
+    await pause(150);
+  }
+}
+
+/** Wide enough for the shell to keep a gutter for the walkthrough card (see app-sidebar.tsx). */
+export const TOUR_GUTTER_QUERY = "(min-width: 1280px)";
+
 export function TourProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -99,9 +115,12 @@ export function TourProvider({ children }: { children: ReactNode }) {
         router.push(scopeToUrl(wanted), { scroll: false });
         if (!(await waitForScope(wanted))) return false;
         await waitForTargets(script.steps.map((step) => step.label));
+        await waitForLoaded();
         await pause(300); // let the new figures finish painting
       }
 
+      // Panels on the current page can also still be loading (a first visit).
+      if (!opening) await waitForLoaded();
       // Only explain what is actually on screen right now.
       const visible = parseTourScript({ ...script, steps: script.steps.filter((step) => targetFor(step.label)) });
       if (!visible) return false;
@@ -119,7 +138,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (!element) return;
     element.setAttribute("data-tour-active", "true");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    // With a gutter the card sits beside the page, so centre the part; without
+    // one the card covers the bottom right, so bring the part's top into view.
+    const gutter = window.matchMedia(TOUR_GUTTER_QUERY).matches;
+    element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: gutter ? "center" : "start" });
     return () => element.removeAttribute("data-tour-active");
   }, [label]);
 

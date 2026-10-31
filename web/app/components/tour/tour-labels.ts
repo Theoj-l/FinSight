@@ -22,7 +22,7 @@ export const TOUR_LABELS = {
   // Dashboard
   filters: { page: "dashboard", number: 1, title: "Reporting scope filters" },
   "comparison-source": { page: "dashboard", number: 2, title: "Compare against (comparison source)" },
-  "kpi-cards": { page: "dashboard", number: 3, title: "Financial overview (KPI cards)" },
+  "kpi-cards": { page: "dashboard", number: 3, title: "Financial overview (headline figures)" },
   anomalies: { page: "dashboard", number: 4, title: "Anomalies to review" },
   "profit-yoy": { page: "dashboard", number: 5, title: "Profit Year-Over-Year Comparison" },
   "revenue-vs-expenses": { page: "dashboard", number: 6, title: "Revenue vs Operating Expenses" },
@@ -36,13 +36,13 @@ export const TOUR_LABELS = {
   // Forecast
   "forecast-filters": { page: "forecast", number: 1, title: "Forecast scope filters" },
   "forecast-metric": { page: "forecast", number: 2, title: "Metric selector (revenue, cost, profit)" },
-  "forecast-summary": { page: "forecast", number: 3, title: "Forecast summary cards" },
+  "forecast-summary": { page: "forecast", number: 3, title: "Actual and projected summary cards" },
   "forecast-chart": { page: "forecast", number: 4, title: "Actuals and projections chart" },
   "forecast-horizon": { page: "forecast", number: 5, title: "Forecast horizon table" },
 
   // Home
   "home-snapshot": { page: "home", number: 1, title: "Financial snapshot" },
-  "home-attention": { page: "home", number: 2, title: "Needs your attention" },
+  "home-attention": { page: "home", number: 2, title: "Notifications" },
 } as const;
 
 export type TourLabelId = keyof typeof TOUR_LABELS;

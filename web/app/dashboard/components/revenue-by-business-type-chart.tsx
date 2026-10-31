@@ -23,7 +23,7 @@ export function RevenueByBusinessTypeChart({ data = [], error, loading = false }
   }));
 
   return (
-    <section aria-labelledby="revenue-by-business-type-title" className="flex h-full flex-col rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="revenue-by-business-type-title" className="surface flex h-full flex-col rounded-2xl p-6">
       <div>
         <h2 id="revenue-by-business-type-title" className="text-lg font-semibold text-brand-navy">Revenue by Business Type</h2>
         <p className="mt-1 text-sm text-muted">Machining and Bulk · Selected period or range</p>

@@ -74,7 +74,7 @@ const PROFIT_WALKTHROUGH: TourScript = {
     {
       label: "kpi-cards",
       explanation:
-        "Start with the Net profit and Net margin cards. Each shows this month's value and how it moved compared with last month.",
+        "Start with the Net profit card: this month's figure in dollars, its traffic light, and how much it moved against last month. The Net margin tile in the Ratios row below shows the same in percentage points.",
     },
     {
       label: "profit-margin",
@@ -84,7 +84,7 @@ const PROFIT_WALKTHROUGH: TourScript = {
     {
       label: "profit-loss",
       explanation:
-        "The Profit and Loss table spells out where the change came from: revenue, cost of sales and operating expenses, each set against your chosen comparison source. Green means favorable.",
+        "The Profit and Loss section spells out where the change came from: the month-by-month table shows revenue, cost of sales and operating expenses with a change chip on every month, and the table below sets this month against your chosen comparison source.",
     },
   ],
 };
@@ -105,12 +105,12 @@ const DASHBOARD_WALKTHROUGH: TourScript = {
     {
       label: "kpi-cards",
       explanation:
-        "Your headline numbers for the selected month, each compared with the source you chose: revenue, profit, margins and expense ratio. A flag appears when a figure breaches your threshold settings.",
+        "Your headline dollar figures for the selected month: revenue, total expenses, gross profit and net profit, each with a traffic light (green favourable, amber within your threshold, red beyond it) and the change in dollars and percent. Ratios sit in a row underneath.",
     },
     {
       label: "anomalies",
       explanation:
-        "Unusual movements the model found for the selected months, strongest first. Open one to see why it was flagged.",
+        "The anomaly bar says how many unusual movements the model found and where. Open it to see one row per business unit, account or customer, tagged Recurring when it was also flagged in earlier months; Ask the assistant explains any of them.",
     },
     {
       label: "profit-yoy",
@@ -150,7 +150,7 @@ const DASHBOARD_WALKTHROUGH: TourScript = {
     {
       label: "profit-loss",
       explanation:
-        "The full statement: this month's actual, the year to date, and the figure from your chosen comparison source, with a variance percentage. Green is favorable and red is unfavorable.",
+        "The profit and loss trend: a chart of revenue, total expenses and profit by month, a month-by-month table with the change from each month to the next, and this month against your chosen comparison source with its variance.",
     },
   ],
 };

@@ -7,13 +7,20 @@ import { anomalyChartHref, comparisonText, type AlertDetails, type EvidenceRecor
 import { reportingMonth } from "@/app/home/overview-data";
 import { formatPeriod } from "@/app/dashboard/data/revenue-expense-utils";
 
-export function AnomalyAlert({ alert }: { alert: Alert }) {
+/**
+ * One flagged month, expandable to its evidence. `inGroup`: listed under its
+ * unit (dashboard), so the month leads instead of the unit's name.
+ */
+export function AnomalyAlert({ alert, inGroup = false }: { alert: Alert; inGroup?: boolean }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  return <details className="min-w-0 rounded-xl border border-amber-200 bg-amber-50/40 p-4" onToggle={e => setOpen(e.currentTarget.open)}>
+  const month = reportingMonth(formatPeriod(alert.periodNo));
+  return <details className="min-w-0 rounded-xl border border-amber-200/80 bg-white/75 p-4 transition open:bg-white" onToggle={e => setOpen(e.currentTarget.open)}>
     <summary className="cursor-pointer text-sm font-semibold text-brand-navy focus-visible:outline-2 focus-visible:outline-brand-blue">
-      {alert.unitLabel}<span className="mt-1 block text-xs font-normal text-muted">{ANOMALY_KIND_LABEL[alert.kind]} · {reportingMonth(formatPeriod(alert.periodNo))} · Anomaly detected</span>
+      {inGroup
+        ? <>{month}<span className="mt-1 block text-xs font-normal text-muted">{alert.reasons[0] ?? "Unusual combination of model signals"}</span></>
+        : <>{alert.unitLabel}<span className="mt-1 block text-xs font-normal text-muted">{ANOMALY_KIND_LABEL[alert.kind]} · {month} · Anomaly detected</span></>}
     </summary>
     {open && <div className="mt-4 space-y-3">
       <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">{alert.reasons.length ? alert.reasons.map((r, i) => <li key={i}>{r}</li>) : <li>Unusual combination of model signals; review related records.</li>}</ul>

@@ -68,3 +68,65 @@ export function toAnomalyAlert(row: AnomalyAlertRow, labels: AnomalyLabels): Ano
     modelVersion: row.model_version,
   };
 }
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthIndex = (period: number) => Math.floor(period / 100) * 12 + (period % 100) - 1;
+const monthName = (period: number) => MONTH_NAMES[(period % 100) - 1];
+
+/**
+ * Months as compact runs: [202602..202607] → "Feb–Jul 2026", a run across a
+ * year → "Nov 2025 – Jan 2026", gaps → "Mar 2026, May–Jul 2026".
+ */
+export function describeMonths(periods: number[]): string {
+  const sorted = [...new Set(periods)].sort((a, b) => a - b);
+  const runs: [number, number][] = [];
+  for (const period of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && monthIndex(period) === monthIndex(last[1]) + 1) last[1] = period;
+    else runs.push([period, period]);
+  }
+  return runs.map(([from, to]) => {
+    const fromYear = Math.floor(from / 100), toYear = Math.floor(to / 100);
+    if (from === to) return `${monthName(from)} ${fromYear}`;
+    return fromYear === toYear ? `${monthName(from)}–${monthName(to)} ${toYear}` : `${monthName(from)} ${fromYear} – ${monthName(to)} ${toYear}`;
+  }).join(", ");
+}
+
+export type AnomalyGroup = {
+  /** `${kind}:${unitKey}` */
+  key: string;
+  kind: AnomalyKind;
+  unitKey: string;
+  unitLabel: string;
+  /** This unit's alerts in the selected period, newest first. */
+  alerts: AnomalyAlert[];
+  /** Every month this unit was flagged, oldest first, including earlier months passed as history. */
+  months: number[];
+  latestPeriod: number;
+  maxScore: number;
+  /** Distinct reasons, newest month's first. */
+  reasons: string[];
+};
+
+/**
+ * One group per business unit, account or customer, so a unit flagged in
+ * several months is listed once. `history` (earlier months, outside the
+ * selected period) only adds to `months`, to show that a flag is recurring.
+ * Strongest group first.
+ */
+export function groupAnomalies(alerts: AnomalyAlert[], history: AnomalyAlert[] = []): AnomalyGroup[] {
+  const groups = new Map<string, AnomalyGroup>();
+  const newestFirst = [...alerts].sort((a, b) => b.periodNo - a.periodNo || b.score - a.score);
+  for (const alert of newestFirst) {
+    const key = `${alert.kind}:${alert.unitKey}`;
+    const group = groups.get(key) ?? { key, kind: alert.kind, unitKey: alert.unitKey, unitLabel: alert.unitLabel, alerts: [], months: [], latestPeriod: alert.periodNo, maxScore: 0, reasons: [] };
+    group.alerts.push(alert);
+    group.months.push(alert.periodNo);
+    group.maxScore = Math.max(group.maxScore, alert.score);
+    for (const reason of alert.reasons) if (!group.reasons.includes(reason)) group.reasons.push(reason);
+    groups.set(key, group);
+  }
+  for (const alert of history) groups.get(`${alert.kind}:${alert.unitKey}`)?.months.push(alert.periodNo);
+  for (const group of groups.values()) group.months = [...new Set(group.months)].sort((a, b) => a - b);
+  return [...groups.values()].sort((a, b) => b.maxScore - a.maxScore || b.latestPeriod - a.latestPeriod);
+}

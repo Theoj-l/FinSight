@@ -60,6 +60,33 @@ arrow direction represents mathematical change.
 Budget values require one scenario per month. Alternative scenarios are never
 summed. Missing or ambiguous P&L budgets render unavailable rather than zero.
 
+## Design language and shared pieces
+
+- **Backdrop:** a subtle white-and-navy marble (`public/marble.webp`, "onyx" style).
+  - It is rendered by `scripts/generate-marble.py` (run with `ml-service/venv/bin/python`) and fixed behind every page by `body::before` in `app/globals.css`.
+  - Pages show it by leaving their own background transparent.
+- **Surfaces:** the `@utility` classes in `app/globals.css`.
+  - `glass`: a frosted card for things that should float (headline cards, filter and comparison bars, the anomaly bar).
+  - `glass-blur`: real backdrop blur. It re-blurs while scrolling, so it is only for things content slides behind: the sidebar overlay and the mobile header.
+  - `surface`: crisp white for charts, tables and forms.
+  - Use glass sparingly.
+- **Traffic lights:** `trafficLight()` in `lib/financial/traffic-light.ts` follows the Settings thresholds, the same rule as notifications.
+  - Green = favourable or flat.
+  - Amber = unfavourable but within the threshold, or alerts off.
+  - Red = beyond the threshold.
+  - With a 0% threshold any unfavourable change is red.
+  - Show the label too (`StatusPill`), never colour alone.
+- **Headline figures:** `HeadlineCard`, `RatioTile` and `AttentionSummary` in `app/components/financial/kpi-card.tsx` (Home snapshot and Dashboard overview).
+  - Dollar figures lead, in whole units.
+  - Every change says what it is against ("Up S$406,648 (+7.2%) vs Jul 2026 · S$5,622,515").
+  - Ratios sit separately, with changes in percentage points.
+  - *Total expenses* (cost of sales + operating expenses) is a display-only KPI from `totalExpensesComparison()`. It uses the stricter expense threshold and raises no notification of its own.
+- **P&L month by month:** `lib/financial/pnl-months.ts` reads the months already in the comparison bundle (no extra query).
+- **Anomalies:** `groupAnomalies()` and `describeMonths()` in `data/anomalies-utils.ts` list a unit once across months.
+  - The panel also loads the 12 months before the period, to tag recurring units.
+- **Ask the assistant:** `askAssistant(question)` / `<AskAssistantButton>` in `app/components/chat/ask-assistant.tsx` opens the chat and sends a question from anywhere in the app.
+- **Layout:** card grids that sit beside the sidebar or the walkthrough gutter use container queries (`@container`, `@xl:` / `@5xl:`), so they reflow on the width they actually have.
+
 ## Verification
 
 Run `npm test`, `npm run lint`, and `npx tsc --noEmit` from `web/`.

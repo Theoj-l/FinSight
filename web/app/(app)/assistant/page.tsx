@@ -27,7 +27,7 @@ export default async function AssistantPage() {
         action={<span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">In development</span>}
       />
 
-      <section aria-labelledby="assistant-status" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+      <section aria-labelledby="assistant-status" className="surface mt-8 rounded-2xl p-6 sm:p-10">
         <div className="max-w-2xl">
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-blue-light text-brand-navy"><MessageSquare aria-hidden="true" className="h-6 w-6" /></span>
           <h2 id="assistant-status" className="mt-5 text-xl font-semibold tracking-tight text-brand-navy sm:text-2xl">Your financial conversation starts here.</h2>
@@ -44,7 +44,7 @@ export default async function AssistantPage() {
         <p className="mt-1 text-sm text-muted">Examples of the planned experience, available once the assistant is connected.</p>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {examples.map(({ icon: Icon, title, question }) => (
-            <article key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <article key={title} className="surface rounded-2xl p-5">
               <Icon aria-hidden="true" className="h-5 w-5 text-brand-blue" />
               <h3 className="mt-4 text-sm font-semibold text-brand-navy">{title}</h3>
               <p className="mt-2 text-sm leading-6 text-muted">“{question}”</p>

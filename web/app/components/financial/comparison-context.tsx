@@ -97,7 +97,7 @@ export function ComparisonSelector() {
   return (
     <section
       aria-label="Financial comparison source"
-      className="mt-5 rounded-xl border border-brand-navy/15 bg-white p-4"
+      className="glass mt-5 rounded-2xl p-4"
     >
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 text-sm font-medium text-brand-navy">

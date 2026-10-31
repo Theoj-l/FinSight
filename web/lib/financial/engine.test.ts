@@ -148,7 +148,8 @@ describe("one calculation shared by views and notifications", () => {
         kpis = comparisonKpis(b, source),
         point = b.sources[source][b.period];
       const alerts = financialAlerts(kpis);
-      for (const metric of kpis.metrics) {
+      // Ledger metrics only: the derived Total expenses card is covered in presentation.test.ts.
+      for (const metric of kpis.metrics.filter((m) => m.id in METRICS)) {
         expect(metric.value).toBe(
           b.sources.previous[b.period].metrics[
             metric.id as keyof typeof METRICS

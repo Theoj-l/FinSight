@@ -19,6 +19,7 @@ import { getRevenueByBusinessTypeData } from "../data/revenue-by-business-type";
 import { getRevenueExpenseData } from "../data/revenue-expense";
 import { BRANCH_LEDGER_MESSAGE, type DashboardScope } from "../data/dashboard-scope";
 import { ActualOnlyComparisonNote } from "@/app/components/financial/comparison-context";
+import { addMonth } from "@/lib/financial/types";
 
 export function DashboardPanelLoading({ label }: { label: string }) {
   if (label === "KPI data") {
@@ -41,7 +42,7 @@ export function DashboardPanelLoading({ label }: { label: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" role="status" aria-label={`Loading ${label}`}>
+    <div className="surface rounded-2xl p-6" role="status" aria-label={`Loading ${label}`}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="h-5 w-44 animate-pulse rounded bg-slate-200" />
@@ -151,16 +152,20 @@ export function ProfitLossPanel({ scope }: { scope: DashboardScope }) {
 
 export async function AnomaliesPanel({ scope }: { scope: DashboardScope }) {
   const branch = !!(scope.branchCode || scope.branchCodes?.length);
+  const periodStart = scope.periodStart ?? scope.period, periodEnd = scope.periodEnd ?? scope.period;
   let alerts: Awaited<ReturnType<typeof getAnomalyAlerts>> = [];
+  let history: Awaited<ReturnType<typeof getAnomalyAlerts>> = [];
   let status: Awaited<ReturnType<typeof getAnomalyStatus>> = null;
   let error: string | undefined;
   try {
-    [alerts, status] = await Promise.all([
-      branch ? Promise.resolve([]) : getAnomalyAlerts({ periodStart: scope.periodStart ?? scope.period, periodEnd: scope.periodEnd ?? scope.period, departmentIds: scope.departmentIds }),
+    [alerts, history, status] = await Promise.all([
+      branch ? Promise.resolve([]) : getAnomalyAlerts({ periodStart, periodEnd, departmentIds: scope.departmentIds }),
+      // The 12 months before the period, to mark a flag as recurring.
+      branch || periodStart === undefined ? Promise.resolve([]) : getAnomalyAlerts({ periodStart: addMonth(periodStart, -12), periodEnd: addMonth(periodStart, -1), departmentIds: scope.departmentIds }),
       getAnomalyStatus(),
     ]);
   } catch {
     error = "Anomaly checks are unavailable.";
   }
-  return <AnomalyPanel alerts={alerts.sort((a, b) => b.score - a.score)} status={status} error={error} periodStart={scope.periodStart ?? scope.period} periodEnd={scope.periodEnd ?? scope.period} branch={branch} />;
+  return <AnomalyPanel alerts={alerts.sort((a, b) => b.score - a.score)} history={history} status={status} error={error} periodStart={periodStart} periodEnd={periodEnd} branch={branch} />;
 }

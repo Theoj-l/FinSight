@@ -31,7 +31,7 @@ export function ExpenseCategoryChart({ data = [], error, loading = false }: Expe
     const categories = activePeriod === undefined ? [] : getCategoriesForPeriod(data, activePeriod);
 
   return (
-    <section aria-labelledby="expense-category-title" className="flex h-full flex-col rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="expense-category-title" className="surface flex h-full flex-col rounded-2xl p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="expense-category-title" className="text-lg font-semibold text-brand-navy">

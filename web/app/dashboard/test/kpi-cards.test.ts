@@ -9,7 +9,10 @@ import { KpiCards } from "../components/kpi-cards";
 it("uses shared rules, unfavorable-only attention, and Settings links rather than inline forms", () => {
   vi.stubGlobal("React", React); state.source = "previous";
   const html = renderToStaticMarkup(React.createElement(FinancialProvider, { bundle: financialFixture() }, React.createElement(KpiCards)));
-  expect(html).toContain("Attention needed: Operating revenue");
+  // Revenue fell 50% against a 10% threshold: red, and listed in the attention line.
+  expect(html).toMatch(/\d+(<!-- -->)? unfavourable:/);
+  expect(html).toMatch(/Needs attention.*Operating revenue/);
+  expect(html).toContain('data-status="unfavourable"');
   expect(html).toContain('/settings#thresholds');
   expect(html).not.toContain("Configure attention thresholds");
   expect(html).not.toContain("Budget variance");
@@ -20,5 +23,7 @@ it("changes the selected comparison without changing actual values, and marks un
   const html = renderToStaticMarkup(React.createElement(FinancialProvider, { bundle: financialFixture() }, React.createElement(KpiCards)));
   expect(html).toContain("Auto forecast");
   expect(html).toContain("S$100");
-  expect(html).toContain("Percentage comparison unavailable");
+  // Cost and gross-profit forecasts do not exist, so those cards have nothing to compare.
+  expect(html).toContain("Comparison unavailable");
+  expect(html).toContain("vs auto forecast");
 });

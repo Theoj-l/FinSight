@@ -15,6 +15,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { claimFirstVisit, useTour } from "../tour/tour-context";
 import { placeWalkthroughCard } from "../tour/card-placement";
 import { FloatingWalkthrough, WalkthroughCard } from "../tour/walkthrough-card";
+import { onAskAssistant } from "./ask-assistant";
 import { readChatContext } from "./chat-context";
 import type { ChatMessage } from "./chat-state";
 import { CHAT_ENDPOINT, CHAT_MOCK_ENABLED, DEFAULT_CHAT_ENDPOINT } from "./chat-transport";
@@ -211,6 +212,14 @@ function ChatDock() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [tour.page, send]);
+
+  // "Ask the assistant" buttons elsewhere in the app: open and send. If an answer
+  // is still streaming, the question waits in the input instead.
+  useEffect(() => onAskAssistant(question => {
+    setOpen(true);
+    if (send(question)) pinnedRef.current = true;
+    else setDraft(question);
+  }), [send]);
 
   function close() {
     setOpen(false);

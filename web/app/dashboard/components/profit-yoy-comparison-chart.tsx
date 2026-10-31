@@ -13,7 +13,7 @@ export function ProfitYoyComparisonChart({ data, error }: { data?: ProfitYoyComp
   const statusLabel = change === null ? "Comparison unavailable" : improved ? "Improving" : declined ? "Declining" : "Unchanged";
 
   return (
-    <section aria-labelledby="profit-yoy-title" className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+    <section aria-labelledby="profit-yoy-title" className="surface rounded-2xl p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="profit-yoy-title" className="text-lg font-semibold text-brand-navy">Profit Year-Over-Year Comparison</h2>
