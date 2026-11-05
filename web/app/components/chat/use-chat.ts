@@ -9,6 +9,8 @@ import { chatReducer, initialChatState, isStreaming, promptFor } from "./chat-st
 export interface UseChatOptions {
   /** What the user is looking at right now; read when a question is sent. */
   getContext?: () => ChatContext | null;
+  /** Which backend answers; read when a question is sent. Default: the app's configured endpoint. */
+  getEndpoint?: () => string | undefined;
   /** An answer finished and came with charts/tables to point at. */
   onWalkthrough?: (messageId: string, script: TourScript, scope: ChatContext | null) => void;
 }
@@ -50,6 +52,7 @@ export function useChat(options: UseChatOptions = {}) {
       for await (const delta of streamChatReply(prompt, {
         signal: controller.signal,
         context: optionsRef.current.getContext?.() ?? null,
+        endpoint: optionsRef.current.getEndpoint?.(),
         onWalkthrough: (script, scope) => {
           walkthrough.script = script;
           walkthrough.scope = scope;

@@ -18,6 +18,7 @@ import { FloatingWalkthrough, WalkthroughCard } from "../tour/walkthrough-card";
 import { onAskAssistant } from "./ask-assistant";
 import { readChatContext } from "./chat-context";
 import type { ChatMessage } from "./chat-state";
+import { CHAT_METHODS, canChangeMethod, defaultChatMethod, endpointFor, type ChatMethod } from "./chat-method";
 import { CHAT_ENDPOINT, CHAT_MOCK_ENABLED, DEFAULT_CHAT_ENDPOINT } from "./chat-transport";
 import { Markdown } from "./markdown-view";
 import { useChat } from "./use-chat";
@@ -119,9 +120,12 @@ const MessageBubble = memo(function MessageBubble({
 
 function ChatDock() {
   const tour = useTour();
+  // How this conversation is answered. Fixed once the first question is sent; "New chat" frees it.
+  const [method, setMethod] = useState<ChatMethod>(() => defaultChatMethod(CHAT_ENDPOINT));
   const { messages, streaming, send, retry, stop, reset } = useChat({
     // Read when a question is sent, so the answer matches what is on screen.
     getContext: () => readChatContext(window.location.pathname, window.location.search),
+    getEndpoint: () => endpointFor(method),
     // The answer is complete: start pointing at the charts and tables it mentions.
     onWalkthrough: (messageId, script, scope) => {
       void tour.begin(messageId, script, scope);
@@ -421,6 +425,43 @@ function ChatDock() {
             </p>
           )}
 
+          {!CHAT_MOCK_ENABLED && (
+            <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2">
+              <span id="chat-method-label" className="shrink-0 text-[11px] font-medium text-muted">
+                Answer method
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="chat-method-label"
+                title={canChangeMethod(messages.length) ? undefined : "Fixed for this chat. Start a new chat to change it."}
+                className="flex min-w-0 flex-1 rounded-lg bg-white p-0.5 ring-1 ring-slate-200"
+              >
+                {CHAT_METHODS.map((item) => {
+                  const selected = method === item.id;
+                  const locked = !canChangeMethod(messages.length);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={locked && !selected}
+                      onClick={() => setMethod(item.id)}
+                      title={item.hint}
+                      className={`min-w-0 flex-1 truncate rounded-md px-2 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-blue ${
+                        selected
+                          ? "bg-brand-navy text-white"
+                          : "text-brand-navy hover:bg-brand-blue-light disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div
             ref={logRef}
             role="log"
@@ -441,7 +482,7 @@ function ChatDock() {
                 <p className="mt-3 text-sm font-semibold text-brand-navy">How can I help?</p>
                 <p className="mt-1 text-xs leading-5 text-muted">Ask about profit &amp; loss, sales, or receivables.</p>
                 <div className="mt-4 flex w-full flex-col gap-2">
-                  {(tour.page === "dashboard" ? [WALKTHROUGH_QUESTION, ...SUGGESTIONS] : SUGGESTIONS).map((question) => (
+                  {(tour.page === "dashboard" && method === "sql" ? [WALKTHROUGH_QUESTION, ...SUGGESTIONS] : SUGGESTIONS).map((question) => (
                     <button
                       key={question}
                       type="button"
