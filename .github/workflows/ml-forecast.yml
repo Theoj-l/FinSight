@@ -4,18 +4,16 @@ name: ML forecast
 # and the chatbot's forecast answers. It runs the same command Railway's cron used to
 # (`python -m app.forecast.run`), on a GitHub-hosted runner, so no server has to stay up.
 #
-# Schedule: TEMPORARILY daily at 18:00 UTC = 02:00 SGT, while the Forecast page is being set
-# up. The intended schedule is monthly: "0 18 1 * *" = 02:00 SGT on the 2nd, the day after
-# month end, so the month has closed. Each run is kept in forecast_run / forecast_value, so
-# a daily schedule stores a new copy of the forecast every day. Cron times in GitHub
-# Actions are UTC, and a run can start a few minutes late when GitHub is busy.
+# Schedule: 18:00 UTC on the 1st = 02:00 SGT on the 2nd, the day after month end, so the
+# month has closed. Each run is kept in forecast_run / forecast_value, so a more frequent
+# schedule stores a new copy of the forecast every time. Cron times in GitHub Actions are
+# UTC, and a run can start a few minutes late when GitHub is busy.
 #
 # Needs one repository secret: ML_DATABASE_URL (see ml-service/DEPLOY.md).
 # You can also start it by hand: Actions -> ML forecast -> Run workflow.
 on:
   schedule:
-    # TODO: back to monthly ("0 18 1 * *") once the forecast is verified.
-    - cron: "0 18 * * *"
+    - cron: "0 18 1 * *"
   workflow_dispatch:
 
 # One run at a time (the job also takes a database lock, so a second would just stop).
