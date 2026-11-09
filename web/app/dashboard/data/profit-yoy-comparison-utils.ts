@@ -14,6 +14,7 @@ export type ProfitYoyPeriod = {
 export type ProfitYoyPoint = ProfitYoyPeriod & {
   currentProfit: number | null;
   priorProfit: number | null;
+  difference: number | null;
 };
 
 export type ProfitYoyComparison = {
@@ -74,11 +75,16 @@ export function aggregateProfitYoyComparison(rows: ProfitYoyBalanceRow[], endPer
   };
   const currentPeriods = current.map(periodNo => ({ periodNo, label: formatPeriodLabel(periodNo) }));
   const priorPeriods = prior.map(periodNo => ({ periodNo, label: formatPeriodLabel(periodNo) }));
-  const points = currentPeriods.map((period, index) => ({
-    ...period,
-    currentProfit: profitFor(period.periodNo),
-    priorProfit: profitFor(prior[index]),
-  }));
+  const points = currentPeriods.map((period, index) => {
+    const currentProfit = profitFor(period.periodNo);
+    const priorProfit = profitFor(prior[index]);
+    return {
+      ...period,
+      currentProfit,
+      priorProfit,
+      difference: currentProfit !== null && priorProfit !== null ? currentProfit - priorProfit : null,
+    };
+  });
   const complete = points.every(point => point.currentProfit !== null && point.priorProfit !== null);
   const currentTotal = complete ? points.reduce((sum, point) => sum + point.currentProfit!, 0) : null;
   const priorTotal = complete ? points.reduce((sum, point) => sum + point.priorProfit!, 0) : null;

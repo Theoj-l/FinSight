@@ -16,7 +16,7 @@ describe("profit year-over-year comparison utilities", () => {
     ]);
     const priorRows = [202301, 202302, 202303].map(period_no => ({ period_no, acc_type: "RE", movement: -800 }));
     const result = aggregateProfitYoyComparison([...rows, ...priorRows], 202403);
-    expect(result.points.map(point => [point.currentProfit, point.priorProfit])).toEqual([[700, 800], [700, 800], [700, 800]]);
+    expect(result.points.map(point => [point.currentProfit, point.priorProfit, point.difference])).toEqual([[700, 800, -100], [700, 800, -100], [700, 800, -100]]);
     expect(result.currentTotal).toBe(2100);
     expect(result.priorTotal).toBe(2400);
     expect(result.absoluteChange).toBe(-300);
@@ -27,7 +27,9 @@ describe("profit year-over-year comparison utilities", () => {
     const result = aggregateProfitYoyComparison([{ period_no: 202403, acc_type: "RE", movement: -100 }], 202403);
     expect(result.complete).toBe(false);
     expect(result.points[2].currentProfit).toBe(100);
+    expect(result.points[2].difference).toBeNull();
     expect(result.points[0].currentProfit).toBeNull();
+    expect(result.points[0].difference).toBeNull();
     expect(result.currentTotal).toBeNull();
   });
 
