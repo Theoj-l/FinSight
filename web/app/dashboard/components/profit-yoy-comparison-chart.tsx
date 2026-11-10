@@ -39,10 +39,23 @@ export function ProfitYoyComparisonChart({ data, error }: { data?: ProfitYoyComp
             <Summary label="Difference" value={data.absoluteChange === null ? "Incomplete" : formatSignedCurrency(data.absoluteChange, fx)} tone={improved ? "positive" : declined ? "negative" : undefined} />
             <Summary label="Change" value={data.percentageChange === null ? "Not available" : formatSignedPercent(data.percentageChange)} tone={improved ? "positive" : declined ? "negative" : undefined} />
           </div>
+          <div className="mt-4 rounded-xl border border-brand-navy/10 bg-slate-50 p-3" aria-label="Monthly profit differences">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Monthly difference vs last year</p>
+            <div className="grid grid-cols-3 gap-2">
+              {points.map(point => (
+                <div key={point.periodNo} className="rounded-lg bg-white px-2 py-2 text-center shadow-sm">
+                  <p className="text-xs text-muted">{point.label}</p>
+                  <p className={`mt-1 text-sm font-bold tabular-nums ${differenceTone(point.difference)}`}>
+                    {point.difference === null ? "Unavailable" : formatSignedCurrency(point.difference, fx)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
           {!data.complete && <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">This comparison is incomplete because one or more months have no actual ledger data. Totals and percentage change are withheld.</p>}
           <div className="mt-6 h-80 w-full" role="img" aria-label="Grouped bar chart comparing monthly net profit for the current three months with the same months last year">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={points} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+              <BarChart data={points} margin={{ top: 24, right: 8, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
                 <XAxis dataKey="label" tick={{ fill: "#5b6079", fontSize: 12 }} />
                 <YAxis tickFormatter={value => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={64} />
@@ -57,6 +70,10 @@ export function ProfitYoyComparisonChart({ data, error }: { data?: ProfitYoyComp
       )}
     </section>
   );
+}
+
+function differenceTone(value: number | null) {
+  return value === null || value === 0 ? "text-slate-600" : value > 0 ? "text-emerald-700" : "text-red-700";
 }
 
 function Summary({ label, value, tone }: { label: string; value: string; tone?: "positive" | "negative" }) {
