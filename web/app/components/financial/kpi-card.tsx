@@ -9,7 +9,9 @@ import type { KpiData, KpiMetric } from "@/app/dashboard/data/kpi-presentation";
 import { formatPercentage } from "@/app/dashboard/data/kpi-presentation";
 import { reportingMonth } from "@/app/home/overview-data";
 import { BASE_CURRENCY, convertAmount, fxSymbol, type FxContext } from "@/lib/currency";
+import { kpiQuestion, needsExplaining } from "@/lib/financial/kpi-question";
 import { TRAFFIC_LIGHT_LABEL, trafficLight, type TrafficLight } from "@/lib/financial/traffic-light";
+import { AskAssistantButton } from "@/app/components/chat/ask-assistant";
 
 const TONE: Record<TrafficLight, { text: string; soft: string; dot: string; bar: string }> = {
   favourable: { text: "text-status-good", soft: "bg-status-good-soft", dot: "bg-emerald-500", bar: "bg-emerald-500" },
@@ -65,7 +67,23 @@ function changeText(metric: KpiMetric, fx?: FxContext | null) {
   return change.direction === 0 ? "No change" : `${change.direction > 0 ? "Up" : "Down"} ${amount} (${percent})`;
 }
 
-export function HeadlineCard({ metric, reference, fx }: { metric: KpiMetric; reference: string; fx?: FxContext | null }) {
+/** The AI button on an amber or red figure: asks the assistant what drove the movement. */
+function ExplainButton({ metric, status, period, reference, fx }: { metric: KpiMetric; status: TrafficLight; period?: string | null; reference: string; fx?: FxContext | null }) {
+  if (!needsExplaining(status) || metric.value === null) return null;
+  const show = (value: string) => (metric.unit === "money" ? formatWhole(value, fx) : formatRatio(value));
+  const question = kpiQuestion({
+    label: metric.label,
+    status,
+    period,
+    value: show(metric.value),
+    change: changeText(metric, fx),
+    reference,
+    prior: metric.prior === null ? null : show(metric.prior),
+  });
+  return <AskAssistantButton iconOnly question={question} label={`Ask the assistant about ${metric.label.toLowerCase()}`} />;
+}
+
+export function HeadlineCard({ metric, reference, fx, period }: { metric: KpiMetric; reference: string; fx?: FxContext | null; period?: string | null }) {
   const status = trafficLight(metric.comparison);
   const tone = TONE[status];
   const change = changeText(metric, fx);
@@ -74,7 +92,10 @@ export function HeadlineCard({ metric, reference, fx }: { metric: KpiMetric; ref
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${tone.bar}`} />
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-medium text-muted">{metric.label}</h3>
-        <StatusPill status={status} />
+        <div className="flex shrink-0 items-center gap-2">
+          <StatusPill status={status} />
+          <ExplainButton metric={metric} status={status} period={period} reference={reference} fx={fx} />
+        </div>
       </div>
       <p className="mt-3 text-3xl font-semibold tracking-tight text-brand-navy tabular-nums xl:text-[2rem]" title={metric.value ?? undefined}>
         {metric.value === null ? "Unavailable" : metric.unit === "money" ? formatWhole(metric.value, fx) : formatRatio(metric.value)}
@@ -107,7 +128,7 @@ export function HeadlineCard({ metric, reference, fx }: { metric: KpiMetric; ref
 }
 
 /** A ratio, smaller: value, change in percentage points and a status dot. */
-export function RatioTile({ metric, reference }: { metric: KpiMetric; reference: string }) {
+export function RatioTile({ metric, reference, period }: { metric: KpiMetric; reference: string; period?: string | null }) {
   const status = trafficLight(metric.comparison);
   const tone = TONE[status];
   return (
@@ -120,10 +141,13 @@ export function RatioTile({ metric, reference }: { metric: KpiMetric; reference:
         </p>
         <p className="mt-1 text-xl font-semibold tracking-tight text-brand-navy tabular-nums">{metric.value === null ? "Unavailable" : formatRatio(metric.value)}</p>
       </div>
-      <p className={`text-right text-xs font-semibold ${tone.text}`}>
-        {changeText(metric) ?? "No comparison"}
-        <span className="mt-0.5 block font-normal text-muted">vs {reference}{metric.prior !== null ? ` · ${formatRatio(metric.prior)}` : ""}</span>
-      </p>
+      <div className="flex items-center gap-3">
+        <p className={`text-right text-xs font-semibold ${tone.text}`}>
+          {changeText(metric) ?? "No comparison"}
+          <span className="mt-0.5 block font-normal text-muted">vs {reference}{metric.prior !== null ? ` · ${formatRatio(metric.prior)}` : ""}</span>
+        </p>
+        <ExplainButton metric={metric} status={status} period={period} reference={reference} />
+      </div>
     </div>
   );
 }

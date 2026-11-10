@@ -76,10 +76,10 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
         {!financialData ? <div role="status" className={`${panel} p-6`}><p className="font-medium text-brand-navy">{error ? "Financial snapshot unavailable" : "No financial data yet"}</p><p className="mt-2 text-sm text-muted">{error ?? "No ledger balances are available. Your KPIs and threshold alerts will appear when data is available."}</p><p className="mt-3 text-xs text-muted">Checked <time dateTime={loadedAt}>{timestamp(loadedAt)}</time></p></div> : <>
           <AttentionSummary metrics={financialData.metrics} />
           <div className="mt-4 grid gap-5 @xl:grid-cols-2 @5xl:grid-cols-4 lg:gap-6">
-            {headlineIds.map(id => financialData.metrics.find(metric => metric.id === id)).filter(metric => metric !== undefined).map(metric => <HeadlineCard key={metric.id} metric={metric} reference={reference} fx={fx} />)}
+            {headlineIds.map(id => financialData.metrics.find(metric => metric.id === id)).filter(metric => metric !== undefined).map(metric => <HeadlineCard key={metric.id} metric={metric} reference={reference} period={period} fx={fx} />)}
           </div>
           <div className="mt-4 grid gap-3 @3xl:grid-cols-3">
-            {ratioIds.map(id => financialData.metrics.find(metric => metric.id === id)).filter(metric => metric !== undefined).map(metric => <RatioTile key={metric.id} metric={metric} reference={reference} />)}
+            {ratioIds.map(id => financialData.metrics.find(metric => metric.id === id)).filter(metric => metric !== undefined).map(metric => <RatioTile key={metric.id} metric={metric} reference={reference} period={period} />)}
           </div>
           <p className="mt-5 text-xs leading-5 text-muted">Loaded <time dateTime={loadedAt}>{timestamp(loadedAt)}</time> · Load time is when this overview was retrieved; it is not a ledger sync date. Ratio changes are shown in percentage points, with the relative change in brackets.{fx.currency !== "SGD" && currency.date ? ` Exchange rates dated ${currency.date}.` : ""}{fx.currency !== currency.currency ? " Showing SGD while exchange rates are unavailable." : ""}</p>
         </>}

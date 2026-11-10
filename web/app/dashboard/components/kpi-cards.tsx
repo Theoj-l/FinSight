@@ -62,13 +62,13 @@ export function KpiCards({
       <AttentionSummary metrics={current.metrics} />
       <div className="mt-4 grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-4">
         {money.map((metric) => (
-          <HeadlineCard key={metric.id} metric={metric} reference={reference} fx={fx} />
+          <HeadlineCard key={metric.id} metric={metric} reference={reference} fx={fx} period={reportingMonth(current.period)} />
         ))}
       </div>
       <h3 className="mt-6 pl-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Ratios</h3>
       <div className="mt-2 grid gap-3 @3xl:grid-cols-3">
         {ratios.map((metric) => (
-          <RatioTile key={metric.id} metric={metric} reference={reference} />
+          <RatioTile key={metric.id} metric={metric} reference={reference} period={reportingMonth(current.period)} />
         ))}
       </div>
       {current.notices.length > 0 && (

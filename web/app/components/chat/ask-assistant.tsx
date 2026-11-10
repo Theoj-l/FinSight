@@ -22,7 +22,20 @@ export function onAskAssistant(handler: (question: string) => void) {
   return () => window.removeEventListener(ASK_ASSISTANT_EVENT, listener);
 }
 
-export function AskAssistantButton({ question, label = "Ask the assistant", className = "" }: { question: string; label?: string; className?: string }) {
+export function AskAssistantButton({ question, label = "Ask the assistant", className = "", iconOnly = false }: { question: string; label?: string; className?: string; iconOnly?: boolean }) {
+  if (iconOnly) {
+    return (
+      <button
+        type="button"
+        onClick={(event) => { event.preventDefault(); event.stopPropagation(); askAssistant(question); }}
+        aria-label={label}
+        title={label}
+        className={`inline-grid h-7 w-7 shrink-0 place-items-center rounded-full border border-brand-blue/25 bg-white/80 text-brand-blue shadow-sm transition hover:border-brand-blue/50 hover:bg-brand-blue-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue ${className}`}
+      >
+        <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
