@@ -459,5 +459,3 @@ git diff
 git add .
 git commit -m "type: short description"
 ```
-
-Deployment edit
