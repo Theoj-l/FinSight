@@ -49,14 +49,14 @@ export interface DirectSqlOptions {
 }
 
 /** A page with panels to point at, and the settings to show it with. */
-type Target = ChatContext & { page: TourPage };
+export type Target = ChatContext & { page: TourPage };
 
 /**
  * Where the walkthrough happens: the page the model named (if it is a real scope), otherwise the
  * page already open if it has panels to point at, otherwise nowhere (a plain answer). `moved` is
  * true when that is not what the user has on screen, so the app will open or change a page.
  */
-function resolveTarget(planned: ChatContext | null, current: ChatContext | null, options: ScopeOptions | undefined): { target: Target | null; moved: boolean } {
+export function resolveTarget(planned: ChatContext | null, current: ChatContext | null, options: ScopeOptions | undefined): { target: Target | null; moved: boolean } {
   const open = current && current.page !== "other" ? (current as Target) : null;
   if (!current) return { target: null, moved: false };
 
@@ -65,6 +65,9 @@ function resolveTarget(planned: ChatContext | null, current: ChatContext | null,
   if (!proposed && planned && planned.page !== "other" && planned.page !== current.page) {
     proposed = { page: planned.page, units: [], branches: [] };
   }
+  // On a page with nothing to point at (Settings, Reports...) and no page named: open the
+  // dashboard, so every answer still comes with a walkthrough.
+  if (!proposed && !open) proposed = { page: "dashboard", units: [], branches: [] };
   const target = (proposed as Target | null) ?? open;
   return { target, moved: Boolean(proposed && !sameScope(proposed, current)) };
 }

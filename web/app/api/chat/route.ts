@@ -7,6 +7,9 @@
 // 3. Validates classification against schema allowlists.
 // 4. Routes to the appropriate database retrieval engine based on intent.
 // 5. Synthesises a natural-language response using Gemini with ground-truth data.
+//    When the widget sends the page the user is on (`context`), the answer also
+//    comes with a walkthrough of the charts and tables that show it, and the
+//    `scope` (page and filters) to open first, as with /api/chat-sql.
 // ---------------------------------------------------------------------------
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,12 +17,15 @@ import { classifyIntent } from "@/lib/gemini/classifier";
 import { validateClassification } from "@/lib/validators/validate-classification";
 import { retrieveData } from "@/lib/data-retrieval";
 import { generateResponse } from "@/lib/gemini/response-generator";
+import { answerClassicWithWalkthrough } from "@/lib/gemini/walkthrough";
+import { parseChatContext } from "@/lib/text-to-sql/context";
 import type { RetrievalResult } from "@/lib/data-retrieval/types";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { message } = body;
+    const context = parseChatContext(body?.context);
 
     // ── 1. Input validation ───────────────────────────────────────────────
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -71,6 +77,22 @@ export async function POST(request: NextRequest) {
 
     // ── 5. Route every supported question_type to its retrieval service ───
     const data: RetrievalResult = await retrieveData(classification);
+
+    // From the chat widget: answer with a walkthrough of the page that shows it.
+    if (context) {
+      const { reply, walkthrough, scope } = await answerClassicWithWalkthrough(query, classification, data, context);
+      if (reply) {
+        return NextResponse.json({
+          reply,
+          ...(walkthrough ? { walkthrough } : {}),
+          ...(walkthrough && scope ? { scope } : {}),
+          data,
+          classification,
+          validation,
+        });
+      }
+    }
+
     const reply = await generateResponse(query, classification, data);
 
     return NextResponse.json({

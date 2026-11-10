@@ -19,16 +19,7 @@ export async function generateResponse(
   classification: ClassificationResult,
   data: RetrievalResult
 ): Promise<string> {
-  const contents = `User Question:
-"${userQuestion}"
-
-Classification Metadata:
-${JSON.stringify(classification, null, 2)}
-
-Ground-Truth Database Results:
-${JSON.stringify(data, null, 2)}
-
-Provide a direct, well-formatted response that addresses the user's question using the retrieved data above.`;
+  const contents = responseContents(userQuestion, classification, data);
 
   const response = await genai.models.generateContent({
     model: GEMINI_MODEL,
@@ -44,4 +35,22 @@ Provide a direct, well-formatted response that addresses the user's question usi
   }
 
   return text.trim();
+}
+
+/** The question and the retrieved data as the answer writer receives them (also used for walkthroughs). */
+export function responseContents(
+  userQuestion: string,
+  classification: ClassificationResult,
+  data: RetrievalResult
+): string {
+  return `User Question:
+"${userQuestion}"
+
+Classification Metadata:
+${JSON.stringify(classification, null, 2)}
+
+Ground-Truth Database Results:
+${JSON.stringify(data, null, 2)}
+
+Provide a direct, well-formatted response that addresses the user's question using the retrieved data above.`;
 }

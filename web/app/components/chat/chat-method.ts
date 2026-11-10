@@ -3,7 +3,8 @@
 //
 // Both ask the same Gemini model; they differ in how the data is found:
 //   sql      Direct SQL: Gemini writes a read-only query, can point at charts and tables.
-//   classic  Fixed functions: Gemini picks a built-in lookup, text answers only.
+//   classic  Fixed functions: Gemini picks a built-in lookup.
+// Both can open the right page and point at charts and tables while explaining.
 //
 // The choice belongs to one conversation: it can be changed only before the first
 // question, or after "New chat", so one conversation never mixes the two. Pure: no React.
@@ -30,7 +31,7 @@ export const CHAT_METHODS: readonly ChatMethodInfo[] = [
     id: "classic",
     label: "Fixed functions",
     endpoint: "/api/chat",
-    hint: "Gemini picks one of the built-in lookups. Text answers only, no charts pointed at.",
+    hint: "Gemini picks one of the built-in lookups. Can also open the right page and point at charts and tables.",
   },
 ];
 

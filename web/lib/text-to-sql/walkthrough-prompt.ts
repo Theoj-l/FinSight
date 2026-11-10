@@ -47,20 +47,20 @@ The home page is a quick overview: for anything more detailed, the dashboard is 
 };
 
 const RULES = `Reply with JSON only, in this shape:
-{ "reply": string, "walkthrough": { "opening": string, "steps": [ { "label": string, "explanation": string } ] } or null }
+{ "reply": string, "walkthrough": { "opening": string, "steps": [ { "label": string, "explanation": string } ] } }
 
 "reply" is the answer, written exactly as the guidelines above describe (Markdown allowed).
 
 "walkthrough" lets the user SEE what you are explaining: the page highlights each panel, one at a time, while its explanation is shown. Rules:
-- Set it to null when no panel on this page helps: receivables, customers, invoice-level detail, refusals and clarifying questions.
+- ALWAYS return a walkthrough with at least one step: every answer is shown together with the page. Pick the panels that show the answer. When no panel shows the exact figures (receivables, a single customer, invoice-level detail), use the closest related panel and say plainly what it does show that relates to the question (for example the anomalies panel for a customer flagged for late payment, or the revenue panels for a customer's sales), and that the exact figures are in the answer, not on the page.
 - Use only ids from the list above (they all belong to this one page), each at most once, in the order that tells the story. One step is fine. A broad question about the whole page may use several, in page order, but keep it to the panels that matter (usually no more than six).
 - "explanation" is plain text, two or three sentences, and it answers the user's QUESTION as seen on that panel. Start with what this panel shows about the question: the actual figure, change or comparison from the retrieved data (for example "Revenue was 6.03M against operating expenses of 0.85M in August 2026"). Then say where to look on the panel (for example "compare the two August bars"). Never describe the chart in general ("This chart plots…", "This panel shows…"): the user can see what it is and the card already shows its title. Every step must say something different, and something this question needs.
-- Quote only figures that appear in the retrieved data, copied exactly as the reply gives them. If a panel shows more than the retrieved data covers (other months, other categories), say what to look at in words ("the bars to the left show the earlier months") without inventing figures. If you cannot tie a panel to the question with something from the data, leave that panel out.
+- Quote only figures that appear in the retrieved data, copied exactly as the reply gives them. If a panel shows more than the retrieved data covers (other months, other categories), say what to look at in words ("the bars to the left show the earlier months") without inventing figures. If you cannot tie a panel to the question with something from the data, leave that panel out, but always keep at least one step.
 - Use "filters" only when the dashboard was just moved to match the question, or the question is about the period or units themselves; then say which month and units it now shows. Otherwise leave it out: it adds nothing. For "comparison-source", say which source to pick and what it will show for this question.
 - A table or chart step must name a specific line or bar to look at and its value (for example "the Net profit row shows 912,102.66 against 849,295.20 last month"), never just say it "details" or "shows" the figures.
 - Do not repeat the whole reply in the steps; each step adds where to see one part of it.
 - "opening" is one or two plain sentences that state the answer in brief and lead into the steps.
-- Check what the panels show. They show the period, business units and branches given in the dashboard context above. If the question is about something else, or the panels cannot show what it asks, say so in the explanation or use null. Never claim a panel shows a figure it does not.
+- Check what the panels show. They show the period, business units and branches given in the dashboard context above. If the question is about something else, or the panels cannot show what it asks, say so in the explanation. Never claim a panel shows a figure it does not.
 - Do not return titles or badge numbers; the page adds them.`;
 
 /**

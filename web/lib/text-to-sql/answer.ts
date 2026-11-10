@@ -73,13 +73,14 @@ const walkthroughSchema = (page: TourPage): Schema => ({
   type: Type.OBJECT,
   properties: {
     reply: { type: Type.STRING },
+    // Always required: every answer comes with at least one panel to point at.
     walkthrough: {
       type: Type.OBJECT,
-      nullable: true,
       properties: {
         opening: { type: Type.STRING },
         steps: {
           type: Type.ARRAY,
+          minItems: "1",
           items: {
             type: Type.OBJECT,
             properties: {
@@ -108,9 +109,22 @@ export async function writeAnswerWithWalkthrough(
   context: ChatContext & { page: TourPage },
   moved = false,
 ): Promise<{ reply: string; walkthrough: TourScript | null; tokens: Usage }> {
+  return writeWalkthroughAnswer(requestContents(question, executed), context, moved);
+}
+
+/**
+ * The same walkthrough writer for any retrieved data: `contents` is the question plus the
+ * data, already laid out. Used by both chat methods, so their walkthroughs follow the same
+ * prompt (the fixed-function method passes its retrieval results here).
+ */
+export async function writeWalkthroughAnswer(
+  contents: string,
+  context: ChatContext & { page: TourPage },
+  moved = false,
+): Promise<{ reply: string; walkthrough: TourScript | null; tokens: Usage }> {
   const response = await genai.models.generateContent({
     model: GEMINI_MODEL,
-    contents: requestContents(question, executed),
+    contents,
     config: {
       systemInstruction: buildWalkthroughSystemPrompt(context, moved),
       responseMimeType: "application/json",

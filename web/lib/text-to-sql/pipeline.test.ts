@@ -81,13 +81,22 @@ describe("answerWithDirectSql — walkthroughs on any page", () => {
     expect(writeAnswerWithWalkthrough.mock.calls[0][3]).toBe(true);
   });
 
-  it("answers in plain text when no page is named and the open page has nothing to point at", async () => {
+  it("opens the dashboard when no page is named and the open page has nothing to point at", async () => {
     generateSql.mockResolvedValueOnce(plan({ scope: null }));
     const result = await answerWithDirectSql("who owes us the most", { ...options, context: onPage("other"), scopeOptions });
 
+    expect(writeAnswer).not.toHaveBeenCalled();
+    expect(writeAnswerWithWalkthrough.mock.calls[0][2]).toMatchObject({ page: "dashboard" });
+    expect(writeAnswerWithWalkthrough.mock.calls[0][3]).toBe(true);
+    expect(result.scope).toMatchObject({ page: "dashboard" });
+  });
+
+  it("still answers in plain text when no page context is sent at all (the evaluation runner)", async () => {
+    generateSql.mockResolvedValueOnce(plan({ scope: null }));
+    const result = await answerWithDirectSql("who owes us the most", { ...options, scopeOptions });
+
     expect(writeAnswer).toHaveBeenCalled();
-    expect(writeAnswerWithWalkthrough).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ reply: "plain", walkthrough: null, scope: null });
+    expect(result).toMatchObject({ walkthrough: null, scope: null });
   });
 
   it("keeps the open page when no page is named", async () => {

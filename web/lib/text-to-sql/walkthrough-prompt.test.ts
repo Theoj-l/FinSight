@@ -45,10 +45,11 @@ describe("buildWalkthroughSystemPrompt", () => {
     expect(prompt).toMatch(/Use "filters" only when the dashboard was just moved/);
   });
 
-  it("says when not to point at a panel", () => {
-    expect(prompt).toContain("NO panel for receivables");
-    expect(prompt).toMatch(/Set it to null when no panel on this page helps/);
-    expect(prompt).toMatch(/Check what the panels show/);
+  it("always asks for a walkthrough, using the closest panel when none shows the exact figures", () => {
+    expect(prompt).toMatch(/ALWAYS return a walkthrough with at least one step/);
+    expect(prompt).toMatch(/use the closest related panel and say plainly what it does show/);
+    expect(prompt).not.toMatch(/or null/);
+    expect(prompt).toMatch(/Never claim a panel shows a figure it does not/);
   });
 });
 
