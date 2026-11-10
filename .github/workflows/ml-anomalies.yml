@@ -5,15 +5,14 @@ name: ML anomaly rescore
 # It runs the same command Railway's cron used to (`python -m app.anomaly.score`), on a
 # GitHub-hosted runner, so no server has to stay up.
 #
-# Schedule: weekly, Saturday 02:00 SGT = Friday 18:00 UTC (cron "0 18 * * 5"). Cron times
-# in GitHub Actions are UTC, so the day is Friday in the cron line. A run can start a few
-# minutes late when GitHub is busy. You can also run it by hand
-# (Actions -> ML anomaly rescore -> Run workflow).
+# Schedule: nightly at 18:00 UTC = 02:00 SGT (cron "0 18 * * *"). Cron times in GitHub
+# Actions are UTC, and a run can start a few minutes late when GitHub is busy. You can also
+# run it by hand (Actions -> ML anomaly rescore -> Run workflow).
 #
 # Needs one repository secret: ML_DATABASE_URL (see ml-service/DEPLOY.md).
 on:
   schedule:
-    - cron: "0 18 * * 5"
+    - cron: "0 18 * * *"
   workflow_dispatch:
 
 concurrency:
