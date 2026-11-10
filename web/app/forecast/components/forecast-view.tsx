@@ -4,6 +4,7 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  DefaultTooltipContent,
   Line,
   ReferenceArea,
   ReferenceLine,
@@ -11,7 +12,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  type TooltipContentProps,
+  type TooltipValueType,
 } from "recharts";
+import type { NameType } from "recharts/types/component/DefaultTooltipContent";
 import { useState } from "react";
 import { TourTarget } from "@/app/components/tour/tour-target";
 import { useCurrency } from "@/lib/currency-context";
@@ -31,6 +35,8 @@ type ChartPoint = {
   projection?: number;
   rangeLow?: number | null;
   rangeSize?: number | null;
+  /** Latest actual, also carrying the projection's starting values so the two lines join. */
+  bridge?: boolean;
 };
 
 function metricPoints(data: ForecastData, metric: ForecastMetric): ChartPoint[] {
@@ -45,7 +51,43 @@ function metricPoints(data: ForecastData, metric: ForecastMetric): ChartPoint[] 
     rangeLow: point.low,
     rangeSize: point.low !== null && point.high !== null ? point.high - point.low : null,
   }));
+
+  // Recharts only joins points within one series, so without this the actual line (ends at the
+  // latest closed month) and the projection (starts the month after) never meet. Seed the
+  // projection and a zero-width range on the latest actual so both grow out of it. Derived from
+  // history, so it moves forward on its own as months close.
+  const latest = series.history.at(-1);
+  const bridge = latest && points.get(latest.periodNo);
+  if (latest && bridge && series.forecast.length > 0 && bridge.projection === undefined) {
+    Object.assign(bridge, { projection: latest.actual, rangeLow: latest.actual, rangeSize: 0, bridge: true });
+  }
+
   return [...points.values()].sort((a, b) => a.periodNo - b.periodNo);
+}
+
+// The join values on the latest actual are drawing aids, not forecasts: keep them out of the tooltip.
+const BRIDGE_KEYS = new Set(["projection", "rangeLow", "rangeSize"]);
+
+function hideBridgeValues(props: TooltipContentProps<TooltipValueType, NameType>) {
+  const payload = props.payload?.filter(entry => !(entry.payload?.bridge && BRIDGE_KEYS.has(String(entry.dataKey))));
+  return <DefaultTooltipContent {...props} payload={payload} />;
+}
+
+// "Forecast begins" sits at the left edge of the projected zone and PROJECTED is centred in it, both on
+// the same line. On narrow screens the zone is too thin for both, so PROJECTED is dropped (the shading
+// and "Forecast begins" still mark the zone). Widths are generous estimates for 11px text.
+const FORECAST_BEGINS_LABEL_RIGHT = 5 + 86; // label offset + text width
+const PROJECTED_LABEL_HALF_WIDTH = 42;
+const LABEL_GAP = 12;
+
+function ProjectedAreaLabel({ viewBox }: { viewBox?: { x?: number; y?: number; width?: number } }) {
+  const { x = 0, y = 0, width = 0 } = viewBox ?? {};
+  if (width / 2 - PROJECTED_LABEL_HALF_WIDTH < FORECAST_BEGINS_LABEL_RIGHT + LABEL_GAP) return null;
+  return (
+    <text x={x + width / 2} y={y + 5} textAnchor="middle" dominantBaseline="hanging" fill="#b42318" fontSize={11} fontWeight={600} letterSpacing={1}>
+      PROJECTED
+    </text>
+  );
 }
 
 function changeFromLatestActual(data: ForecastData, metric: ForecastMetric) {
@@ -63,7 +105,8 @@ export function ForecastView({ data }: { data: ForecastData }) {
   const points = metricPoints(data, metric);
   const next = series.forecast[0];
   const latestActual = series.history.at(-1);
-  const forecastStart = series.forecast[0]?.periodNo;
+  // The shaded "projected" zone starts where the red line does: on the latest actual it grows out of.
+  const forecastStart = latestActual?.periodNo ?? series.forecast[0]?.periodNo;
   const nextChange = changeFromLatestActual(data, metric);
   const forecastEnd = series.forecast.at(-1)?.periodNo;
 
@@ -112,13 +155,15 @@ export function ForecastView({ data }: { data: ForecastData }) {
             {/* ComposedChart, not LineChart: the outcome-range band is drawn with <Area>, which LineChart does not render. */}
             <ComposedChart data={points} margin={{ top: 12, right: 12, left: 8, bottom: 8 }}>
               <CartesianGrid stroke="#e6e8f0" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="periodNo" tickFormatter={formatPeriod} tick={{ fill: "#5b6079", fontSize: 11 }} minTickGap={28} />
+              {/* Left padding (about half a month label) keeps the first month clear of the y-axis "$0" label. */}
+              <XAxis dataKey="periodNo" tickFormatter={formatPeriod} tick={{ fill: "#5b6079", fontSize: 11 }} minTickGap={28} padding={{ left: 24 }} />
               <YAxis tickFormatter={value => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 11 }} width={64} />
               <Tooltip
+                content={hideBridgeValues}
                 labelFormatter={value => formatPeriod(Number(value))}
                 formatter={(value, name) => [value === undefined || value === null ? "—" : formatCurrencyExact(Number(value), fx), name]}
               />
-              {forecastStart && forecastEnd && <ReferenceArea x1={forecastStart} x2={forecastEnd} fill="#e02718" fillOpacity={0.045} stroke="none" label={{ value: "PROJECTED", position: "insideTop", fill: "#b42318", fontSize: 11, fontWeight: 600, letterSpacing: 1 }} />}
+              {forecastStart && forecastEnd && <ReferenceArea x1={forecastStart} x2={forecastEnd} fill="#e02718" fillOpacity={0.045} stroke="none" label={<ProjectedAreaLabel />} />}
               {forecastStart && <ReferenceLine x={forecastStart} stroke="#e02718" strokeDasharray="4 4" label={{ value: "Forecast begins", position: "insideTopLeft", fill: "#b42318", fontSize: 11 }} />}
               <Area type="monotone" dataKey="rangeLow" stackId="forecast-range" stroke="none" fill="transparent" dot={false} activeDot={false} tooltipType="none" />
               <Area type="monotone" dataKey="rangeSize" stackId="forecast-range" name="Typical outcome range" stroke="#86a9df" strokeWidth={1} fill="#b9d0f2" fillOpacity={0.65} dot={false} activeDot={false} />

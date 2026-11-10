@@ -6,6 +6,7 @@ import {
   type RevenueByGroupPoint,
 } from "../data/revenue-by-group-utils";
 import { useCurrency } from "@/lib/currency-context";
+import { DonutLabel } from "./donut-label";
 
 const GROUP_COLORS = ["#1f2a79", "#4c6fbb", "#e02718", "#b81f12", "#2f8f83", "#d18b2c", "#68708d", "#9b59b6"];
 
@@ -58,9 +59,9 @@ export function RevenueByGroupChart({ data = [], error, loading = false }: Reven
                   innerRadius="52%"
                   outerRadius="76%"
                   paddingAngle={data.length > 1 ? 2 : 0}
-                  label={showSliceLabels ? ({ payload }) => {
-                    const point = payload as unknown as RevenueByGroupPoint;
-                    return `${point.groupLabel} ${point.percentage.toFixed(1)}%`;
+                  label={showSliceLabels ? props => {
+                    const point = props.payload as RevenueByGroupPoint;
+                    return <DonutLabel {...props} name={point.groupLabel} percentage={point.percentage} />;
                   } : false}
                   labelLine={showSliceLabels}
                   shape={(props) => (

@@ -108,7 +108,7 @@ export function FinancialProfitLoss() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
                 <CartesianGrid stroke="#e6e8f0" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tickFormatter={value => reportingMonth(String(value))} tick={{ fill: "#5b6079", fontSize: 11 }} />
+                <XAxis dataKey="label" tickFormatter={value => reportingMonth(String(value))} tick={{ fill: "#5b6079", fontSize: 11 }} padding={{ left: 28, right: 28 }} />
                 <YAxis tickFormatter={value => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 11 }} width={58} />
                 <Tooltip labelFormatter={value => reportingMonth(String(value))} formatter={(value, name) => [value == null ? "—" : formatCurrencyExact(Number(value), fx), name]} />
                 {LINES.map(line => <Line key={line.key} type="monotone" dataKey={line.key} name={line.label} stroke={line.color} strokeWidth={2.4} dot={{ r: 2.5 }} connectNulls={false} />)}

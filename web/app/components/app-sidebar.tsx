@@ -139,7 +139,7 @@ function SidebarContent({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-visible">
-      <div className="flex h-20 shrink-0 items-center border-b border-brand-navy/[.07] pl-3 pr-4">
+      <div className="flex h-20 shrink-0 items-center pl-3 pr-4">
         <Brand compact={compact} onNavigate={onNavigate} onNavigation={onNavigation} />
       </div>
 
@@ -227,9 +227,10 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
         // sidebar (which now stays mounted across pages) would stay expanded.
         onFocus={(event) => { if (event.target.matches(":focus-visible")) setFocused(true); }}
         onBlur={handleBlur}
-        // Frosted glass: expanded, it floats over the page and blurs what is behind.
-        className={`glass-blur fixed inset-y-0 left-0 z-40 hidden flex-col overflow-visible border-r transition-[width,box-shadow] duration-200 ease-out lg:flex ${
-          expanded ? "w-[280px] shadow-[24px_0_60px_-24px_rgba(31,42,121,0.38)]" : "w-[108px] shadow-[inset_-1px_0_0_rgba(255,255,255,0.6)]"
+        // Collapsed, a translucent rail with no edge that the backdrop flows
+        // through; expanded, frosted glass that floats over the page.
+        className={`fixed inset-y-0 left-0 z-40 hidden flex-col overflow-visible transition-[width,box-shadow,background-color] duration-200 ease-out lg:flex ${
+          expanded ? "glass-blur w-[280px] shadow-[24px_0_60px_-24px_rgba(31,42,121,0.38)]" : "glass-rail w-[108px]"
         }`}
       >
         <SidebarContent email={email} compact={!expanded} onNavigation={startNavigation} />

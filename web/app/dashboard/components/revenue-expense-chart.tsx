@@ -18,7 +18,7 @@ import {
   type RevenueExpensePoint,
 } from "../data/revenue-expense-utils";
 import { useFinancialComparison, ComparisonNote } from "@/app/components/financial/comparison-context";
-import { ChartAnomalyNote } from "./chart-anomaly";
+import { ChartAnomalyNote, anomalyLineLabel } from "./chart-anomaly";
 import { previousCalendarMonths, type ChartAnomaly } from "../data/anomaly-evidence";
 import { formatPeriod } from "../data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
@@ -74,13 +74,13 @@ export function RevenueExpenseChart({
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
-              <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
+              <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} padding={{ left: 16, right: 16 }} />
               <YAxis padding={{ top: 12 }} tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <ComparisonHover source={financial?.source} measures={[{ label: "Revenue", actualKey: "revenue", comparisonKey: "referenceRevenue" }, { label: "Expenses", actualKey: "expenses", comparisonKey: "referenceExpenses" }]} model={focus ? {label: "Model revenue (includes other income)", key: "modelRevenue"} : undefined} />
               <Legend content={<ComparisonLegend />} />
               {financial && <Line dataKey="referenceRevenue" name="Revenue comparison" {...comparisonStyle("monetary")} />}
               {financial && <Line dataKey="referenceExpenses" name="Expenses comparison" {...comparisonStyle("secondary")} />}
-              {focus && <ReferenceLine x={formatPeriod(focus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label="Anomaly" />}
+              {focus && <ReferenceLine x={formatPeriod(focus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label={anomalyLineLabel(periods, focus.alert.periodNo)} />}
               {focus && <Bar dataKey="modelRevenue" name="Model revenue (includes other income)" fill="#b45309" radius={[3, 3, 0, 0]} />}
               <Bar dataKey="revenue" name="Revenue" fill="#1f2a79" radius={[3, 3, 0, 0]} />
               <Bar dataKey="expenses" name="Expenses" fill="#e02718" radius={[3, 3, 0, 0]} />

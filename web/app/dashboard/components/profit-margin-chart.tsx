@@ -19,7 +19,7 @@ import {
 } from "../data/profit-margin-utils";
 import { useFinancialComparison, ComparisonNote } from "@/app/components/financial/comparison-context";
 import { useSearchParams } from "next/navigation";
-import { ChartAnomalyNote } from "./chart-anomaly";
+import { ChartAnomalyNote, anomalyLineLabel } from "./chart-anomaly";
 import { previousCalendarMonths, type ChartAnomaly } from "../data/anomaly-evidence";
 import { formatPeriod } from "../data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
@@ -92,7 +92,7 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart accessibilityLayer data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
-              <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
+              <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} padding={{ left: 16, right: 16 }} />
               <YAxis padding={{ top: 12 }} yAxisId="currency" tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={58} />
               <YAxis padding={{ top: 12 }} yAxisId="percentage" orientation="right" tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
               <ComparisonHover source={financial?.source} measures={[
@@ -102,7 +102,7 @@ export function ProfitMarginChart({ data = [], error, loading = false, mode = "n
               <Legend content={<ComparisonLegend />} />
               {financial && <Line yAxisId="currency" dataKey="referenceProfit" name={`${name} profit comparison`} {...comparisonStyle("monetary")} />}
               {financial && <Line yAxisId="percentage" dataKey="referenceMargin" name={`${name} margin comparison`} {...comparisonStyle("secondary")} />}
-              {activeFocus && <ReferenceLine yAxisId="currency" x={formatPeriod(activeFocus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label="Anomaly" />}
+              {activeFocus && <ReferenceLine yAxisId="currency" x={formatPeriod(activeFocus.alert.periodNo)} stroke="#b45309" strokeWidth={3} label={anomalyLineLabel(periods, activeFocus.alert.periodNo)} />}
               {activeFocus && <Line yAxisId="percentage" dataKey="modelMargin" name="Model Gross Margin % (includes other income)" stroke="#b45309" strokeDasharray="4 4" connectNulls={false} />}
               <Bar yAxisId="currency" dataKey={gross ? "grossProfit" : "netProfit"} name={`${name} Profit`} fill="#1f2a79" radius={[3, 3, 0, 0]} />
               <Line yAxisId="percentage" type="monotone" dataKey={gross ? "grossMarginPct" : "netMarginPct"} name={`${name} Margin %`} stroke="#e02718" strokeWidth={2.5} connectNulls={false} dot={{ r: 3 }} />

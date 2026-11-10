@@ -33,7 +33,7 @@
    float (headline cards, filter bars, the sidebar); charts and tables sit on
    `surface` so they stay crisp. */
 
-/* Frosted card over the static marble. No live blur: the marble behind it
+/* Frosted card over the static backdrop. No live blur: the backdrop behind it
    never changes, so a translucent fill looks the same and costs nothing when
    scrolling. */
 @utility glass {
@@ -54,6 +54,13 @@
   backdrop-filter: blur(18px) saturate(150%);
 }
 
+/* The collapsed sidebar: a barely-there veil with no edge, so the backdrop
+   flows straight through it and the page reads as one surface. Nothing
+   scrolls behind it, so it needs no blur. Expanded, it switches to glass-blur. */
+@utility glass-rail {
+  background: rgb(255 255 255 / 0.18);
+}
+
 /* Near-opaque white card for charts, tables and forms. */
 @utility surface {
   background: rgb(255 255 255 / 0.94);
@@ -69,17 +76,25 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Marble backdrop: public/marble.webp, rendered by scripts/generate-marble.py.
-   A fixed layer is painted once and composited, so scrolling never repaints it
-   (unlike background-attachment: fixed). Pages show it by leaving their own
-   background transparent. */
+/* Backdrop: the look of the FinSight pitch film, a little stronger. Navy light
+   washes across the top of the content, rose light runs down the right side
+   (so it shows in the margin and between cards), and a faint warm wash sits low
+   in the middle. The left edge stays neutral so the frosted sidebar blends in
+   without a seam. Pure CSS gradients, no image. A fixed layer is painted once
+   and composited, so scrolling never repaints it (unlike background-attachment:
+   fixed). Pages show it by leaving their own background transparent. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--color-app-surface) url("/marble.webp") center / cover no-repeat;
+  background:
+    radial-gradient(60vw 56vh at 62% -16%, rgb(76 99 214 / 0.32), rgb(76 99 214 / 0.15) 45%, rgb(76 99 214 / 0) 100%),
+    radial-gradient(32vw 46vh at 100% 10%, rgb(110 130 228 / 0.2), rgb(110 130 228 / 0) 100%),
+    radial-gradient(34vw 72vh at 106% 74%, rgb(224 39 24 / 0.26), rgb(224 39 24 / 0.13) 45%, rgb(224 39 24 / 0) 100%),
+    radial-gradient(56vw 38vh at 60% 112%, rgb(236 96 84 / 0.18), rgb(236 96 84 / 0) 100%),
+    linear-gradient(172deg, #e8ecfb 0%, #f3f5fb 36%, #f7f4f8 68%, #fae9e7 100%);
 }
 
 html {

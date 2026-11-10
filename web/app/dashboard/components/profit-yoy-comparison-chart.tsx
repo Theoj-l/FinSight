@@ -57,7 +57,7 @@ export function ProfitYoyComparisonChart({ data, error }: { data?: ProfitYoyComp
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={points} margin={{ top: 24, right: 8, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e6e8f0" />
-                <XAxis dataKey="label" tick={{ fill: "#5b6079", fontSize: 12 }} />
+                <XAxis dataKey="label" tick={{ fill: "#5b6079", fontSize: 12 }} padding={{ left: 16, right: 16 }} />
                 <YAxis tickFormatter={value => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={64} />
                 <Tooltip formatter={(value, name) => [value === null ? "Unavailable" : formatCurrencyExact(Number(value), fx), name]} />
                 <Legend />

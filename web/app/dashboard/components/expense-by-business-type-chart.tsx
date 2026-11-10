@@ -66,7 +66,7 @@ export function ExpenseByBusinessTypeChart({ data = [], error, onSegmentClick }:
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 16, right: 16, left: 8, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e6e8f0" />
-            <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} />
+            <XAxis dataKey="period" tick={{ fill: "#5b6079", fontSize: 12 }} padding={{ left: 16, right: 16 }} />
             <YAxis yAxisId="percentage" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#5b6079", fontSize: 12 }} width={48} />
             <YAxis yAxisId="currency" orientation="right" domain={["auto", "auto"]} tickFormatter={(value) => formatCurrencyCompact(Number(value), fx)} tick={{ fill: "#5b6079", fontSize: 12 }} width={64} />
             <Tooltip

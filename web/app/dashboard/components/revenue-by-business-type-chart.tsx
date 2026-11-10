@@ -3,6 +3,7 @@
 import { Legend, Pie, PieChart, ResponsiveContainer, Sector, Tooltip } from "recharts";
 import { useCurrency } from "@/lib/currency-context";
 import { formatCurrencyExact, type RevenueByBusinessTypePoint } from "../data/revenue-by-business-type-utils";
+import { DonutLabel } from "./donut-label";
 
 const SEGMENT_COLORS: Record<string, string> = {
   Machining: "#e02718",
@@ -49,9 +50,9 @@ export function RevenueByBusinessTypeChart({ data = [], error, loading = false }
                   innerRadius="52%"
                   outerRadius="76%"
                   paddingAngle={data.length > 1 ? 2 : 0}
-                  label={({ payload }) => {
-                    const point = payload as unknown as RevenueByBusinessTypePoint;
-                    return `${point.segment} ${point.percentage.toFixed(1)}%`;
+                  label={props => {
+                    const point = props.payload as RevenueByBusinessTypePoint;
+                    return <DonutLabel {...props} name={point.segment} percentage={point.percentage} />;
                   }}
                   labelLine
                   shape={(props) => <Sector {...props} fill={props.fill} />}

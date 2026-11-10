@@ -62,12 +62,16 @@ summed. Missing or ambiguous P&L budgets render unavailable rather than zero.
 
 ## Design language and shared pieces
 
-- **Backdrop:** a subtle white-and-navy marble (`public/marble.webp`, "onyx" style).
-  - It is rendered by `scripts/generate-marble.py` (run with `ml-service/venv/bin/python`) and fixed behind every page by `body::before` in `app/globals.css`.
+- **Backdrop:** the look of the FinSight pitch film.
+  - A pale lavender-to-rose vertical tint, navy light across the top of the content, and rose light down the right side.
+  - The left edge stays neutral, so the frosted sidebar has no seam.
+  - It is pure CSS gradients, with no image, fixed behind every page by `body::before` in `app/globals.css`.
   - Pages show it by leaving their own background transparent.
+  - The old marble (`public/marble.webp`, rendered by `scripts/generate-marble.py`) now only gives the home page's dark hero card its faint texture.
 - **Surfaces:** the `@utility` classes in `app/globals.css`.
   - `glass`: a frosted card for things that should float (headline cards, filter and comparison bars, the anomaly bar).
-  - `glass-blur`: real backdrop blur. It re-blurs while scrolling, so it is only for things content slides behind: the sidebar overlay and the mobile header.
+  - `glass-blur`: real backdrop blur. It re-blurs while scrolling, so it is only for things content slides behind: the expanded sidebar overlay and the mobile header.
+  - `glass-rail`: the collapsed desktop sidebar. It is an 18% white veil with no border, so the backdrop flows through and the sidebar reads as part of the page.
   - `surface`: crisp white for charts, tables and forms.
   - Use glass sparingly.
 - **Traffic lights:** `trafficLight()` in `lib/financial/traffic-light.ts` follows the Settings thresholds, the same rule as notifications.
