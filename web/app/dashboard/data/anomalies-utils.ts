@@ -130,3 +130,22 @@ export function groupAnomalies(alerts: AnomalyAlert[], history: AnomalyAlert[] =
   for (const group of groups.values()) group.months = [...new Set(group.months)].sort((a, b) => a - b);
   return [...groups.values()].sort((a, b) => b.maxScore - a.maxScore || b.latestPeriod - a.latestPeriod);
 }
+
+/**
+ * The question an "Ask the assistant" button sends about one flagged unit, laid out on
+ * separate lines so it reads well in the chat: what was flagged, why, and the ask.
+ */
+export function anomalyQuestion(unitLabel: string, kind: AnomalyKind, when: string, reasons: readonly string[]): string {
+  const tidy = (reason: string) => {
+    const text = reason.trim().replace(/[.;]+$/, "");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
+  const shown = reasons.map(tidy).filter(Boolean).slice(0, 3);
+  return [
+    "Explain this anomaly:",
+    `${unitLabel} · ${ANOMALY_KIND_LABEL[kind]} · ${when}`,
+    ...(shown.length ? ["", "Why it was flagged:", ...shown.map((reason) => `• ${reason}`)] : []),
+    "",
+    "What could cause it, and what should I check?",
+  ].join("\n");
+}

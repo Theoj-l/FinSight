@@ -4,12 +4,10 @@ import { ChevronDown, Repeat, ShieldCheck, TriangleAlert } from "lucide-react";
 import { AnomalyAlert } from "@/app/components/anomalies/anomaly-alert";
 import { AnomalyStatusText } from "@/app/components/anomalies/anomaly-status";
 import { AskAssistantButton } from "@/app/components/chat/ask-assistant";
-import { ANOMALY_KIND_LABEL, FIRST_ANOMALY_PERIOD, describeMonths, groupAnomalies, type AnomalyAlert as Alert, type AnomalyGroup, type AnomalyStatus } from "../data/anomalies-utils";
+import { ANOMALY_KIND_LABEL, FIRST_ANOMALY_PERIOD, anomalyQuestion, describeMonths, groupAnomalies, type AnomalyAlert as Alert, type AnomalyGroup, type AnomalyStatus } from "../data/anomalies-utils";
 
 function explainQuestion(group: AnomalyGroup) {
-  const where = `${group.unitLabel} (${ANOMALY_KIND_LABEL[group.kind].toLowerCase()})`;
-  const reasons = group.reasons.slice(0, 3).join("; ");
-  return `Explain the anomaly flagged for ${where} in ${describeMonths(group.alerts.map(alert => alert.periodNo))}${reasons ? `. The model's reasons: ${reasons}` : ""}. What could cause it and what should I check?`;
+  return anomalyQuestion(group.unitLabel, group.kind, describeMonths(group.alerts.map(alert => alert.periodNo)), group.reasons);
 }
 
 // Months listed before "Show earlier months" in a recurring group.

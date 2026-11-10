@@ -9,7 +9,7 @@ import { Bell, CheckCheck, ChevronDown, X } from "lucide-react";
 import { formatPercentage } from "@/app/dashboard/data/kpi-presentation";
 import { AskAssistantButton } from "@/app/components/chat/ask-assistant";
 import { formatWhole } from "@/app/components/financial/kpi-card";
-import { ANOMALY_KIND_LABEL } from "@/app/dashboard/data/anomalies-utils";
+import { anomalyQuestion } from "@/app/dashboard/data/anomalies-utils";
 import { formatPeriod } from "@/app/dashboard/data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
 import type { NotificationEntry } from "@/lib/notifications";
@@ -43,7 +43,7 @@ function NotificationRow({ alert, entry, markViewed, clear, period, dashboardHre
 
   if (alert.type === "anomaly") {
     const a = alert.anomaly;
-    const question = `Explain the anomaly flagged for ${a.unitLabel} (${ANOMALY_KIND_LABEL[a.kind].toLowerCase()}) in ${reportingMonth(formatPeriod(a.periodNo))}${a.reasons.length ? `. The model's reasons: ${a.reasons.slice(0, 3).join("; ")}` : ""}. What could cause it and what should I check?`;
+    const question = anomalyQuestion(a.unitLabel, a.kind, reportingMonth(formatPeriod(a.periodNo)), a.reasons);
     return <li ref={row} className="space-y-2">
       <div className="flex items-center justify-between gap-3 text-xs text-muted"><span className="flex items-center gap-2">{badge}<span className="font-semibold text-status-watch">Anomaly detected</span><span>· Notified {timestamp(entry.notifiedAt)}</span></span><span className="flex items-center gap-1"><AskAssistantButton question={question} /><button type="button" onClick={clear} aria-label={`Clear ${a.unitLabel} anomaly notification`} className="rounded-lg p-2 hover:bg-slate-100"><X aria-hidden="true" className="h-4 w-4" /></button></span></div>
       <AnomalyAlert alert={a} />
