@@ -8,7 +8,7 @@ import { RESPONSE_GENERATION_PROMPT } from "./prompts/response-generation";
 import type { ClassificationResult } from "../types/classification";
 import type { RetrievalResult } from "../data-retrieval/types";
 
-const GEMINI_MODEL = "gemini-3.5-flash-lite";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 /**
  * Synthesise a user-facing answer from the user's question,

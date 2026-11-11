@@ -5,7 +5,7 @@
 import { VIRTUAL_VIEW_NAMES } from "./virtual-views";
 
 /** Same model as the existing classify-then-retrieve pipeline, so the comparison is fair. */
-export const GEMINI_MODEL = "gemini-3.5-flash-lite";
+export const GEMINI_MODEL = "gemini-2.5-flash";
 
 /** How many SELECTs the model may plan for one question. */
 export const MAX_QUERIES = 3;
