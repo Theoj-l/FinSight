@@ -4,7 +4,7 @@ import type { AnomalyAlert, AnomalyStatus } from "@/app/dashboard/data/anomalies
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, MessageSquare, RefreshCw, Settings } from "lucide-react";
+import { ArrowRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, RefreshCw, Settings } from "lucide-react";
 import { PageHeading } from "@/app/components/app-page";
 import type { KpiData } from "@/app/dashboard/data/kpi-presentation";
 import { AttentionSummary, HeadlineCard, RatioTile, referenceLabel } from "@/app/components/financial/kpi-card";
@@ -16,7 +16,7 @@ import { TourTarget } from "@/app/components/tour/tour-target";
 
 const features = [
   { title: "Dashboard", href: "/dashboard", icon: BarChart3, copy: "Explore financial trends, compare periods and drill into your accounts." },
-  { title: "Assistant", href: "/assistant", icon: MessageSquare, copy: "Visit your conversational workspace. Financial questions and forecast answers are in development." },
+  // { title: "Assistant", href: "/assistant", icon: MessageSquare, copy: "Visit your conversational workspace. Financial questions and forecast answers are in development." },
   { title: "Forecast", href: "/forecast", icon: Lightbulb, copy: "Compare actual performance with forward-looking projections." },
   { title: "Reports", href: "/reports", icon: FileText, copy: "Visit the reporting workspace and explore available report types." },
   { title: "Settings", href: "/settings", icon: Settings, copy: "Manage your account, display preferences and reporting currency." },
@@ -46,7 +46,7 @@ export function HomeOverview({ userId, data, error, loadedAt, anomalyResult }: {
   return (
     <div className="flex flex-col gap-10 pb-4 lg:gap-14">
       <PageHeading eyebrow="Your workspace" title="Home" description="Welcome back. Here’s your financial overview and what needs attention."
-        action={<div className="flex flex-wrap gap-3"><Link href="/assistant" className="inline-flex items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-navy-dark"><MessageSquare aria-hidden="true" className="h-4 w-4" />Open assistant</Link><button type="button" disabled={refreshing} onClick={() => startTransition(() => router.refresh())} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-navy shadow-sm transition hover:bg-slate-50 disabled:opacity-60"><RefreshCw aria-hidden="true" className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />{refreshing ? "Refreshing…" : "Refresh overview"}</button></div>} />
+        action={<div className="flex flex-wrap gap-3"><button type="button" disabled={refreshing} onClick={() => startTransition(() => router.refresh())} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-navy shadow-sm transition hover:bg-slate-50 disabled:opacity-60"><RefreshCw aria-hidden="true" className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />{refreshing ? "Refreshing…" : "Refresh overview"}</button></div>} />
 
       <section aria-label="Reporting context" className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#1f2a79_0%,#26338f_55%,#34459f_100%)] px-6 py-8 text-white shadow-[0_30px_60px_-34px_rgba(31,42,121,0.75)] sm:px-9 sm:py-10">
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-32 h-80 w-80 rounded-full border-[45px] border-white/[.05]" />
