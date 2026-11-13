@@ -38,3 +38,32 @@ export function kpiQuestion({ label, status, period, value, change, reference, p
     "What drove it, and what should I check?",
   ].join("\n");
 }
+
+export interface ThresholdQuestionInput {
+  label: string;
+  /** Reporting month, e.g. "Aug 2026". */
+  period: string;
+  /** The figure and what it is compared with, as shown, e.g. "29.22%" and "30.00%". */
+  value: string;
+  reference: string;
+  /** What the reference is, e.g. "Budget" or "Same month last year". */
+  referenceLabel: string;
+  /** The movement as shown, e.g. "-2.60%". */
+  movement: string;
+  /** The allowed unfavourable movement, in percent. */
+  tolerance: number | string;
+}
+
+/** The question the AI button on a home-page threshold alert sends, in the same layout as kpiQuestion. */
+export function thresholdQuestion({ label, period, value, reference, referenceLabel, movement, tolerance }: ThresholdQuestionInput): string {
+  return [
+    `Explain why ${label.toLowerCase()} went past its threshold (${period}).`,
+    "",
+    `• Now: ${value}`,
+    `• ${referenceLabel}: ${reference}`,
+    `• Movement: ${movement} (threshold ${tolerance}%)`,
+    "• Status: Unfavourable",
+    "",
+    "What drove it, and what should I check?",
+  ].join("\n");
+}

@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { kpiQuestion, needsExplaining } from "./kpi-question";
+import { kpiQuestion, needsExplaining, thresholdQuestion } from "./kpi-question";
+
+describe("thresholdQuestion", () => {
+  it("lays the home alert question out like the KPI one", () => {
+    expect(
+      thresholdQuestion({ label: "Gross margin", period: "Aug 2026", value: "29.22%", reference: "30.00%", referenceLabel: "Budget", movement: "-2.60%", tolerance: 2 }),
+    ).toBe(
+      [
+        "Explain why gross margin went past its threshold (Aug 2026).",
+        "",
+        "• Now: 29.22%",
+        "• Budget: 30.00%",
+        "• Movement: -2.60% (threshold 2%)",
+        "• Status: Unfavourable",
+        "",
+        "What drove it, and what should I check?",
+      ].join("\n"),
+    );
+  });
+});
 
 describe("needsExplaining", () => {
   it("is true only for amber and red figures", () => {

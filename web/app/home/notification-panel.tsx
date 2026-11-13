@@ -10,6 +10,7 @@ import { formatPercentage } from "@/app/dashboard/data/kpi-presentation";
 import { AskAssistantButton } from "@/app/components/chat/ask-assistant";
 import { formatWhole } from "@/app/components/financial/kpi-card";
 import { anomalyQuestion } from "@/app/dashboard/data/anomalies-utils";
+import { thresholdQuestion } from "@/lib/financial/kpi-question";
 import { formatPeriod } from "@/app/dashboard/data/revenue-expense-utils";
 import { useCurrency } from "@/lib/currency-context";
 import type { NotificationEntry } from "@/lib/notifications";
@@ -54,7 +55,15 @@ function NotificationRow({ alert, entry, markViewed, clear, period, dashboardHre
     const ratio = alert.metric.id.endsWith("Margin") || alert.metric.id === "expenseRatio";
     const show = (value: string | null) => value === null ? "—" : ratio ? `${Number(value).toFixed(2)}%` : formatWhole(value, fx);
     const month = reportingMonth(period);
-    const question = `Why did ${alert.metric.label.toLowerCase()} move ${formatPercentage(alert.value)} against ${alert.label.toLowerCase()} in ${month} (${show(alert.comparison.actual)} vs ${show(alert.comparison.reference)})? It is beyond the ${alert.comparison.tolerance}% threshold.`;
+    const question = thresholdQuestion({
+      label: alert.metric.label,
+      period: month,
+      value: show(alert.comparison.actual),
+      reference: show(alert.comparison.reference),
+      referenceLabel: alert.label.charAt(0).toUpperCase() + alert.label.slice(1),
+      movement: formatPercentage(alert.value),
+      tolerance: alert.comparison.tolerance,
+    });
     return <li ref={row} className="rounded-xl border border-brand-red/25 bg-[linear-gradient(135deg,rgba(254,242,242,0.95),rgba(255,255,255,0.85))] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3"><div><p className="flex items-center gap-2 text-[11px] font-semibold uppercase text-status-bad">{badge}<span aria-hidden="true" className="h-2 w-2 rounded-full bg-brand-red" />Unfavourable</p><h3 className="mt-1.5 text-sm font-semibold text-slate-900">{alert.metric.label}: <span className="tabular-nums">{show(alert.comparison.actual)}</span> <span className="font-normal text-muted">vs {show(alert.comparison.reference)}</span></h3></div><button type="button" onClick={clear} aria-label={`Clear ${alert.metric.label} notification`} className="rounded-lg p-2 hover:bg-white"><X aria-hidden="true" className="h-4 w-4" /></button></div>
       <p className="mt-2 text-sm text-slate-700"><strong className="text-status-bad">{formatPercentage(alert.value)}</strong> against {alert.label}. Your threshold allows {alert.comparison.tolerance}% unfavourable movement.</p>
