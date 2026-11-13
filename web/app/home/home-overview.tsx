@@ -4,7 +4,7 @@ import type { AnomalyAlert, AnomalyStatus } from "@/app/dashboard/data/anomalies
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { ArrowRight, BarChart3, CalendarDays, CircleAlert, FileText, Lightbulb, RefreshCw, Settings } from "lucide-react";
+import { ArrowRight, BarChart3, CalendarDays, CircleAlert, Lightbulb, RefreshCw, Settings } from "lucide-react";
 import { PageHeading } from "@/app/components/app-page";
 import type { KpiData } from "@/app/dashboard/data/kpi-presentation";
 import { AttentionSummary, HeadlineCard, RatioTile, referenceLabel } from "@/app/components/financial/kpi-card";
@@ -18,7 +18,7 @@ const features = [
   { title: "Dashboard", href: "/dashboard", icon: BarChart3, copy: "Explore financial trends, compare periods and drill into your accounts." },
   // { title: "Assistant", href: "/assistant", icon: MessageSquare, copy: "Visit your conversational workspace. Financial questions and forecast answers are in development." },
   { title: "Forecast", href: "/forecast", icon: Lightbulb, copy: "Compare actual performance with forward-looking projections." },
-  { title: "Reports", href: "/reports", icon: FileText, copy: "Visit the reporting workspace and explore available report types." },
+  // { title: "Reports", href: "/reports", icon: FileText, copy: "Visit the reporting workspace and explore available report types." },
   { title: "Settings", href: "/settings", icon: Settings, copy: "Manage your account, display preferences and reporting currency." },
 ];
 // Dollar figures lead; ratios sit underneath, smaller.

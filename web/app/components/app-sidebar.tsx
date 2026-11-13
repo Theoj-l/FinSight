@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ChevronDown, FileText, House, Lightbulb, LogOut, Menu, Settings, UserRound, X } from "lucide-react";
+import { BarChart3, ChevronDown, House, Lightbulb, LogOut, Menu, Settings, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import { signOut } from "@/app/auth/actions";
 import { useTour } from "@/app/components/tour/tour-context";
@@ -14,7 +14,8 @@ const navigation = [
   // Assistant page hidden; the floating chat widget covers it. Route still exists at /assistant.
   // { label: "Assistant", href: "/assistant", icon: MessageSquare },
   { label: "Forecast", href: "/forecast", icon: Lightbulb },
-  { label: "Reports", href: "/reports", icon: FileText },
+  // Reports page hidden. Route still exists at /reports.
+  // { label: "Reports", href: "/reports", icon: FileText },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
