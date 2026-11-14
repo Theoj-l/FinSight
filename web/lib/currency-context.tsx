@@ -22,7 +22,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     () => localStorage.getItem(PREFERENCES_STORAGE_KEY),
     () => null,
   );
-  const currency = restorePreferences(raw).currency;
+  const { currency, compactNumbers: compact } = restorePreferences(raw);
   const [fx, setFx] = useState<FxState>({ rates: null, date: null, error: null, loading: true });
 
   // The rates never change for the viewer's chosen currency until the next
@@ -47,7 +47,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <CurrencyContext.Provider value={{ currency, rates: fx.rates, date: fx.date, error: fx.error, loading: fx.loading }}>
+    <CurrencyContext.Provider value={{ currency, compact, rates: fx.rates, date: fx.date, error: fx.error, loading: fx.loading }}>
       {children}
     </CurrencyContext.Provider>
   );

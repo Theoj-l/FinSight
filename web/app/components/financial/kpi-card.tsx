@@ -8,7 +8,7 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { KpiData, KpiMetric } from "@/app/dashboard/data/kpi-presentation";
 import { formatPercentage } from "@/app/dashboard/data/kpi-presentation";
 import { reportingMonth } from "@/app/home/overview-data";
-import { BASE_CURRENCY, convertAmount, fxSymbol, type FxContext } from "@/lib/currency";
+import { abbreviate, BASE_CURRENCY, convertAmount, fxSymbol, type FxContext } from "@/lib/currency";
 import { kpiQuestion, needsExplaining } from "@/lib/financial/kpi-question";
 import { TRAFFIC_LIGHT_LABEL, trafficLight, type TrafficLight } from "@/lib/financial/traffic-light";
 import { AskAssistantButton } from "@/app/components/chat/ask-assistant";
@@ -36,7 +36,8 @@ export function formatWhole(value: string, fx?: FxContext | null) {
   const amount = Number(value);
   const convert = fx && fx.currency !== BASE_CURRENCY && fx.rates?.[fx.currency];
   const shown = convert ? convertAmount(amount, fx) : amount;
-  return `${shown < 0 ? "−" : ""}${convert ? fxSymbol(fx) : "S$"}${Math.round(Math.abs(shown)).toLocaleString("en-US")}`;
+  const digits = fx?.compact ? abbreviate(Math.abs(shown)) : Math.round(Math.abs(shown)).toLocaleString("en-US");
+  return `${shown < 0 ? "−" : ""}${convert ? fxSymbol(fx) : "S$"}${digits}`;
 }
 
 function formatRatio(value: string) {
@@ -70,13 +71,15 @@ function changeText(metric: KpiMetric, fx?: FxContext | null) {
 /** The AI button on an amber or red figure: asks the assistant what drove the movement. */
 function ExplainButton({ metric, status, period, reference, fx }: { metric: KpiMetric; status: TrafficLight; period?: string | null; reference: string; fx?: FxContext | null }) {
   if (!needsExplaining(status) || metric.value === null) return null;
-  const show = (value: string) => (metric.unit === "money" ? formatWhole(value, fx) : formatRatio(value));
+  // The assistant always gets exact figures, whatever the compact setting.
+  const exactFx = fx ? { ...fx, compact: false } : fx;
+  const show = (value: string) => (metric.unit === "money" ? formatWhole(value, exactFx) : formatRatio(value));
   const question = kpiQuestion({
     label: metric.label,
     status,
     period,
     value: show(metric.value),
-    change: changeText(metric, fx),
+    change: changeText(metric, exactFx),
     reference,
     prior: metric.prior === null ? null : show(metric.prior),
   });

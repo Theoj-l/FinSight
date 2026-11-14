@@ -53,13 +53,16 @@ function NotificationRow({ alert, entry, markViewed, clear, period, dashboardHre
 
   if (alert.type === "financial") {
     const ratio = alert.metric.id.endsWith("Margin") || alert.metric.id === "expenseRatio";
-    const show = (value: string | null) => value === null ? "—" : ratio ? `${Number(value).toFixed(2)}%` : formatWhole(value, fx);
+    const figure = (value: string | null, compact = fx.compact) => value === null ? "—" : ratio ? `${Number(value).toFixed(2)}%` : formatWhole(value, { ...fx, compact });
+    const show = (value: string | null) => figure(value);
+    // The assistant always gets exact figures, whatever the compact setting.
+    const exact = (value: string | null) => figure(value, false);
     const month = reportingMonth(period);
     const question = thresholdQuestion({
       label: alert.metric.label,
       period: month,
-      value: show(alert.comparison.actual),
-      reference: show(alert.comparison.reference),
+      value: exact(alert.comparison.actual),
+      reference: exact(alert.comparison.reference),
       referenceLabel: alert.label.charAt(0).toUpperCase() + alert.label.slice(1),
       movement: formatPercentage(alert.value),
       tolerance: alert.comparison.tolerance,

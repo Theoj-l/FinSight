@@ -10,7 +10,8 @@ export const BASE_CURRENCY: CurrencyCode = "SGD";
 // Units of `currency` per 1 SGD, keyed by currency code.
 export type ExchangeRates = Partial<Record<CurrencyCode, number>>;
 
-export type FxContext = { currency: CurrencyCode; rates: ExchangeRates | null };
+/** `compact`: the "Compact number format" setting; full figures are then shown as e.g. $5.12M. */
+export type FxContext = { currency: CurrencyCode; rates: ExchangeRates | null; compact?: boolean };
 
 const SYMBOLS: Record<CurrencyCode, string> = { SGD: "$", USD: "US$", MYR: "RM" };
 
@@ -43,8 +44,18 @@ export function formatCurrencyCompact(value: number, fx?: FxContext | null) {
   return `${sign}${symbol}${absoluteValue.toFixed(0)}`;
 }
 
+/** A positive amount abbreviated for the compact setting: 5117060 -> "5.12M", 343840 -> "343.8K". */
+export function abbreviate(amount: number): string {
+  const trim = (text: string) => text.replace(/\.0+$|(\.\d*?)0+$/, "$1");
+  if (amount >= 1_000_000_000) return `${trim((amount / 1_000_000_000).toFixed(2))}B`;
+  if (amount >= 1_000_000) return `${trim((amount / 1_000_000).toFixed(2))}M`;
+  if (amount >= 1_000) return `${trim((amount / 1_000).toFixed(1))}K`;
+  return Math.round(amount).toString();
+}
+
 export function formatCurrencyExact(value: number, fx?: FxContext | null) {
   const converted = convertAmount(value, fx);
+  if (fx?.compact) return `${converted < 0 ? "-" : ""}${fxSymbol(fx)}${abbreviate(Math.abs(converted))}`;
   return `${converted < 0 ? "-" : ""}${fxSymbol(fx)}${Math.abs(converted).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
